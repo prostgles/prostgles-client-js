@@ -1,20 +1,42 @@
+
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Stefan L. All rights reserved.
+ *  Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+
 const preffix = "_psqlWS_.";
-var subscriptions = []
+var subscriptions = [];
+
 function getChannelName({tableName, param1, param2}){
     return `_psqlWS_.${tableName}.${JSON.stringify(param1 || {})}.${JSON.stringify(param2 || {})}`
-}
+};
 
 const psqlWS = {
-    init: function({ socket, isReady = () => {}, onDisconnect }){
+    init: function({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }){
         return new Promise((resolve, reject)=>{
 
             if(onDisconnect){
                 socket.on("disconnect", onDisconnect)
             }
             
-            socket.on(preffix + 'schema', (schema)=>{
+            socket.on(preffix + 'schema', ({ schema, methods })=>{
 
                 let dbo = JSON.parse(JSON.stringify(schema));
+                let _methods = JSON.parse(JSON.stringify(methods)),
+                    methodsObj = {};
+
+                _methods.map(method => {
+                    methodsObj[method] = function(params){
+                        return new Promise((resolve, reject)=>{
+                            socket.emit(preffix + "method", { method, params }, (err,res)=>{
+                                if(err) reject(err);
+                                else resolve(res);
+                            });
+                        })
+                    }
+                });
+                methodsObj = Object.freeze(methodsObj);
 
                 if(dbo.sql){
                     dbo.schema = Object.freeze([ ...dbo.sql ]);
@@ -33,8 +55,9 @@ const psqlWS = {
                     Object.keys(dbo[tableName]).forEach(command=>{
 
                         if(command === "sync"){
+                            dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
                             
-                            function handle(param1, param2, syncHandles){
+                            function syncHandle(param1, param2, syncHandles){
                                 const { onSyncRequest, onPullRequest, onUpdates } = syncHandles;
                                 
                                 var _this = this,
@@ -145,7 +168,7 @@ const psqlWS = {
 
                                 return Object.freeze({ unsync, syncData });
                             }
-                            dbo[tableName][command] = handle;
+                            dbo[tableName][command] = syncHandle;
                         } else if(command === "subscribe"){
                             function handle(param1, param2, onChange){
 
@@ -205,18 +228,13 @@ const psqlWS = {
 
                                 return Object.freeze({ unsubscribe });
                             }
-                            // handle.prototype.unsubscribe = function(){
-                            //     let channelName = this.channelName
-                            //     this.socket.emit(preffix, {channelName, unsubscribe: true}, (err, channelName)=>{
-                            //         console.log(err, res)
-                            //     });
-                            // }
 
                             dbo[tableName][command] = handle;
 
                         } else {
                             dbo[tableName][command] = function(param1, param2, param3){
-                                return new Promise((resolve, reject)=>{
+                                // if(Array.isArray(param2) || Array.isArray(param3)) throw "Expecting an object";
+                                return new Promise((resolve, reject) => {
                                     socket.emit(preffix, { tableName, command, param1, param2, param3 }, (err,res)=>{
                                         if(err) reject(err);
                                         else resolve(res);
@@ -227,7 +245,7 @@ const psqlWS = {
                     })
                 });
 
-                isReady(dbo);
+                isReady(dbo, methodsObj);
                 resolve(dbo);
             });
 
@@ -245,19 +263,59 @@ function getHashCode(str) {
     return hash;
 }
 
+type FilterFunction = (data: object) => boolean ;
+
+type SubscriptionSingle = {
+    onChange: (data: object, delta: object) => object;
+    idObj: object | FilterFunction;
+}
+type SubscriptionMulti = {
+    onChange: (data: object[], delta: object)=> object[];
+    idObj?: object | FilterFunction;
+}
+
+const STORAGE_TYPES = {
+    array: "array",
+    localStorage: "localStorage"
+}
+
 class SyncedTable {
-    constructor({ name, filter, onChange, db, id_fields, synced_field, pushDebounce = 100, skipFirstTrigger = false }){
+
+    db: any;
+    name:string;
+    filter?: object;
+    onChange: (data: object[], delta: object)=> object[];
+    id_fields: string[];
+    synced_field: string;
+    pushDebounce: number = 100;
+    skipFirstTrigger: boolean = false;
+    isSendingData: number;
+    multiSubscriptions: SubscriptionMulti[];
+    singleSubscriptions:  SubscriptionSingle[];
+    dbSync: any;
+    items: object[] = [];
+    storageType?: string = STORAGE_TYPES.array;
+    itemsObj: object = {};
+
+    constructor({ name, filter, onChange, db, pushDebounce = 100, skipFirstTrigger = false }){
         this.name = name;
         this.filter = filter;
         this.onChange = onChange;
+
+        if(!db) throw "db missing";
         this.db = db;
+
+        const { id_fields, synced_field } = db[this.name]._syncInfo;
+        if(!id_fields || !synced_field) throw "id_fields/synced_field missing";
         this.id_fields = id_fields;
         this.synced_field = synced_field;
+
         this.pushDebounce = pushDebounce;
         this.isSendingData = null;
         this.skipFirstTrigger = skipFirstTrigger;
 
-        this.subscriptions = [];
+        this.multiSubscriptions = [];
+        this.singleSubscriptions = [];
         
         const onSyncRequest = (params, sync_info) => {
                 
@@ -297,10 +355,10 @@ class SyncedTable {
 
     subscribeAll(onChange){
 
-        const sub = { onChange },
+        const sub: SubscriptionMulti = { onChange },
             unsubscribe = () => { this.unsubscribe(onChange); };
 
-        this.subscriptions.push(sub);
+        this.multiSubscriptions.push(sub);
         if(!this.skipFirstTrigger){
             onChange(this.getItems());
         }
@@ -342,14 +400,14 @@ class SyncedTable {
         };
         
 
-        this.subscriptions.push(sub);
+        this.singleSubscriptions.push(sub);
         setTimeout(()=>onChange(item, item), 0);
 
         return Object.freeze({ ...syncHandle });
     }
 
     notifySubscriptions = (idObj, newData, delta) => {
-        this.subscriptions.filter(s => 
+        this.singleSubscriptions.filter(s => 
             s.idObj &&
             this.matchesIdObj(s.idObj, idObj) && 
             Object.keys(s.idObj).length <= Object.keys(idObj).length)
@@ -366,12 +424,18 @@ class SyncedTable {
     }
 
     unsubscribe = (onChange) => {
-        this.subscriptions = this.subscriptions.filter(s => s.onChange !== onChange);
+        this.singleSubscriptions = this.singleSubscriptions.filter(s => s.onChange !== onChange);
+        this.multiSubscriptions = this.multiSubscriptions.filter(s => s.onChange !== onChange);
     }
 
     findOne(idObj){
         this.getItems();
-        const itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d) )
+        let itemIdx = -1;
+        if(typeof idObj === "function"){
+            itemIdx = this.items.findIndex(idObj);
+        } else {
+            itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d) )
+        }
         return this.items[itemIdx];
     }
 
@@ -399,19 +463,20 @@ class SyncedTable {
         let items = this.getItems();
         items = items.filter(d => !this.matchesIdObj(idObj, d) );
 
-        window.localStorage.setItem(this.name, JSON.stringify(items));
+        // window.localStorage.setItem(this.name, JSON.stringify(items));
+        this.setItems(items);
         return this.onDataChanged(null, [idObj]);
     }
 
     setDeleted(idObj, fullArray){
-        let deleted = [];
+        let deleted: object[] = [];
         
         if(fullArray) deleted = fullArray;
         else {
             deleted = this.getDeleted();
             deleted.push(idObj);
         }
-        window.localStorage.setItem(this.name + "_$$psql$$_deleted", deleted);
+        window.localStorage.setItem(this.name + "_$$psql$$_deleted", <any>deleted);
     }
     getDeleted(){
         const delStr = window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
@@ -419,8 +484,8 @@ class SyncedTable {
     }
     syncDeleted = async () => {
         try {
-            await Promise.await(this.getDeleted().map(async idObj => {
-                return db[this.name].delete(idObj);
+            await Promise.all(this.getDeleted().map(async idObj => {
+                return this.db[this.name].delete(idObj);
             }));
             this.setDeleted(null, []);
             return true;
@@ -446,7 +511,11 @@ class SyncedTable {
                 updates.push(d);
                 
                 if(from_server){
-                    this.subscriptions.filter(s => s.idObj && this.matchesIdObj(s.idObj, d))
+                    // this.subscriptions.filter(s => s.idObj && this.matchesIdObj(s.idObj, d))
+                    //     .map(s => {
+                    //         s.onChange({ ...d }, { ...d });
+                    //     });
+                    this.singleSubscriptions.filter(s => s.idObj && this.matchesIdObj(s.idObj, d))
                         .map(s => {
                             s.onChange({ ...d }, { ...d });
                         });
@@ -463,7 +532,8 @@ class SyncedTable {
         });
         // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
         const newData = [...inserts, ...updates];
-        window.localStorage.setItem(this.name, JSON.stringify(items));
+        // window.localStorage.setItem(this.name, JSON.stringify(items));
+        this.setItems(items);
         
         this.onDataChanged(newData, null, from_server);
         
@@ -474,7 +544,8 @@ class SyncedTable {
         return new Promise((resolve, reject) => {
 
             const items = this.getItems();
-            this.subscriptions.filter(s => !s.idObj).map(s =>{ s.onChange(items, newData) });
+            // this.subscriptions.filter(s => !s.idObj).map(s =>{ s.onChange(items, newData) });
+            this.multiSubscriptions.map(s =>{ s.onChange(items, newData) });
             if(this.onChange){
                 this.onChange(items, newData);
             }
@@ -497,16 +568,35 @@ class SyncedTable {
         })
     }
 
-    getItems = (sync_info) => {
-        let cachedStr = window.localStorage.getItem(this.name),
-            items = [];
-        if(cachedStr){
-            try {
-                items = JSON.parse(cachedStr);
-            } catch(e){
-                console.error(e);
-            }
+    setItems = (items: object[]): void => {
+        if(this.storageType === STORAGE_TYPES.localStorage){
+            window.localStorage.setItem(this.name, JSON.stringify(items));
+        } else if(this.storageType === STORAGE_TYPES.array){
+            this.items = items;
+        } else {
+            console.log("invalid/missing storageType -> " + this.storageType);
         }
+    }
+
+    getItems = (sync_info?: any): object[] => {
+
+        let items = [];
+
+        if(this.storageType === STORAGE_TYPES.localStorage){
+            let cachedStr = window.localStorage.getItem(this.name);
+            if(cachedStr){
+                try {
+                    items = JSON.parse(cachedStr);
+                } catch(e){
+                    console.error(e);
+                }
+            }
+        } else if(this.storageType === STORAGE_TYPES.array){
+            items = this.items.slice(0);
+        } else {
+            console.log("invalid/missing storageType -> " + this.storageType);
+        }
+
         if(this.id_fields && this.synced_field){
             const s_fields = [this.synced_field, ...this.id_fields.sort()];
             items = items

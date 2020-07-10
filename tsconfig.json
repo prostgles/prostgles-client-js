@@ -1,0 +1,19 @@
+{
+  "files": ["index.ts"],
+  "compilerOptions": {
+    "target": "es6",
+    "lib": [
+      "es6",
+      "dom"
+    ],
+    // "strict": true,
+    "module": "commonjs",
+    // "removeComments": true,
+    "sourceMap": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    // "moduleResolution": "node"
+    "declaration": true,
+    "declarationMap": true
+  },
+}
