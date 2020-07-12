@@ -5,13 +5,11 @@ declare function getChannelName({ tableName, param1, param2 }: {
     param1: any;
     param2: any;
 }): string;
-declare const psqlWS: {
-    init: ({ socket, isReady, onDisconnect }: {
-        socket: any;
-        isReady?: (dbo: any, methods: any) => void;
-        onDisconnect: any;
-    }) => Promise<unknown>;
-};
+declare const prostgles: ({ socket, isReady, onDisconnect }: {
+    socket: any;
+    isReady?: (dbo: any, methods: any) => void;
+    onDisconnect: any;
+}) => Promise<unknown>;
 declare function getHashCode(str: any): number;
 declare type FilterFunction = (data: object) => boolean;
 declare type SubscriptionSingle = {

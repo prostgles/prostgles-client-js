@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "dependencies": {},
   "devDependencies": {
+    "ts-loader": "^8.0.0",
     "typescript": "^3.9.6"
   },
   "scripts": {
@@ -20,5 +21,8 @@
   "bugs": {
     "url": "https://github.com/prostgles/prostgles-client-js/issues"
   },
-  "homepage": "https://github.com/prostgles/prostgles-client-js#readme"
+  "homepage": "https://github.com/prostgles/prostgles-client-js#readme",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@prostgles"
+  }
 }

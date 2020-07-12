@@ -12,8 +12,7 @@ function getChannelName({tableName, param1, param2}){
     return `_psqlWS_.${tableName}.${JSON.stringify(param1 || {})}.${JSON.stringify(param2 || {})}`
 };
 
-const psqlWS = {
-    init: function({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }){
+const prostgles = function({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }){
         return new Promise((resolve, reject)=>{
 
             if(onDisconnect){
@@ -250,9 +249,8 @@ const psqlWS = {
             });
 
         })
-    }
-}
-
+    };
+    
 function getHashCode(str) {
     var hash = 0, i, chr;
     for (i = 0; i < str.length; i++) {
