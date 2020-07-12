@@ -1,16 +1,8 @@
-declare const preffix = "_psqlWS_.";
-declare var subscriptions: any[];
-declare function getChannelName({ tableName, param1, param2 }: {
-    tableName: any;
-    param1: any;
-    param2: any;
-}): string;
-declare const prostgles: ({ socket, isReady, onDisconnect }: {
+export declare function prostgles({ socket, isReady, onDisconnect }: {
     socket: any;
     isReady?: (dbo: any, methods: any) => void;
     onDisconnect: any;
-}) => Promise<unknown>;
-declare function getHashCode(str: any): number;
+}): Promise<unknown>;
 declare type FilterFunction = (data: object) => boolean;
 declare type SubscriptionSingle = {
     onChange: (data: object, delta: object) => object;
@@ -20,11 +12,7 @@ declare type SubscriptionMulti = {
     onChange: (data: object[], delta: object) => object[];
     idObj?: object | FilterFunction;
 };
-declare const STORAGE_TYPES: {
-    array: string;
-    localStorage: string;
-};
-declare class SyncedTable {
+export declare class SyncedTable {
     db: any;
     name: string;
     filter?: object;
@@ -76,4 +64,5 @@ declare class SyncedTable {
     getItems: (sync_info?: any) => object[];
     getBatch: (params: any, sync_info: any) => {}[];
 }
+export {};
 //# sourceMappingURL=index.d.ts.map

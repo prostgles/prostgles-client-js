@@ -5,14 +5,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 
-const preffix = "_psqlWS_.";
-var subscriptions = [];
+export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }){
 
-function getChannelName({tableName, param1, param2}){
-    return `_psqlWS_.${tableName}.${JSON.stringify(param1 || {})}.${JSON.stringify(param2 || {})}`
-};
+        const preffix = "_psqlWS_.";
+        var subscriptions = [];
 
-const prostgles = function({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }){
         return new Promise((resolve, reject)=>{
 
             if(onDisconnect){
@@ -175,14 +172,6 @@ const prostgles = function({  socket, isReady = (dbo: any, methods: any) => {}, 
                                     channelName,
                                     lastUpdated,
                                     socketHandle;
-                                    
-                                /* Cache */
-                                // let cachedStr = window.localStorage.getItem(getChannelName({tableName, param1, param2}));
-                                // if(cachedStr){
-                                //     let cached = JSON.parse(cachedStr);
-                                //     lastUpdated = cached.lastUpdated;
-                                //     onChange(cached.data);
-                                // }
 
                                 socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res)=>{
                                     if(err) {
@@ -250,7 +239,7 @@ const prostgles = function({  socket, isReady = (dbo: any, methods: any) => {}, 
 
         })
     };
-    
+
 function getHashCode(str) {
     var hash = 0, i, chr;
     for (i = 0; i < str.length; i++) {
@@ -277,7 +266,7 @@ const STORAGE_TYPES = {
     localStorage: "localStorage"
 }
 
-class SyncedTable {
+export class SyncedTable {
 
     db: any;
     name:string;

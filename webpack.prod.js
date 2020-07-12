@@ -1,7 +1,11 @@
 const path = require('path');
 
 module.exports = {
-  entry: './lib/index.ts',
+  entry: {
+   'index': './lib/index.ts',
+   'index.min': './lib/index.ts'
+  },
+  mode: 'production',
   module: {
     rules: [
       {
@@ -15,7 +19,9 @@ module.exports = {
     extensions: [ '.tsx', '.ts', '.js' ],
   },
   output: {
-    filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
+    filename: '[name].js',
+    libraryTarget: 'umd',
+    globalObject: 'this',
   },
 };

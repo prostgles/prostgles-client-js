@@ -1,7 +1,7 @@
 {
   "files": ["lib/index.ts"],
   "compilerOptions": {
-    "target": "es6",
+    "target": "es2019",
     "lib": [
       "es6",
       "dom"
@@ -9,7 +9,7 @@
     // "strict": true,
     "module": "commonjs",
     // "removeComments": true,
-    "sourceMap": true,
+    // "sourceMap": true,
     "rootDir": "./lib",
     "outDir": "dist",
     // "moduleResolution": "node"
