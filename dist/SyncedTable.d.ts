@@ -1,8 +1,3 @@
-export declare function prostgles({ socket, isReady, onDisconnect }: {
-    socket: any;
-    isReady?: (dbo: any, methods: any) => void;
-    onDisconnect: any;
-}): Promise<unknown>;
 declare type FilterFunction = (data: object) => boolean;
 declare type SubscriptionSingle = {
     onChange: (data: object, delta: object) => object;
@@ -65,4 +60,4 @@ export declare class SyncedTable {
     getBatch: (params: any, sync_info: any) => {}[];
 }
 export {};
-//# sourceMappingURL=index.d.ts.map
+//# sourceMappingURL=SyncedTable.d.ts.map

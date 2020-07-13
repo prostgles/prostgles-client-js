@@ -2,8 +2,9 @@ const path = require('path');
 
 module.exports = {
   entry: {
-   'index': './lib/index.ts',
-   'index.min': './lib/index.ts'
+   'prostgles': './lib/prostgles-full.ts',
+   'prostgles.min': './lib/prostgles-full.ts',
+   'prostgles.no-sync.min': './lib/prostgles.ts'
   },
   mode: 'production',
   module: {

@@ -2,7 +2,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './lib/index.ts',
+  entry: './lib/protgles-full.ts',
   devtool: 'inline-source-map',
   mode: 'development',
   module: {
@@ -18,7 +18,7 @@ module.exports = {
     extensions: [ '.tsx', '.ts', '.js' ],
   },
   output: {
-    filename: 'index.dev.js',
+    filename: 'prostgles.dev.js',
     path: path.resolve(__dirname, 'dist'),
     libraryTarget: 'umd',
     globalObject: 'this',

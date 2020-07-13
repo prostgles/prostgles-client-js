@@ -1,5 +1,5 @@
 {
-  "files": ["lib/index.ts"],
+  "files": ["lib/prostgles-full.ts"],
   "compilerOptions": {
     "target": "es2019",
     "lib": [
