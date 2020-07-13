@@ -20,6 +20,8 @@ module.exports = {
   output: {
     filename: 'index.dev.js',
     path: path.resolve(__dirname, 'dist'),
+    libraryTarget: 'umd',
+    globalObject: 'this',
   },
   watch: true,
   watchOptions:  {

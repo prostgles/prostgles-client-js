@@ -16,7 +16,8 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
                 socket.on("disconnect", onDisconnect)
             }
             
-            socket.on(preffix + 'schema', ({ schema, methods })=>{
+            /* Schema = published schema */
+            socket.on(preffix + 'schema', ({ schema, methods, fullSchema })=>{
 
                 let dbo = JSON.parse(JSON.stringify(schema));
                 let _methods = JSON.parse(JSON.stringify(methods)),
@@ -35,7 +36,7 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
                 methodsObj = Object.freeze(methodsObj);
 
                 if(dbo.sql){
-                    dbo.schema = Object.freeze([ ...dbo.sql ]);
+                    // dbo.schema = Object.freeze([ ...dbo.sql ]);
                     dbo.sql = function(query, params, options){
                         return new Promise((resolve, reject)=>{
                             socket.emit(preffix + "sql", { query, params, options }, (err,res)=>{
