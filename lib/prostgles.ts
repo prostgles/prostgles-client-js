@@ -64,7 +64,7 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
 
                             socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res)=>{
                                 if(err) {
-                                    throw err
+                                    console.error(err);
                                 } else if(res) {
                                     
                                     // channelName = res.channelName;
@@ -174,9 +174,9 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
                                 lastUpdated,
                                 socketHandle;
 
-                            socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res)=>{
+                            socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res) => {
                                 if(err) {
-                                    throw err
+                                    console.error(err);
                                 } else if(res) {
                                     
                                     channelName = res.channelName;
