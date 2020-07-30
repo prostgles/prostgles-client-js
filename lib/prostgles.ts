@@ -17,11 +17,30 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
         }
         
         /* Schema = published schema */
-        socket.on(preffix + 'schema', ({ schema, methods, fullSchema })=>{
+        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, joinTables = [] })=>{
 
             let dbo = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)),
                 methodsObj = {};
+
+            joinTables.map(table => {
+                dbo.innerJoin = dbo.innerJoin || {};
+                dbo.leftJoin = dbo.leftJoin || {};
+                dbo.leftJoin[table] = (filter, select, options) => {
+                    return makeJoin(true, filter, select, options);
+                }
+                dbo.innerJoin[table] = (filter, select, options) => {
+                    return makeJoin(false, filter, select, options);
+                }
+                function makeJoin(isLeft = true, filter, select, options){
+                    return {
+                        [isLeft? "$leftJoin" : "$innerJoin"]: table,
+                        filter,
+                        select,
+                        ...options
+                    }
+                }
+            });
 
             _methods.map(method => {
                 methodsObj[method] = function(params){
