@@ -238,8 +238,8 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
             joinTables.map(table => {
                 dbo.innerJoin = dbo.innerJoin || {};
                 dbo.leftJoin = dbo.leftJoin || {};
-                dbo.innerJoinOne = dbo.innerJoin || {};
-                dbo.leftJoinOne = dbo.leftJoin || {};
+                dbo.innerJoinOne = dbo.innerJoinOne || {};
+                dbo.leftJoinOne = dbo.leftJoinOne || {};
                 dbo.leftJoin[table] = (filter, select, options = {}) => {
                     return makeJoin(true, filter, select, options);
                 }
