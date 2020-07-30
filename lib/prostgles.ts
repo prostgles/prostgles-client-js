@@ -23,25 +23,6 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
             let _methods = JSON.parse(JSON.stringify(methods)),
                 methodsObj = {};
 
-            joinTables.map(table => {
-                dbo.innerJoin = dbo.innerJoin || {};
-                dbo.leftJoin = dbo.leftJoin || {};
-                dbo.leftJoin[table] = (filter, select, options) => {
-                    return makeJoin(true, filter, select, options);
-                }
-                dbo.innerJoin[table] = (filter, select, options) => {
-                    return makeJoin(false, filter, select, options);
-                }
-                function makeJoin(isLeft = true, filter, select, options){
-                    return {
-                        [isLeft? "$leftJoin" : "$innerJoin"]: table,
-                        filter,
-                        select,
-                        ...options
-                    }
-                }
-            });
-
             _methods.map(method => {
                 methodsObj[method] = function(params){
                     return new Promise((resolve, reject)=>{
@@ -251,6 +232,34 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
                         }
                     }
                 })
+            });
+
+
+            joinTables.map(table => {
+                dbo.innerJoin = dbo.innerJoin || {};
+                dbo.leftJoin = dbo.leftJoin || {};
+                dbo.innerJoinOne = dbo.innerJoin || {};
+                dbo.leftJoinOne = dbo.leftJoin || {};
+                dbo.leftJoin[table] = (filter, select, options = {}) => {
+                    return makeJoin(true, filter, select, options);
+                }
+                dbo.innerJoin[table] = (filter, select, options = {}) => {
+                    return makeJoin(false, filter, select, options);
+                }
+                dbo.leftJoinOne[table] = (filter, select, options = {}) => {
+                    return makeJoin(true, filter, select, {...options, limit: 1});
+                }
+                dbo.innerJoinOne[table] = (filter, select, options = {}) => {
+                    return makeJoin(false, filter, select, {...options, limit: 1});
+                }
+                function makeJoin(isLeft = true, filter, select, options){
+                    return {
+                        [isLeft? "$leftJoin" : "$innerJoin"]: table,
+                        filter,
+                        select,
+                        ...options
+                    }
+                }
             });
 
             isReady(dbo, methodsObj);
