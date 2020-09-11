@@ -5,7 +5,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 
-export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }){
+export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }, syncedTable: any){
 
     const preffix = "_psqlWS_.";
     var subscriptions = [];
@@ -53,6 +53,11 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
 
                     if(command === "sync"){
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
+                        if(syncedTable && syncedTable){
+                            dbo[tableName].getSync = (filter) => {
+                                return new syncedTable({ name: tableName, filter, db: dbo });
+                            }
+                        }
                         
                         function syncHandle(param1, param2, syncHandles){
                             const { onSyncRequest, onPullRequest, onUpdates } = syncHandles;
