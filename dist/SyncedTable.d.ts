@@ -16,7 +16,8 @@ export declare class SyncedTable {
     synced_field: string;
     pushDebounce: number;
     skipFirstTrigger: boolean;
-    isSendingData: number;
+    isSendingData: object[];
+    isSendingDataCallbacks: Function[];
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions: SubscriptionSingle[];
     dbSync: any;
