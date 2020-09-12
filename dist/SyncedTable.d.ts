@@ -45,7 +45,7 @@ export declare class SyncedTable {
     updateOne(idObj: any, newData: any): void;
     unsubscribe: (onChange: any) => void;
     findOne(idObj: any): object;
-    getIdObj(d: any): {};
+    private getIdObj;
     unsync: () => void;
     matchesIdObj(idObj: any, d: any): boolean;
     deleteAll(): void;

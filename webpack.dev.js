@@ -2,7 +2,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './lib/protgles-full.ts',
+  entry: './lib/prostgles-full.ts',
   devtool: 'inline-source-map',
   mode: 'development',
   module: {

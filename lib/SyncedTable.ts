@@ -152,7 +152,6 @@ export class SyncedTable {
         });
     };
 
-
     updateOne(idObj, newData){
         const item = { ...this.findOne(idObj), ...newData, ...idObj };
         this.notifySubscriptions(idObj, item, newData);
@@ -175,7 +174,7 @@ export class SyncedTable {
         return this.items[itemIdx];
     }
 
-    getIdObj(d){
+    private getIdObj(d){
         let res = {};
         this.id_fields.map(key => {
             res[key] = d[key];
