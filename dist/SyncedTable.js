@@ -19,6 +19,7 @@ class SyncedTable {
                 .map(s => {
                 s.onChange(newData, delta);
             });
+            this.multiSubscriptions.map(s => s.onChange(this.getItems(), [newData]));
         };
         this.unsubscribe = (onChange) => {
             this.singleSubscriptions = this.singleSubscriptions.filter(s => s.onChange !== onChange);
@@ -88,6 +89,28 @@ class SyncedTable {
             return true;
         };
         this.onDataChanged = async (newData = null, deletedData = null, from_server = false) => {
+            const pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
+                if (newItems) {
+                    this.isSendingData = this.isSendingData.concat(newItems);
+                }
+                if (callback)
+                    this.isSendingDataCallbacks.push(callback);
+                const PUSH_BATCH_SIZE = 50;
+                if (this.isSendingData && this.isSendingData.length || deletedData) {
+                    window.onbeforeunload = confirmExit;
+                    function confirmExit() {
+                        return "Data may be lost. Are you sure?";
+                    }
+                    const newBatch = this.isSendingData.slice(0, PUSH_BATCH_SIZE);
+                    await this.dbSync.syncData(newBatch, deletedData);
+                    pushDataToServer();
+                }
+                else {
+                    window.onbeforeunload = null;
+                    this.isSendingDataCallbacks.map(cb => { cb(); });
+                    this.isSendingDataCallbacks = [];
+                }
+            };
             return new Promise((resolve, reject) => {
                 const items = this.getItems();
                 // this.subscriptions.filter(s => !s.idObj).map(s =>{ s.onChange(items, newData) });
@@ -95,22 +118,24 @@ class SyncedTable {
                 if (this.onChange) {
                     this.onChange(items, newData);
                 }
-                window.onbeforeunload = confirmExit;
-                function confirmExit() {
-                    return "Data may be lost. Are you sure?";
-                }
+                /* Local updates. Need to push to server */
                 if (!from_server && this.dbSync && this.dbSync.syncData) {
-                    if (this.isSendingData) {
-                        window.clearTimeout(this.isSendingData);
-                    }
-                    this.isSendingData = window.setTimeout(async () => {
-                        await this.dbSync.syncData(newData, deletedData);
+                    pushDataToServer(newData, deletedData, () => {
                         resolve(true);
-                        this.isSendingData = null;
-                        window.onbeforeunload = null;
-                    }, this.pushDebounce);
+                    });
+                    // if(this.isSendingData){
+                    //     window.clearTimeout(this.isSendingData);
+                    // }
+                    // this.isSendingData = window.setTimeout(async ()=>{
+                    //     await this.dbSync.syncData(newData, deletedData);
+                    //     resolve(true);
+                    //     this.isSendingData = null;
+                    //     window.onbeforeunload = null;
+                    // }, this.pushDebounce);
                 }
-                resolve(true);
+                else {
+                    resolve(true);
+                }
             });
         };
         this.setItems = (items) => {
@@ -177,7 +202,8 @@ class SyncedTable {
         this.id_fields = id_fields;
         this.synced_field = synced_field;
         this.pushDebounce = pushDebounce;
-        this.isSendingData = null;
+        this.isSendingData = [];
+        this.isSendingDataCallbacks = [];
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
