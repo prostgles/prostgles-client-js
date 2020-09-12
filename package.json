@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "webpack --config webpack.dev.js",
-    "build": "webpack --config webpack.prod.js"
+    "build": "tsc && webpack --config webpack.prod.js"
   },
   "repository": {
     "type": "git",

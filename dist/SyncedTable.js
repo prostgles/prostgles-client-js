@@ -103,6 +103,7 @@ class SyncedTable {
                     }
                     const newBatch = this.isSendingData.slice(0, PUSH_BATCH_SIZE);
                     await this.dbSync.syncData(newBatch, deletedData);
+                    this.isSendingData.splice(0, PUSH_BATCH_SIZE);
                     pushDataToServer();
                 }
                 else {
