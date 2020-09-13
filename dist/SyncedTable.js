@@ -95,7 +95,7 @@ class SyncedTable {
                 }
                 if (callback)
                     this.isSendingDataCallbacks.push(callback);
-                const PUSH_BATCH_SIZE = 50;
+                const PUSH_BATCH_SIZE = 20;
                 if (this.isSendingData && this.isSendingData.length || deletedData) {
                     window.onbeforeunload = confirmExit;
                     function confirmExit() {
