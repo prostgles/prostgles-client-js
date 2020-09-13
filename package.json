@@ -2,7 +2,7 @@
   "name": "prostgles-client",
   "version": "1.0.14",
   "description": "",
-  "main": "dist/index.js",
+  "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
   "dependencies": {},
   "devDependencies": {
@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "webpack --config webpack.dev.js",
-    "build": "tsc && webpack --config webpack.prod.js"
+    "build": "rm -rf ./dist/* && tsc && webpack --config webpack.prod.js"
   },
   "repository": {
     "type": "git",

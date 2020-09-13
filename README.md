@@ -26,7 +26,7 @@ const socket = io();
 prostgles({
     socket, 
     isReady: async (db) => {
-        const latest_posts = db.posts.find(
+        const latest_posts = await db.posts.find(
             { },
             {   
                 orderBy: { created: -1 }
@@ -36,3 +36,8 @@ prostgles({
     }
 });
 ```
+
+
+## License
+
+  [MIT](LICENSE)
