@@ -1,9 +1,9 @@
 {
   "name": "prostgles-client",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/prostgles-full.d.ts",
   "dependencies": {},
   "devDependencies": {
     "ts-loader": "^8.0.0",

@@ -2,9 +2,9 @@ const path = require('path');
 
 module.exports = {
   entry: {
-   'index': './lib/prostgles-full.ts',
-   'index.min': './lib/prostgles-full.ts',
-   'index.no-sync.min': './lib/prostgles.ts'
+   'prostgles': './lib/prostgles-full.ts',
+   'prostgles.min': './lib/prostgles-full.ts',
+   'prostgles.no-sync.min': './lib/prostgles.ts'
   },
   mode: 'production',
   module: {
@@ -22,7 +22,8 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js',
-    libraryTarget: 'umd',
+    libraryTarget: 'commonjs',
+    library: "prostgles-client",
     globalObject: 'this',
   },
 };
