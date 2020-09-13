@@ -3,4 +3,5 @@ import { SyncedTable } from "./SyncedTable";
 const prostgles = (params) => {
     return pgls(params, SyncedTable);
 } 
-export { prostgles, SyncedTable };
+export default prostgles;
+export { SyncedTable };
