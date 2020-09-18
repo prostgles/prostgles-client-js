@@ -54,8 +54,8 @@ export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, o
                     if(command === "sync"){
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
                         if(syncedTable && syncedTable){
-                            dbo[tableName].getSync = (filter) => {
-                                return new syncedTable({ name: tableName, filter, db: dbo });
+                            dbo[tableName].getSync = (filter, params = {}) => {
+                                return new syncedTable({ name: tableName, filter, db: dbo, ...params });
                             }
                         }
                         

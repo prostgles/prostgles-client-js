@@ -235,13 +235,17 @@ export class SyncedTable {
     }
 
     upsert = async (data, from_server = false) => {
+        if(!data) throw "No data provided for upsert";
+        
+        let _data = Array.isArray(data)? data : [data];
+
         let items = this.getItems();
 
         if(from_server && this.getDeleted().length){
             await this.syncDeleted();
         }
         let updates = [], inserts = [];
-        data.map(d => {
+        _data.map(d => {
             if(!from_server) d[this.synced_field] = Date.now();
 
             let existing_idx = items.findIndex(c => !this.id_fields.find(key => c[key] !== d[key])),
@@ -317,16 +321,6 @@ export class SyncedTable {
                 pushDataToServer(newData, deletedData, () => {
                     resolve(true);
                 });
-
-                // if(this.isSendingData){
-                //     window.clearTimeout(this.isSendingData);
-                // }
-                // this.isSendingData = window.setTimeout(async ()=>{
-                //     await this.dbSync.syncData(newData, deletedData);
-                //     resolve(true);
-                //     this.isSendingData = null;
-                //     window.onbeforeunload = null;
-                // }, this.pushDebounce);
             } else {
                 resolve(true);
             }

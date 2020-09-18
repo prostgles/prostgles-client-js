@@ -1,7 +1,8 @@
 import { prostgles as pgls } from "./prostgles";
 import { SyncedTable } from "./SyncedTable";
-const prostgles = (params) => {
+export function prostgles (params) {
     return pgls(params, SyncedTable);
-} 
-export default prostgles;
-export { SyncedTable };
+}
+// prostgles.SyncedTable = SyncedTable;
+// export = prostgles;
+// export { SyncedTable };

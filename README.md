@@ -9,7 +9,7 @@
 
 Module
 ```bash
-$ npm install prostgles-client
+$ npm install prostgles-client socket.io-client
 ```
 
 CDN
