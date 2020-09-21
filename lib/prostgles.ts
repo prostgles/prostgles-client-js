@@ -4,16 +4,20 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-
-export function prostgles({  socket, isReady = (dbo: any, methods: any) => {}, onDisconnect }, syncedTable: any){
-
+export type InitOptions = {
+    socket: any;
+    isReady: (dbo: any, methods: any) => Promise<any>;
+    onDisconnect: (socket: any) => any
+}
+export function prostgles(initOpts: InitOptions, syncedTable: any){
+    const { socket, isReady = (dbo: any, methods: any) => {}, onDisconnect } = initOpts;
     const preffix = "_psqlWS_.";
     var subscriptions = [];
 
     return new Promise((resolve, reject)=>{
 
         if(onDisconnect){
-            socket.on("disconnect", onDisconnect)
+            socket.on("disconnect", onDisconnect);
         }
         
         /* Schema = published schema */

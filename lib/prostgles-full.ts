@@ -1,8 +1,8 @@
-import { prostgles as pgls } from "./prostgles";
+import { prostgles as pgls, InitOptions } from "./prostgles";
 import { SyncedTable } from "./SyncedTable";
-export function prostgles (params) {
+function prostgles (params: InitOptions) {
     return pgls(params, SyncedTable);
 }
-// prostgles.SyncedTable = SyncedTable;
-// export = prostgles;
+prostgles.SyncedTable = SyncedTable;
+export = prostgles;
 // export { SyncedTable };
