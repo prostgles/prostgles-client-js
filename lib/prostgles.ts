@@ -7,10 +7,10 @@
 export type InitOptions = {
     socket: any;
     isReady: (dbo: any, methods: any) => any;
-    onDisconnect: (socket: any) => any
+    onDisconnect?: (socket: any) => any
 }
 export function prostgles(initOpts: InitOptions, syncedTable: any){
-    const { socket, isReady = (dbo: any, methods: any) => {}, onDisconnect } = initOpts;
+    const { socket, isReady, onDisconnect } = initOpts;
     const preffix = "_psqlWS_.";
     var subscriptions = [];
 

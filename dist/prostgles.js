@@ -6,7 +6,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = void 0;
 function prostgles(initOpts, syncedTable) {
-    const { socket, isReady = (dbo, methods) => { }, onDisconnect } = initOpts;
+    const { socket, isReady, onDisconnect } = initOpts;
     const preffix = "_psqlWS_.";
     var subscriptions = [];
     return new Promise((resolve, reject) => {
