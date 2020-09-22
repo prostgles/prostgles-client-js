@@ -6,7 +6,7 @@
 
 export type InitOptions = {
     socket: any;
-    isReady: (dbo: any, methods: any) => Promise<any>;
+    isReady: (dbo: any, methods: any) => any;
     onDisconnect: (socket: any) => any
 }
 export function prostgles(initOpts: InitOptions, syncedTable: any){
