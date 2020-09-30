@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   entry: {
-   'index': './lib/prostgles-full.ts',
+   'index': './lib/prostgles-full-cdn.ts',
    'index.no-sync': './lib/prostgles.ts'
   },
   mode: 'production',
