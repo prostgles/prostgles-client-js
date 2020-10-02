@@ -190,7 +190,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
                             return Object.freeze({ unsync, syncData });
                         }
-                        dbo[tableName][command] = syncHandle;
+                        dbo[tableName]._sync = syncHandle;
                     } else if(command === "subscribe"){
                         function handle(param1, param2, onChange){
 

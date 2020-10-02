@@ -246,7 +246,7 @@ class SyncedTable {
             // console.log(`onPullRequest: total(${ data.length })`)
             return data;
         };
-        this.dbSync = db[this.name].sync(filter, {}, { onSyncRequest, onPullRequest, onUpdates: (data) => {
+        this.dbSync = db[this.name]._sync(filter, {}, { onSyncRequest, onPullRequest, onUpdates: (data) => {
                 this.upsert(data, true);
             } });
         if (this.onChange && !this.skipFirstTrigger) {

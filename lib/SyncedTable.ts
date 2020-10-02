@@ -98,7 +98,7 @@ export class SyncedTable {
                 return data;
             };
         
-        this.dbSync = db[this.name].sync(filter, { },{ onSyncRequest, onPullRequest, onUpdates: (data) => { 
+        this.dbSync = db[this.name]._sync(filter, { },{ onSyncRequest, onPullRequest, onUpdates: (data) => { 
             this.upsert(data, true) 
         } });
 
