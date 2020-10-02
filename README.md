@@ -16,7 +16,7 @@ CDN
 ```html
 <head>
     <script src="https://unpkg.com/socket.io-client@latest/dist/socket.io.slim.js" type="text/javascript"></script>
-    <script src="https://unpkg.com/prostgles-client@latest/dist/prostgles.js" type="text/javascript"></script>	
+    <script src="https://unpkg.com/prostgles-client@latest/dist/index.js" type="text/javascript"></script>	
 </head>
 ```
 

@@ -6,13 +6,14 @@
 
 export type InitOptions = {
     socket: any;
-    isReady: (dbo: any, methods: any) => any;
-    onDisconnect?: (socket: any) => any
+    onReady: (dbo: any, methods: any) => any;
+    onDisconnect?: (socket: any) => any;
 }
 export function prostgles(initOpts: InitOptions, syncedTable: any){
-    const { socket, isReady, onDisconnect } = initOpts;
+    const { socket, onReady, onDisconnect } = initOpts;
     const preffix = "_psqlWS_.";
     var subscriptions = [];
+    let syncedTables = {};
 
     return new Promise((resolve, reject)=>{
 
@@ -28,7 +29,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 methodsObj = {};
 
             _methods.map(method => {
-                methodsObj[method] = function(params){
+                methodsObj[method] = function(...params){
                     return new Promise((resolve, reject)=>{
                         socket.emit(preffix + "method", { method, params }, (err,res)=>{
                             if(err) reject(err);
@@ -57,9 +58,24 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
                     if(command === "sync"){
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
-                        if(syncedTable && syncedTable){
+                        if(syncedTable){
                             dbo[tableName].getSync = (filter, params = {}) => {
                                 return new syncedTable({ name: tableName, filter, db: dbo, ...params });
+                            }
+                            const usertSTable = (basicFilter) => {
+                                const syncName = `${tableName}.${JSON.stringify(basicFilter || {})}`
+                                if(!syncedTables[syncName]){
+                                    syncedTables[syncName] = new syncedTable({ name: tableName, filter: basicFilter, db: dbo });
+                                }
+                                return syncedTables[syncName]
+                            }
+                            dbo[tableName].sync = (basicFilter, onChange, handlesOnData = false) => {
+                                const s = usertSTable(basicFilter);
+                                return s.sync(onChange, handlesOnData);
+                            }
+                            dbo[tableName].syncOne = (basicFilter, onChange, handlesOnData = false) => {
+                                const s = usertSTable(basicFilter);
+                                return s.syncOne(basicFilter, onChange, handlesOnData);
                             }
                         }
                         
@@ -271,7 +287,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 }
             });
 
-            isReady(dbo, methodsObj);
+            onReady(dbo, methodsObj);
             resolve(dbo);
         });
 

@@ -1,11 +1,26 @@
 declare type FilterFunction = (data: object) => boolean;
+declare type MultiSyncHandles = {
+    unsync: () => void;
+    upsert: (newData: object[]) => any;
+};
+declare type SingleSyncHandles = {
+    get: () => object;
+    unsync: () => any;
+    delete: () => void;
+    update: (data: object) => void;
+    set: (data: object) => void;
+};
 declare type SubscriptionSingle = {
     onChange: (data: object, delta: object) => object;
     idObj: object | FilterFunction;
+    handlesOnData?: boolean;
+    handles?: SingleSyncHandles;
 };
 declare type SubscriptionMulti = {
     onChange: (data: object[], delta: object) => object[];
     idObj?: object | FilterFunction;
+    handlesOnData?: boolean;
+    handles?: MultiSyncHandles;
 };
 export declare class SyncedTable {
     db: any;
@@ -32,30 +47,23 @@ export declare class SyncedTable {
         pushDebounce?: number;
         skipFirstTrigger?: boolean;
     });
-    subscribeAll(onChange: any): Readonly<{
-        unsubscribe: () => void;
-    }>;
-    subscribeOne(idObj: any, onChange: any): Readonly<{
-        get: () => object;
-        unsubscribe: () => void;
-        delete: () => Promise<unknown>;
-        update: (data: any) => void;
-        updateFull: (data: any) => void;
-    }>;
-    notifySubscriptions: (idObj: any, newData: any, delta: any) => void;
-    updateOne(idObj: any, newData: any): void;
+    sync(onChange: any, handlesOnData?: boolean): MultiSyncHandles;
+    syncOne(idObj: any, onChange: any, handlesOnData?: boolean): SingleSyncHandles;
+    notifyMultiSubscriptions: (newData: object[], delta: object[]) => void;
+    notifySingleSubscriptions: (idObj: any, newData: any, delta: any) => void;
+    updateOne(idObj: object, newData: object): Promise<boolean>;
     unsubscribe: (onChange: any) => void;
     findOne(idObj: any): object;
     private getIdObj;
     unsync: () => void;
     matchesIdObj(idObj: any, d: any): boolean;
     deleteAll(): void;
-    delete: (idObj: any) => Promise<unknown>;
+    delete: (idObj: any) => Promise<boolean>;
     setDeleted(idObj: any, fullArray: any): void;
     getDeleted(): any;
     syncDeleted: () => Promise<boolean>;
-    upsert: (data: any, from_server?: boolean) => Promise<boolean>;
-    onDataChanged: (newData?: any, deletedData?: any, from_server?: boolean) => Promise<unknown>;
+    upsert: (data: object | object[], from_server?: boolean) => Promise<boolean>;
+    onDataChanged: (newData?: object[], deletedData?: any, from_server?: boolean) => Promise<boolean>;
     setItems: (items: object[]) => void;
     getItems: (sync_info?: any) => object[];
     getBatch: (params: any, sync_info: any) => {}[];
