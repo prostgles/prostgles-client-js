@@ -217,6 +217,12 @@ function prostgles(initOpts, syncedTable) {
                             return Object.freeze({ unsubscribe });
                         }
                         dbo[tableName][command] = handle;
+                        dbo[tableName].subscribeOne = function (param1, param2, cb) {
+                            let _cb = function (rows) {
+                                _cb(rows[0]);
+                            };
+                            return dbo[tableName][command](param1, param2, _cb);
+                        };
                     }
                     else {
                         dbo[tableName][command] = function (param1, param2, param3) {

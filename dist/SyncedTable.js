@@ -56,7 +56,7 @@ class SyncedTable {
             items = items.filter(d => !this.matchesIdObj(idObj, d));
             // window.localStorage.setItem(this.name, JSON.stringify(items));
             this.setItems(items);
-            return this.onDataChanged(null, [idObj]);
+            return this.onDataChanged(null, null, [idObj]);
         };
         this.syncDeleted = async () => {
             try {
@@ -70,16 +70,17 @@ class SyncedTable {
                 throw e;
             }
         };
-        this.upsert = async (data, from_server = false) => {
+        this.upsert = async (data, delta, from_server = false) => {
             if (!data)
                 throw "No data provided for upsert";
             if (from_server && this.getDeleted().length) {
                 await this.syncDeleted();
             }
             let _data = Array.isArray(data) ? data : [data];
+            let _delta = Array.isArray(delta) ? delta : [delta];
             let items = this.getItems();
-            let updates = [], inserts = [];
-            _data.map(_d => {
+            let updates = [], inserts = [], deltas = [];
+            _data.map((_d, i) => {
                 let d = { ..._d };
                 /* Add synced if missing */
                 if (!from_server)
@@ -88,6 +89,15 @@ class SyncedTable {
                 if (existing && existing[this.synced_field] < d[this.synced_field]) {
                     items[existing_idx] = { ...d };
                     updates.push(d);
+                    if (_delta && _delta[i]) {
+                        deltas.push(_delta[i]);
+                    }
+                    else {
+                        deltas.push(d);
+                        // Object.keys(_d)
+                        // let dlt = Array.from(new Set()).map(key => ).reduce((a, v) => {
+                        // }, {})
+                    }
                     // if(from_server){
                     //     this.singleSubscriptions.filter(s => s.idObj && this.matchesIdObj(s.idObj, d))
                     //         .map(s => {
@@ -98,6 +108,7 @@ class SyncedTable {
                 else if (!existing) {
                     items.push({ ...d });
                     inserts.push(d);
+                    deltas.push(d);
                 }
                 /* TODO: Deletes from server */
                 // if(allow_deletes){
@@ -108,10 +119,10 @@ class SyncedTable {
             const newData = [...inserts, ...updates].map(d => ({ ...d }));
             // window.localStorage.setItem(this.name, JSON.stringify(items));
             this.setItems(items);
-            return this.onDataChanged(newData, null, from_server);
+            return this.onDataChanged(newData, deltas, null, from_server);
             // return true;
         };
-        this.onDataChanged = async (newData = null, deletedData = null, from_server = false) => {
+        this.onDataChanged = async (newData = null, delta = null, deletedData = null, from_server = false) => {
             const pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
                 if (newItems) {
                     this.isSendingData = this.isSendingData.concat(newItems);
@@ -138,8 +149,11 @@ class SyncedTable {
             return new Promise((resolve, reject) => {
                 const items = this.getItems();
                 if (newData && newData.length) {
-                    newData.map(d => {
-                        this.notifySingleSubscriptions(this.getIdObj({ ...d }), { ...d }, { ...d });
+                    newData.map((d, i) => {
+                        let dlt = {};
+                        if (delta && delta.length)
+                            dlt = delta[i];
+                        this.notifySingleSubscriptions(this.getIdObj({ ...d }), { ...d }, { ...dlt });
                     });
                     this.notifyMultiSubscriptions(items, newData);
                 }
@@ -247,7 +261,7 @@ class SyncedTable {
             return data;
         };
         this.dbSync = db[this.name]._sync(filter, {}, { onSyncRequest, onPullRequest, onUpdates: (data) => {
-                this.upsert(data, true);
+                this.upsert(data, data, true);
             } });
         if (this.onChange && !this.skipFirstTrigger) {
             setTimeout(this.onChange, 0);
@@ -256,7 +270,7 @@ class SyncedTable {
     sync(onChange, handlesOnData = false) {
         const handles = {
             unsync: () => { this.unsubscribe(onChange); },
-            upsert: (newData) => this.upsert(newData)
+            upsert: (newData) => this.upsert(newData, newData)
         }, sub = {
             onChange,
             handlesOnData,
@@ -283,15 +297,12 @@ class SyncedTable {
                 return this.delete(idObj);
             },
             update: data => {
-                // const newData = { ...this.findOne(idObj), ...data, ...idObj };
-                // notifySubscriptions(newData, data);
-                // this.upsert([newData]);
                 this.updateOne(idObj, data);
             },
             set: data => {
                 const newData = { ...data, ...idObj };
                 // this.notifySubscriptions(idObj, newData, data);
-                this.upsert(newData);
+                this.upsert(newData, newData);
             }
         };
         const sub = {
@@ -306,7 +317,7 @@ class SyncedTable {
     }
     updateOne(idObj, newData) {
         let id = this.getIdObj(idObj);
-        return this.upsert({ ...this.findOne(id), ...newData, ...id });
+        return this.upsert({ ...this.findOne(id), ...newData, ...id }, { ...newData });
     }
     findOne(idObj) {
         this.getItems();
