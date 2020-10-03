@@ -245,6 +245,13 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
                         dbo[tableName][command] = handle;
 
+                        dbo[tableName].subscribeOne = function(param1, param2, cb){
+                            let _cb = function(rows){
+                                _cb(rows[0]);
+                            }
+                            return dbo[tableName][command](param1, param2, _cb);
+                        }
+
                     } else {
                         dbo[tableName][command] = function(param1, param2, param3){
                             // if(Array.isArray(param2) || Array.isArray(param3)) throw "Expecting an object";
