@@ -128,10 +128,7 @@ export class SyncedTable {
 
     syncOne(idObj, onChange, handlesOnData = false): SingleSyncHandles{
         if(!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
-        const item = this.findOne(idObj);
-
-        if(!item) throw "no item found";
-            
+        
         const handles: SingleSyncHandles = {
             get: () => this.findOne(idObj),
             unsync: () => {
@@ -158,7 +155,18 @@ export class SyncedTable {
         
 
         this.singleSubscriptions.push(sub);
-        setTimeout(()=>onChange(item, item), 0);
+
+        // const item = this.findOne(idObj);
+        // if(!item) {
+        //     this.db[this.name].findOne(idObj).then(d => {
+        //         onChange(d, d)
+        //     }).catch(err => {
+        //         throw err;
+        //     });
+        // } else {
+        //     setTimeout(()=>onChange(item, item), 0);
+        // }
+            
 
         return Object.freeze({ ...handles });
     }
