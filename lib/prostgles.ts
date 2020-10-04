@@ -191,7 +191,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             return Object.freeze({ unsync, syncData });
                         }
                         dbo[tableName]._sync = syncHandle;
-                    } else if(command === "subscribe"){
+                    } else if(command === "subscribe" || command === "subscribeOne"){
                         function handle(param1, param2, onChange){
 
                             var _this = this,
@@ -245,12 +245,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
                         dbo[tableName][command] = handle;
 
-                        dbo[tableName].subscribeOne = function(param1, param2 = {}, cb){
-                            let _cb = function(rows){
-                                cb(rows[0]);
-                            }
-                            return dbo[tableName][command](param1, { ...(param2 || {}), limit: 1 }, _cb);
-                        }
+                        // dbo[tableName].subscribeOne = function(param1, param2 = {}, cb){
+                        //     let _cb = function(rows){
+                        //         cb(rows[0]);
+                        //     }
+                        //     return dbo[tableName][command](param1, { ...(param2 || {}), limit: 1 }, _cb);
+                        // }
 
                     } else {
                         dbo[tableName][command] = function(param1, param2, param3){

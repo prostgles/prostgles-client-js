@@ -176,7 +176,7 @@ function prostgles(initOpts, syncedTable) {
                         }
                         dbo[tableName]._sync = syncHandle;
                     }
-                    else if (command === "subscribe") {
+                    else if (command === "subscribe" || command === "subscribeOne") {
                         function handle(param1, param2, onChange) {
                             var _this = this, channelName, lastUpdated, socketHandle;
                             socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res) => {
@@ -217,12 +217,12 @@ function prostgles(initOpts, syncedTable) {
                             return Object.freeze({ unsubscribe });
                         }
                         dbo[tableName][command] = handle;
-                        dbo[tableName].subscribeOne = function (param1, param2 = {}, cb) {
-                            let _cb = function (rows) {
-                                cb(rows[0]);
-                            };
-                            return dbo[tableName][command](param1, { ...(param2 || {}), limit: 1 }, _cb);
-                        };
+                        // dbo[tableName].subscribeOne = function(param1, param2 = {}, cb){
+                        //     let _cb = function(rows){
+                        //         cb(rows[0]);
+                        //     }
+                        //     return dbo[tableName][command](param1, { ...(param2 || {}), limit: 1 }, _cb);
+                        // }
                     }
                     else {
                         dbo[tableName][command] = function (param1, param2, param3) {
