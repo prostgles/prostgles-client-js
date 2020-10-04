@@ -45,8 +45,11 @@ function prostgles(initOpts, syncedTable) {
                 };
             }
             /* Building DBO object */
+            const sub_commands = ["subscribe", "subscribeOne"];
             Object.keys(dbo).forEach(tableName => {
-                Object.keys(dbo[tableName]).forEach(command => {
+                Object.keys(dbo[tableName])
+                    .sort((a, b) => sub_commands.includes(a) - sub_commands.includes(b))
+                    .forEach(command => {
                     if (command === "sync") {
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
                         if (syncedTable) {
@@ -176,7 +179,7 @@ function prostgles(initOpts, syncedTable) {
                         }
                         dbo[tableName]._sync = syncHandle;
                     }
-                    else if (command === "subscribe" || command === "subscribeOne") {
+                    else if (sub_commands.includes(command)) {
                         function handle(param1, param2, onChange) {
                             var _this = this, channelName, lastUpdated, socketHandle;
                             socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res) => {
@@ -214,15 +217,16 @@ function prostgles(initOpts, syncedTable) {
                                 }
                                 socket.removeListener(channelName, socketHandle);
                             }
-                            return Object.freeze({ unsubscribe });
+                            let subHandle = { unsubscribe };
+                            if (dbo[tableName].update) {
+                                function update(newData) {
+                                    return dbo[tableName].update(param1, newData);
+                                }
+                                subHandle = { unsubscribe, update };
+                            }
+                            return Object.freeze(subHandle);
                         }
                         dbo[tableName][command] = handle;
-                        // dbo[tableName].subscribeOne = function(param1, param2 = {}, cb){
-                        //     let _cb = function(rows){
-                        //         cb(rows[0]);
-                        //     }
-                        //     return dbo[tableName][command](param1, { ...(param2 || {}), limit: 1 }, _cb);
-                        // }
                     }
                     else {
                         dbo[tableName][command] = function (param1, param2, param3) {
