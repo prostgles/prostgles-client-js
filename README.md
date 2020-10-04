@@ -28,7 +28,7 @@ CDN
 const socket = io();
 prostgles({
     socket, 
-    isReady: async (db) => {
+    onReady: async (db) => {
         const latest_posts = await db.posts.find(
             { },
             {   
