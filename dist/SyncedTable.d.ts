@@ -71,7 +71,7 @@ export declare class SyncedTable {
     onDataChanged: (newData?: object[], delta?: object[], deletedData?: any, from_server?: boolean) => Promise<boolean>;
     setItems: (items: object[]) => void;
     getItems: (sync_info?: any) => object[];
-    getBatch: (params: any, sync_info: any) => {}[];
+    getBatch: (params: any) => {}[];
 }
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

@@ -244,7 +244,7 @@ class SyncedTable {
             this.items = items;
             return items.map(d => ({ ...d }));
         };
-        this.getBatch = (params, sync_info) => {
+        this.getBatch = (params) => {
             let items = this.getItems();
             params = params || {};
             const { from_synced, to_synced, offset = 0, limit = null } = params;
@@ -271,9 +271,9 @@ class SyncedTable {
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
-        const onSyncRequest = (params, sync_info) => {
+        const onSyncRequest = (params) => {
             let res = { c_lr: null, c_fr: null, c_count: 0 };
-            let batch = this.getBatch(params, sync_info);
+            let batch = this.getBatch(params);
             if (batch.length) {
                 res = {
                     c_fr: batch[0] || null,
@@ -283,17 +283,22 @@ class SyncedTable {
             }
             // console.log("onSyncRequest", res);
             return res;
-        }, onPullRequest = async (params, sync_info) => {
+        }, onPullRequest = async (params) => {
             if (this.getDeleted().length) {
                 await this.syncDeleted();
             }
-            const data = this.getBatch(params, sync_info);
+            const data = this.getBatch(params);
             // console.log(`onPullRequest: total(${ data.length })`)
             return data;
         };
-        this.dbSync = db[this.name]._sync(filter, {}, { onSyncRequest, onPullRequest, onUpdates: (data) => {
+        // this.dbSync = db[this.name]._sync(filter, { },{ onSyncRequest, onPullRequest, onUpdates: (data) => { 
+        //     this.upsert(data, data, true) 
+        // } });
+        db[this.name]._sync(filter, {}, { onSyncRequest, onPullRequest, onUpdates: (data) => {
                 this.upsert(data, data, true);
-            } });
+            } }).then(s => {
+            this.dbSync = s;
+        });
         if (this.onChange && !this.skipFirstTrigger) {
             setTimeout(this.onChange, 0);
         }

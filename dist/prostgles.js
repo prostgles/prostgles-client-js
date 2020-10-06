@@ -8,8 +8,224 @@ exports.prostgles = void 0;
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect } = initOpts;
     const preffix = "_psqlWS_.";
-    var subscriptions = [];
+    let subscriptions = {};
+    // window["subscriptions"] = subscriptions;
     let syncedTables = {};
+    let syncs = [];
+    let ssyncs = {};
+    function _unsubscribe(channelName, handler) {
+        if (subscriptions[channelName]) {
+            subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
+            if (!subscriptions[channelName].handlers.length) {
+                socket.emit(channelName + "unsubscribe", {}, (err, res) => {
+                    // console.log("unsubscribed", err, res);
+                });
+                socket.removeListener(channelName, subscriptions[channelName].onCall);
+                delete subscriptions[channelName];
+            }
+        }
+    }
+    function _unsync(channelName, triggers) {
+        return new Promise((resolve, reject) => {
+            if (ssyncs[channelName]) {
+                ssyncs[channelName].triggers = ssyncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&
+                    tr.onSyncRequest !== triggers.onSyncRequest &&
+                    tr.onUpdates !== triggers.onUpdates));
+                if (!ssyncs[channelName].triggers.length) {
+                    socket.emit(channelName + "unsync", {}, (err, res) => {
+                        if (err)
+                            reject(err);
+                        else
+                            resolve(res);
+                    });
+                    socket.removeListener(channelName, ssyncs[channelName].onCall);
+                    delete ssyncs[channelName];
+                }
+            }
+        });
+    }
+    function addServerSync({ tableName, command, param1, param2 }, onSyncRequest) {
+        return new Promise((resolve, reject) => {
+            socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                }
+                else if (res) {
+                    const { id_fields, synced_field, channelName } = res;
+                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}, res) }, (response) => {
+                        console.log(response);
+                    });
+                    resolve({ id_fields, synced_field, channelName });
+                }
+            });
+        });
+    }
+    function addServerSub({ tableName, command, param1, param2 }) {
+        return new Promise((resolve, reject) => {
+            socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                }
+                else if (res) {
+                    resolve(res.channelName);
+                }
+            });
+        });
+    }
+    async function addSync({ tableName, command, param1, param2 }, triggers) {
+        const { onPullRequest, onSyncRequest, onUpdates } = triggers;
+        function makeHandler(channelName, sync_info) {
+            let unsync = function () {
+                _unsync(channelName, triggers);
+            };
+            let syncData = function (data, deleted, cb) {
+                socket.emit(channelName, {
+                    onSyncRequest: {
+                        ...onSyncRequest({}, sync_info),
+                        ...({ data } || {}),
+                        ...({ deleted } || {})
+                    },
+                }, !cb ? null : (response) => {
+                    cb(response);
+                });
+            };
+            return Object.freeze({ unsync, syncData });
+        }
+        const existingChannel = Object.keys(ssyncs).find(ch => {
+            let s = ssyncs[ch];
+            return (s.tableName === tableName &&
+                s.command === command &&
+                JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
+                JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
+            // s.triggers.find(tr => (
+            //     tr.onPullRequest === triggers.onPullRequest &&
+            //     tr.onSyncRequest === triggers.onSyncRequest &&
+            //     tr.onUpdates === triggers.onUpdates
+            // ))
+            );
+        });
+        if (existingChannel) {
+            ssyncs[existingChannel].triggers.push(triggers);
+            return makeHandler(existingChannel, ssyncs[existingChannel].syncInfo);
+        }
+        else {
+            const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
+            const { channelName, synced_field, id_fields } = sync_info;
+            function onCall(data, cb) {
+                /*
+                    Client will:
+                    1. Send last_synced     on(onSyncRequest)
+                    2. Send data >= server_synced   on(onPullRequest)
+                    3. Send data on CRUD    emit(data.data)
+                    4. Upsert data.data     on(data.data)
+                */
+                if (!data)
+                    return;
+                if (!ssyncs[channelName])
+                    return;
+                ssyncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
+                    // onChange(data.data);
+                    if (data.data && data.data.length) {
+                        Promise.resolve(onUpdates(data.data, sync_info))
+                            .then(() => {
+                            if (cb)
+                                cb({ ok: true });
+                        })
+                            .catch(err => { if (cb) {
+                            cb({ err });
+                        } });
+                    }
+                    else if (data.onSyncRequest) {
+                        // cb(onSyncRequest());
+                        Promise.resolve(onSyncRequest(data.onSyncRequest, sync_info))
+                            .then(res => cb({ onSyncRequest: res }))
+                            .catch(err => { if (cb) {
+                            cb({ err });
+                        } });
+                    }
+                    else if (data.onPullRequest) {
+                        Promise.resolve(onPullRequest(data.onPullRequest, sync_info))
+                            .then(arr => {
+                            cb({ data: arr });
+                        })
+                            .catch(err => { if (cb) {
+                            cb({ err });
+                        } });
+                    }
+                    else {
+                        console.log("unexpected response");
+                    }
+                    /* Cache */
+                    // window.localStorage.setItem(channelName, JSON.stringify(data))
+                });
+            }
+            ssyncs[channelName] = {
+                tableName,
+                command,
+                param1,
+                param2,
+                triggers: [triggers],
+                syncInfo: sync_info,
+                onCall
+            };
+            socket.on(channelName, onCall);
+            return makeHandler(channelName, sync_info);
+        }
+    }
+    async function addSub(dbo, { tableName, command, param1, param2 }, onChange) {
+        function makeHandler(channelName) {
+            let unsubscribe = function () {
+                _unsubscribe(channelName, onChange);
+            };
+            let res = { unsubscribe };
+            /* Some dbo sorting was done to make sure this will work */
+            if (dbo[tableName].update) {
+                res = {
+                    unsubscribe,
+                    update: function (newData) {
+                        return dbo[tableName].update(param1, newData);
+                    }
+                };
+            }
+            return Object.freeze(res);
+        }
+        const existing = Object.keys(subscriptions).find(ch => {
+            let s = subscriptions[ch];
+            return (s.tableName === tableName &&
+                s.command === command &&
+                JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
+                JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {}));
+        });
+        if (existing) {
+            subscriptions[existing].handlers.push(onChange);
+            if (subscriptions[existing].handlers.includes(onChange)) {
+                console.warn("Duplicate subscription handler was added for:", subscriptions[existing]);
+            }
+            return makeHandler(existing);
+        }
+        else {
+            const channelName = await addServerSub({ tableName, command, param1, param2 });
+            let onCall = function (data, cb) {
+                /* TO DO: confirm receiving data or server will unsubscribe */
+                // if(cb) cb(true);
+                subscriptions[channelName].handlers.map(h => {
+                    h(data.data);
+                });
+            };
+            socket.on(channelName, onCall);
+            subscriptions[channelName] = {
+                tableName,
+                command,
+                param1,
+                param2,
+                onCall,
+                handlers: [onChange]
+            };
+            return makeHandler(channelName);
+        }
+    }
     return new Promise((resolve, reject) => {
         if (onDisconnect) {
             socket.on("disconnect", onDisconnect);
@@ -72,161 +288,14 @@ function prostgles(initOpts, syncedTable) {
                                 return s.syncOne(basicFilter, onChange, handlesOnData);
                             };
                         }
-                        function syncHandle(param1, param2, syncHandles) {
-                            const { onSyncRequest, onPullRequest, onUpdates } = syncHandles;
-                            var _this = this, 
-                            // channelName,
-                            lastUpdated, socketHandle;
-                            socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res) => {
-                                if (err) {
-                                    console.error(err);
-                                }
-                                else if (res) {
-                                    // channelName = res.channelName;
-                                    const { id_fields, synced_field, channelName } = res, sync_info = { id_fields, synced_field };
-                                    _this.sync_info = sync_info;
-                                    _this.channelName = channelName;
-                                    _this.socket = socket;
-                                    _this.syncData = function (data, deleted, cb) {
-                                        socket.emit(channelName, {
-                                            onSyncRequest: {
-                                                ...onSyncRequest({}, sync_info),
-                                                ...({ data } || {}),
-                                                ...({ deleted } || {})
-                                            },
-                                        }, !cb ? null : (response) => {
-                                            cb(response);
-                                        });
-                                    };
-                                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}, sync_info) }, (response) => {
-                                        console.log(response);
-                                    });
-                                    socketHandle = function (data, cb) {
-                                        /*
-                                            Client will:
-                                            1. Send last_synced     on(onSyncRequest)
-                                            2. Send data >= server_synced   on(onPullRequest)
-                                            3. Send data on CRUD    emit(data.data)
-                                            4. Upsert data.data     on(data.data)
-                                        */
-                                        if (!data)
-                                            return;
-                                        // onChange(data.data);
-                                        if (data.data && data.data.length) {
-                                            Promise.resolve(onUpdates(data.data, sync_info))
-                                                .then(() => {
-                                                if (cb)
-                                                    cb({ ok: true });
-                                            })
-                                                .catch(err => { if (cb) {
-                                                cb({ err });
-                                            } });
-                                        }
-                                        else if (data.onSyncRequest) {
-                                            // cb(onSyncRequest());
-                                            Promise.resolve(onSyncRequest(data.onSyncRequest, sync_info))
-                                                .then(res => cb({ onSyncRequest: res }))
-                                                .catch(err => { if (cb) {
-                                                cb({ err });
-                                            } });
-                                        }
-                                        else if (data.onPullRequest) {
-                                            Promise.resolve(onPullRequest(data.onPullRequest, sync_info))
-                                                .then(arr => {
-                                                cb({ data: arr });
-                                            })
-                                                .catch(err => { if (cb) {
-                                                cb({ err });
-                                            } });
-                                        }
-                                        else {
-                                            console.log("unexpected response");
-                                        }
-                                        /* Cache */
-                                        // window.localStorage.setItem(channelName, JSON.stringify(data))
-                                    };
-                                    subscriptions.push({ channelName, syncHandles, socketHandle });
-                                    socket.on(channelName, socketHandle);
-                                }
-                            });
-                            function unsync() {
-                                return new Promise((resolve, reject) => {
-                                    var subs = subscriptions.filter(s => s.channelName === _this.channelName);
-                                    if (subs.length === 1) {
-                                        subscriptions = subscriptions.filter(s => s.channelName !== _this.channelName);
-                                        socket.emit(_this.channelName + "unsync", {}, (err, res) => {
-                                            if (err)
-                                                reject(err);
-                                            else
-                                                resolve(res);
-                                        });
-                                    }
-                                    else if (subs.length > 1) {
-                                        // socket.removeListener(channelName, socketHandle);
-                                    }
-                                    else {
-                                        console.log("no syncs to unsync from", subs);
-                                    }
-                                    socket.removeListener(_this.channelName, socketHandle);
-                                });
-                            }
-                            function syncData(data, deleted) {
-                                if (_this && _this.syncData) {
-                                    _this.syncData(data, deleted);
-                                }
-                            }
-                            return Object.freeze({ unsync, syncData });
-                        }
-                        dbo[tableName]._sync = syncHandle;
+                        dbo[tableName]._sync = function (param1, param2, syncHandles) {
+                            return addSync({ tableName, command, param1, param2 }, syncHandles);
+                        };
                     }
                     else if (sub_commands.includes(command)) {
-                        function handle(param1, param2, onChange) {
-                            var _this = this, channelName, lastUpdated, socketHandle;
-                            socket.emit(preffix, { tableName, command, param1, param2, lastUpdated }, (err, res) => {
-                                if (err) {
-                                    console.error(err);
-                                }
-                                else if (res) {
-                                    channelName = res.channelName;
-                                    socketHandle = function (data, cb) {
-                                        /* TO DO: confirm receiving data or server will unsubscribe */
-                                        // if(cb) cb(true);
-                                        onChange(data.data);
-                                        /* Cache */
-                                        // window.localStorage.setItem(channelName, JSON.stringify(data))
-                                        _this.channelName = channelName;
-                                        _this.socket = socket;
-                                    };
-                                    subscriptions.push({ channelName, onChange, socketHandle });
-                                    socket.on(channelName, socketHandle);
-                                }
-                            });
-                            function unsubscribe() {
-                                var subs = subscriptions.filter(s => s.channelName === channelName);
-                                if (subs.length === 1) {
-                                    subscriptions = subscriptions.filter(s => s.channelName !== channelName);
-                                    socket.emit(channelName + "unsubscribe", {}, (err, res) => {
-                                        // console.log("unsubscribed", err, res);
-                                    });
-                                }
-                                else if (subs.length > 1) {
-                                    // socket.removeListener(channelName, socketHandle);
-                                }
-                                else {
-                                    console.log("no subscriptions to unsubscribe from", subs);
-                                }
-                                socket.removeListener(channelName, socketHandle);
-                            }
-                            let subHandle = { unsubscribe };
-                            if (dbo[tableName].update) {
-                                function update(newData) {
-                                    return dbo[tableName].update(param1, newData);
-                                }
-                                subHandle = { unsubscribe, update };
-                            }
-                            return Object.freeze(subHandle);
-                        }
-                        dbo[tableName][command] = handle;
+                        dbo[tableName][command] = function (param1, param2, onChange) {
+                            return addSub(dbo, { tableName, command, param1, param2 }, onChange);
+                        };
                     }
                     else {
                         dbo[tableName][command] = function (param1, param2, param3) {
@@ -243,6 +312,33 @@ function prostgles(initOpts, syncedTable) {
                     }
                 });
             });
+            // Re-attach listeners
+            if (subscriptions && Object.keys(subscriptions).length) {
+                Object.keys(subscriptions).map(async (ch) => {
+                    try {
+                        let s = subscriptions[ch];
+                        await addServerSub(s);
+                        socket.on(ch, s.onCall);
+                    }
+                    catch (err) {
+                        console.error("There was an issue reconnecting olf subscriptions", err);
+                    }
+                });
+            }
+            if (ssyncs && Object.keys(ssyncs).length) {
+                Object.keys(ssyncs).filter(ch => {
+                    return ssyncs[ch].triggers && ssyncs[ch].triggers.length;
+                }).map(async (ch) => {
+                    try {
+                        let s = ssyncs[ch];
+                        await addServerSync(s, s.triggers[0].onSyncRequest);
+                        socket.on(ch, s.onCall);
+                    }
+                    catch (err) {
+                        console.error("There was an issue reconnecting olf subscriptions", err);
+                    }
+                });
+            }
             joinTables.map(table => {
                 dbo.innerJoin = dbo.innerJoin || {};
                 dbo.leftJoin = dbo.leftJoin || {};

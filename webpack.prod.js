@@ -5,7 +5,7 @@ module.exports = {
    'index': './lib/prostgles-full-cdn.ts',
    'index.no-sync': './lib/prostgles.ts'
   },
-  mode: 'production',
+  mode: 'production', // "development",// 
   module: {
     rules: [
       {
