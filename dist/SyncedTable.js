@@ -123,27 +123,59 @@ class SyncedTable {
             // return true;
         };
         this.onDataChanged = async (newData = null, delta = null, deletedData = null, from_server = false) => {
-            const pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
-                if (newItems) {
-                    this.isSendingData = this.isSendingData.concat(newItems);
-                }
-                if (callback)
-                    this.isSendingDataCallbacks.push(callback);
+            const setSending = (rows, cb) => {
+                this.isSendingData = this.isSendingData || {};
+                rows.map(r => {
+                    let idStr = JSON.stringify(this.getIdObj(r));
+                    if (this.isSendingData[idStr]) {
+                        this.isSendingData[idStr].n = { ...this.isSendingData[idStr].n, ...r };
+                        if (cb)
+                            this.isSendingData[idStr].cbs.push(cb);
+                    }
+                    else {
+                        this.isSendingData[idStr] = {
+                            o: this.findOne(this.getIdObj(r)),
+                            n: r,
+                            cbs: cb ? [cb] : []
+                        };
+                    }
+                });
+            }, getSending = () => {
                 const PUSH_BATCH_SIZE = 20;
-                if (this.isSendingData && this.isSendingData.length || deletedData) {
+                return Object.keys(this.isSendingData).slice(0, PUSH_BATCH_SIZE).map(k => this.isSendingData[k].n);
+            }, finishSending = (rows, revert = false) => {
+                rows.map(r => {
+                    if (revert) {
+                    }
+                    else {
+                        this.isSendingData[JSON.stringify(this.getIdObj(r))].cbs.map(cb => { cb(); });
+                        delete this.isSendingData[JSON.stringify(this.getIdObj(r))];
+                    }
+                });
+            }, pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
+                if (newItems) {
+                    setSending(newItems, callback);
+                }
+                // if(callback) this.isSendingDataCallbacks.push(callback);
+                if (deletedData || this.isSendingData && Object.keys(this.isSendingData).length) {
                     window.onbeforeunload = confirmExit;
                     function confirmExit() {
                         return "Data may be lost. Are you sure?";
                     }
-                    const newBatch = this.isSendingData.slice(0, PUSH_BATCH_SIZE);
-                    await this.dbSync.syncData(newBatch, deletedData);
-                    this.isSendingData.splice(0, PUSH_BATCH_SIZE);
-                    pushDataToServer();
+                    const newBatch = getSending(); // this.isSendingData.slice(0, PUSH_BATCH_SIZE);
+                    try {
+                        await this.dbSync.syncData(newBatch, deletedData);
+                        finishSending(newBatch);
+                        pushDataToServer();
+                    }
+                    catch (err) {
+                        console.error(err);
+                    }
                 }
                 else {
                     window.onbeforeunload = null;
-                    this.isSendingDataCallbacks.map(cb => { cb(); });
-                    this.isSendingDataCallbacks = [];
+                    // this.isSendingDataCallbacks.map(cb => { cb(); });
+                    // this.isSendingDataCallbacks = [];
                 }
             };
             return new Promise((resolve, reject) => {
@@ -235,8 +267,7 @@ class SyncedTable {
         this.id_fields = id_fields;
         this.synced_field = synced_field;
         this.pushDebounce = pushDebounce;
-        this.isSendingData = [];
-        this.isSendingDataCallbacks = [];
+        this.isSendingData = {};
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
@@ -338,7 +369,7 @@ class SyncedTable {
     }
     getIdObj(d) {
         let res = {};
-        this.id_fields.map(key => {
+        this.id_fields.sort().map(key => {
             res[key] = d[key];
         });
         return res;

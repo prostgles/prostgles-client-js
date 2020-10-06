@@ -269,7 +269,12 @@ function prostgles(initOpts, syncedTable) {
                     };
                 }
             });
-            onReady(dbo, methodsObj);
+            try {
+                onReady(dbo, methodsObj);
+            }
+            catch (err) {
+                console.error("Prostgles: Error within onReady: \n", err);
+            }
             resolve(dbo);
         });
     });

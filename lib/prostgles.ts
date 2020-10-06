@@ -297,7 +297,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 }
             });
 
-            onReady(dbo, methodsObj);
+            try {
+                onReady(dbo, methodsObj);
+            } catch(err){
+                console.error("Prostgles: Error within onReady: \n", err);
+            }
+
             resolve(dbo);
         });
 

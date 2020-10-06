@@ -40,8 +40,7 @@ export class SyncedTable {
     synced_field: string;
     pushDebounce: number = 100;
     skipFirstTrigger: boolean = false;
-    isSendingData: object[];
-    isSendingDataCallbacks: Function[];
+    isSendingData: { [key: string]: { n: object, o: object, cbs: Function[] } };
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions:  SubscriptionSingle[];
     dbSync: any;
@@ -63,8 +62,7 @@ export class SyncedTable {
         this.synced_field = synced_field;
 
         this.pushDebounce = pushDebounce;
-        this.isSendingData = [];
-        this.isSendingDataCallbacks = [];
+        this.isSendingData = {};
 
         this.skipFirstTrigger = skipFirstTrigger;
 
@@ -228,9 +226,9 @@ export class SyncedTable {
 
     private getIdObj(d){
         let res = {};
-        this.id_fields.map(key => {
+        this.id_fields.sort().map(key => {
             res[key] = d[key];
-        })
+        });
         return res;
     }
 
@@ -345,28 +343,61 @@ export class SyncedTable {
     }
 
     onDataChanged = async (newData: object[] = null, delta: object[] = null, deletedData = null, from_server = false): Promise<boolean> => {
-        const pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
-            if(newItems) {
-                this.isSendingData = this.isSendingData.concat(newItems);
-            }
-            if(callback) this.isSendingDataCallbacks.push(callback);
+        const setSending = (rows, cb) => {
+                this.isSendingData = this.isSendingData || {};
+                rows.map(r => {
+                    let idStr = JSON.stringify(this.getIdObj(r));
+                    if(this.isSendingData[idStr]){
+                        this.isSendingData[idStr].n = { ...this.isSendingData[idStr].n, ...r };
+                        if(cb) this.isSendingData[idStr].cbs.push(cb);
+                    } else {
+                        this.isSendingData[idStr] = {
+                            o: this.findOne(this.getIdObj(r)),
+                            n: r,
+                            cbs: cb? [cb] : []
+                        }
+                    }
+                });
+            },
+            getSending = () => {
+                const PUSH_BATCH_SIZE = 20;
+                return Object.keys(this.isSendingData).slice(0, PUSH_BATCH_SIZE).map(k => this.isSendingData[k].n)
+            },
+            finishSending = (rows, revert = false) => {
+                rows.map(r => {
+                    if(revert){
 
-            const PUSH_BATCH_SIZE = 20;
-            if(this.isSendingData && this.isSendingData.length || deletedData){
-                window.onbeforeunload = confirmExit;
-                function confirmExit() {
-                    return "Data may be lost. Are you sure?";
+                    } else {
+                        this.isSendingData[JSON.stringify(this.getIdObj(r))].cbs.map(cb =>{ cb() })
+                        delete this.isSendingData[JSON.stringify(this.getIdObj(r))];
+                    }
+                })
+            },
+            pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
+                if(newItems) {
+                    setSending(newItems, callback);
                 }
-                const newBatch = this.isSendingData.slice(0, PUSH_BATCH_SIZE);
-                await this.dbSync.syncData(newBatch, deletedData);
-                this.isSendingData.splice(0, PUSH_BATCH_SIZE);
-                pushDataToServer();
-            } else {
-                window.onbeforeunload = null;
-                this.isSendingDataCallbacks.map(cb => { cb(); });
-                this.isSendingDataCallbacks = [];
-            }
-        };
+                // if(callback) this.isSendingDataCallbacks.push(callback);
+
+                if(deletedData || this.isSendingData && Object.keys(this.isSendingData).length){
+                    window.onbeforeunload = confirmExit;
+                    function confirmExit() {
+                        return "Data may be lost. Are you sure?";
+                    }
+                    const newBatch = getSending(); // this.isSendingData.slice(0, PUSH_BATCH_SIZE);
+                    try {
+                        await this.dbSync.syncData(newBatch, deletedData);
+                        finishSending(newBatch);
+                        pushDataToServer();
+                    } catch(err) {
+                        console.error(err)
+                    }
+                } else {
+                    window.onbeforeunload = null;
+                    // this.isSendingDataCallbacks.map(cb => { cb(); });
+                    // this.isSendingDataCallbacks = [];
+                }
+            };
 
         return new Promise((resolve, reject) => {
 
