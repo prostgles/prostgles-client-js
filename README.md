@@ -1,4 +1,6 @@
 # prostgles-client
+  Isomorphic realtime client for PostgreSQL 
+  TypeScript, pg-promise, Socket.IO
 
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/prostgles/prostgles-client-js/blob/master/LICENSE)

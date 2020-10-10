@@ -229,9 +229,17 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             /* Some dbo sorting was done to make sure this will work */
             if(dbo[tableName].update){                
                 res = {
-                    unsubscribe,
+                    ...res,
                     update: function(newData){
                         return dbo[tableName].update(param1, newData);
+                    }
+                }
+            }
+            if(dbo[tableName].delete){                
+                res = {
+                    ...res,
+                    delete: function(deleteParams){
+                        return dbo[tableName].delete(param1, deleteParams);
                     }
                 }
             }
