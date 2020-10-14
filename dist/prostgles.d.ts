@@ -1,6 +1,6 @@
 export declare type InitOptions = {
     socket: any;
-    onReady: (dbo: any, methods: any) => any;
+    onReady: (dbo: any, methods?: any, fullSchema?: any) => any;
     onDisconnect?: (socket: any) => any;
 };
 export declare type SyncTriggers = {

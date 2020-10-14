@@ -184,8 +184,8 @@ function prostgles(initOpts, syncedTable) {
             if (dbo[tableName].update) {
                 res = {
                     ...res,
-                    update: function (newData) {
-                        return dbo[tableName].update(param1, newData);
+                    update: function (newData, updateParams) {
+                        return dbo[tableName].update(param1, newData, updateParams);
                     }
                 };
             }
@@ -374,7 +374,7 @@ function prostgles(initOpts, syncedTable) {
                 }
             });
             try {
-                onReady(dbo, methodsObj);
+                onReady(dbo, methodsObj, fullSchema);
             }
             catch (err) {
                 console.error("Prostgles: Error within onReady: \n", err);

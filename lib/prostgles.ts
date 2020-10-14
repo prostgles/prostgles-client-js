@@ -6,7 +6,7 @@
 
 export type InitOptions = {
     socket: any;
-    onReady: (dbo: any, methods: any) => any;
+    onReady: (dbo: any, methods?: any, fullSchema?: any) => any;
     onDisconnect?: (socket: any) => any;
 }
 type SubscriptionHandler = {
@@ -230,8 +230,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             if(dbo[tableName].update){                
                 res = {
                     ...res,
-                    update: function(newData){
-                        return dbo[tableName].update(param1, newData);
+                    update: function(newData, updateParams){
+                        return dbo[tableName].update(param1, newData, updateParams);
                     }
                 }
             }
@@ -430,7 +430,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
 
             try {
-                onReady(dbo, methodsObj);
+                onReady(dbo, methodsObj, fullSchema);
             } catch(err){
                 console.error("Prostgles: Error within onReady: \n", err);
             }
