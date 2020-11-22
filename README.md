@@ -20,7 +20,7 @@ $ npm install prostgles-client socket.io-client
 CDN
 ```html
 <head>
-    <script src="https://unpkg.com/socket.io-client@latest/dist/socket.io.slim.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/socket.io-client@3.0.3/dist/socket.io.min.js" type="text/javascript"></script>
     <script src="https://unpkg.com/prostgles-client@latest/dist/index.js" type="text/javascript"></script>	
 </head>
 ```
@@ -41,7 +41,7 @@ prostgles({
     }
 });
 ```
-
+[Examples](https://github.com/prostgles/prostgles-server-js/tree/master/examples)
 
 ## License
 

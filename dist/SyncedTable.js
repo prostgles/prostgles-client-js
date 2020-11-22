@@ -321,16 +321,17 @@ class SyncedTable {
     syncOne(idObj, onChange, handlesOnData = false) {
         if (!idObj || !onChange)
             throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
+        const getIdObj = () => this.getIdObj(this.findOne(idObj));
         const handles = {
             get: () => this.findOne(idObj),
             unsync: () => {
                 this.unsubscribe(onChange);
             },
             delete: () => {
-                return this.delete(idObj);
+                return this.delete(getIdObj());
             },
             update: data => {
-                this.updateOne(idObj, data);
+                this.updateOne(getIdObj(), data);
             },
             set: data => {
                 const newData = { ...data, ...idObj };
@@ -366,6 +367,10 @@ class SyncedTable {
         let itemIdx = -1;
         if (typeof idObj === "function") {
             itemIdx = this.items.findIndex(idObj);
+        }
+        else if ((!idObj || !Object.keys(idObj)) &&
+            this.items.length === 1) {
+            itemIdx = 0;
         }
         else {
             itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d));
