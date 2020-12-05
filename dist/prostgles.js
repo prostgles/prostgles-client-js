@@ -239,9 +239,26 @@ function prostgles(initOpts, syncedTable) {
             socket.on("disconnect", onDisconnect);
         }
         /* Schema = published schema */
-        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, joinTables = [] }) => {
+        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [] }) => {
             let dbo = JSON.parse(JSON.stringify(schema));
-            let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {};
+            let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
+            if (auth) {
+                _auth = { ...auth };
+                ["login", "logout", "register"].map(funcName => {
+                    if (auth[funcName]) {
+                        _auth[funcName] = function (params) {
+                            return new Promise((resolve, reject) => {
+                                socket.emit(preffix + funcName, params, (err, res) => {
+                                    if (err)
+                                        reject(err);
+                                    else
+                                        resolve(res);
+                                });
+                            });
+                        };
+                    }
+                });
+            }
             _methods.map(method => {
                 methodsObj[method] = function (...params) {
                     return new Promise((resolve, reject) => {
@@ -255,7 +272,7 @@ function prostgles(initOpts, syncedTable) {
                 };
             });
             methodsObj = Object.freeze(methodsObj);
-            if (dbo.sql) {
+            if (rawSQL) {
                 // dbo.schema = Object.freeze([ ...dbo.sql ]);
                 dbo.sql = function (query, params, options) {
                     return new Promise((resolve, reject) => {
