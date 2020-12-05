@@ -1,8 +1,4 @@
 "use strict";
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Stefan L. All rights reserved.
- *  Licensed under the MIT License. See LICENSE in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = void 0;
 function prostgles(initOpts, syncedTable) {
@@ -391,7 +387,7 @@ function prostgles(initOpts, syncedTable) {
                 }
             });
             try {
-                onReady(dbo, methodsObj, fullSchema);
+                onReady(dbo, methodsObj, fullSchema, _auth);
             }
             catch (err) {
                 console.error("Prostgles: Error within onReady: \n", err);

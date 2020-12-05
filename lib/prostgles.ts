@@ -3,10 +3,16 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+export type Auth = {
+    register?: (params: any) => Promise<any>;
+    login?: (params: any) => Promise<any>;
+    logout?: (params: any) => Promise<any>;
+    user?: any;
+}
 
 export type InitOptions = {
     socket: any;
-    onReady: (dbo: any, methods?: any, fullSchema?: any) => any;
+    onReady: (dbo: any, methods?: any, fullSchema?: any, auth?: Auth) => any;
     onDisconnect?: (socket: any) => any;
 }
 type SubscriptionHandler = {
@@ -447,7 +453,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
 
             try {
-                onReady(dbo, methodsObj, fullSchema);
+                onReady(dbo, methodsObj, fullSchema, _auth);
             } catch(err){
                 console.error("Prostgles: Error within onReady: \n", err);
             }

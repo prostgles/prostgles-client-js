@@ -1,6 +1,12 @@
+export declare type Auth = {
+    register?: (params: any) => Promise<any>;
+    login?: (params: any) => Promise<any>;
+    logout?: (params: any) => Promise<any>;
+    user?: any;
+};
 export declare type InitOptions = {
     socket: any;
-    onReady: (dbo: any, methods?: any, fullSchema?: any) => any;
+    onReady: (dbo: any, methods?: any, fullSchema?: any, auth?: Auth) => any;
     onDisconnect?: (socket: any) => any;
 };
 export declare type SyncTriggers = {
