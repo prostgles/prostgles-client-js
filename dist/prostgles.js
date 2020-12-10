@@ -235,7 +235,9 @@ function prostgles(initOpts, syncedTable) {
             socket.on("disconnect", onDisconnect);
         }
         /* Schema = published schema */
-        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [] }) => {
+        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
+            if (err)
+                throw err;
             let dbo = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
             if (auth) {
