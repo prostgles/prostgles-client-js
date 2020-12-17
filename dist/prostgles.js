@@ -289,6 +289,14 @@ function prostgles(initOpts, syncedTable) {
                 Object.keys(dbo[tableName])
                     .sort((a, b) => sub_commands.includes(a) - sub_commands.includes(b))
                     .forEach(command => {
+                    if (["find", "findOne"].includes(command)) {
+                        dbo[tableName].getJoinedTables = function () {
+                            return (joinTables || [])
+                                .filter(tb => Array.isArray(tb) && tb.includes(tableName))
+                                .flat()
+                                .filter(t => t !== tableName);
+                        };
+                    }
                     if (command === "sync") {
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
                         if (syncedTable) {
@@ -362,7 +370,7 @@ function prostgles(initOpts, syncedTable) {
                     }
                 });
             }
-            joinTables.map(table => {
+            joinTables.flat().map(table => {
                 dbo.innerJoin = dbo.innerJoin || {};
                 dbo.leftJoin = dbo.leftJoin || {};
                 dbo.innerJoinOne = dbo.innerJoinOne || {};

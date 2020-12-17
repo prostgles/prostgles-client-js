@@ -352,7 +352,15 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             Object.keys(dbo).forEach(tableName => {
                 Object.keys(dbo[tableName])
                 .sort((a, b) => <never>sub_commands.includes(a) - <never>sub_commands.includes(b))
-                .forEach(command=>{
+                .forEach(command => {
+                    if(["find", "findOne"].includes(command)){
+                        dbo[tableName].getJoinedTables = function(){
+                            return (joinTables || [])
+                            .filter(tb => Array.isArray(tb) && tb.includes(tableName))
+                            .flat()
+                            .filter(t => t !== tableName);
+                        }
+                    }
 
                     if(command === "sync"){
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
@@ -426,7 +434,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
 
 
-            joinTables.map(table => {
+            joinTables.flat().map(table => {
                 dbo.innerJoin = dbo.innerJoin || {};
                 dbo.leftJoin = dbo.leftJoin || {};
                 dbo.innerJoinOne = dbo.innerJoinOne || {};
