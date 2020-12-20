@@ -19,6 +19,7 @@
     "declarationMap": true
   },
   "exclude": [
-    "dist"
+    "dist",
+    "lib"
   ]
 }
