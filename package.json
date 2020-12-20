@@ -1,15 +1,17 @@
 {
   "name": "prostgles-client",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "",
   "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
-  "dependencies": {},
+  "dependencies": {
+    "prostgles-types": "^1.0.1"
+  },
   "devDependencies": {
     "ts-loader": "^8.0.0",
     "typescript": "^3.9.6",
-    "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.12"
+    "webpack": "^4.44.2",
+    "webpack-cli": "^4.2.0"
   },
   "scripts": {
     "start": "webpack --config webpack.dev.js",

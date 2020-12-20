@@ -3,6 +3,23 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import { DBHandler, TableHandler, DbJoinMaker } from "prostgles-types";
+
+export type TableHandlerClient = TableHandler & {
+    getJoinedTables: () => string[];
+    _syncInfo?: any;
+    getSync?: any;
+    sync?: any;
+    syncOne?: any;
+    _sync?: any;
+}
+
+export type DBHandlerClient = {
+    [key: string]: Partial<TableHandlerClient>;
+  } & DbJoinMaker & {
+    sql?: (query: string, params?: any, options?: any) => Promise<any>;
+  };
+
 export type Auth = {
     register?: (params: any) => Promise<any>;
     login?: (params: any) => Promise<any>;
@@ -12,7 +29,7 @@ export type Auth = {
 
 export type InitOptions = {
     socket: any;
-    onReady: (dbo: any, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandler, methods?: any, fullSchema?: any, auth?: Auth) => any;
     onDisconnect?: (socket: any) => any;
 }
 type SubscriptionHandler = {
@@ -302,7 +319,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
             if(err) throw err;
 
-            let dbo = JSON.parse(JSON.stringify(schema));
+            let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)),
                 methodsObj = {},
                 _auth = {};

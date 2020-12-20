@@ -12,10 +12,13 @@
     "module": "commonjs",
     // "removeComments": true,
     // "sourceMap": true,
-    "rootDir": "./lib",
+    // "rootDir": "./lib",
     "outDir": "dist",
     // "moduleResolution": "node"
     "declaration": true,
     "declarationMap": true
   },
+  "exclude": [
+    "dist"
+  ]
 }
