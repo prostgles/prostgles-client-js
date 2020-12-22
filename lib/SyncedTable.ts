@@ -437,12 +437,13 @@ export class SyncedTable {
                     if(delta && delta.length) dlt = delta[i];
                     this.notifySingleSubscriptions(this.getIdObj({ ...d }), { ...d }, { ...dlt });
                 });
-                this.notifyMultiSubscriptions(items, newData);
             }
 
+            this.notifyMultiSubscriptions(items, newData);
             if(this.onChange){
                 this.onChange(items, newData);
             }
+            
             /* Local updates. Need to push to server */
             if(!from_server && this.dbSync && this.dbSync.syncData){
                 pushDataToServer(newData, deletedData, () => {

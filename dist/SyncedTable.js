@@ -194,8 +194,8 @@ class SyncedTable {
                             dlt = delta[i];
                         this.notifySingleSubscriptions(this.getIdObj({ ...d }), { ...d }, { ...dlt });
                     });
-                    this.notifyMultiSubscriptions(items, newData);
                 }
+                this.notifyMultiSubscriptions(items, newData);
                 if (this.onChange) {
                     this.onChange(items, newData);
                 }
