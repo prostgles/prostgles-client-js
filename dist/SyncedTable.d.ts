@@ -1,4 +1,12 @@
 declare type FilterFunction = (data: object) => boolean;
+export declare type SyncDataItems = {
+    [key: string]: any;
+    $update?: (newData: any) => any;
+    $delete?: () => any;
+};
+export declare type SyncDataItem = SyncDataItems & {
+    $unsync?: () => any;
+};
 export declare type MultiSyncHandles = {
     unsync: () => void;
     upsert: (newData: object[]) => any;

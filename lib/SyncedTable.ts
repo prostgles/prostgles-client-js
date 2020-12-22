@@ -1,6 +1,16 @@
 
 type FilterFunction = (data: object) => boolean ;
 
+/* CRUD handles added if initialised with handlesOnData = true */
+export type SyncDataItems = {
+    [key: string]: any;
+    $update?: (newData: any) => any;
+    $delete?: () => any;
+}
+export type SyncDataItem = SyncDataItems & {
+    $unsync?: () => any;
+}
+
 export type MultiSyncHandles = {
     unsync: () => void;
     upsert: (newData: object[]) => any;
