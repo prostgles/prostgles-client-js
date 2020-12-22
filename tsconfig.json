@@ -1,6 +1,7 @@
 {
   "files": ["lib/prostgles-full.ts"],
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "es2019",
     "lib": [
       "es6",
@@ -10,16 +11,22 @@
     ],
     // "strict": true,
     "module": "commonjs",
+    "resolveJsonModule": true,
     // "removeComments": true,
     // "sourceMap": true,
-    // "rootDir": "./lib",
+
+    /* OMG. webpack ts-loader bypased due to this */
+    "rootDir": "./lib",
+
+
     "outDir": "dist",
     // "moduleResolution": "node"
     "declaration": true,
     "declarationMap": true
   },
+  "include": ["lib"],
   "exclude": [
-    "dist",
-    "lib"
+    "./dist",
+    "node_modules"
   ]
 }

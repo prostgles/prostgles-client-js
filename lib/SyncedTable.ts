@@ -1,24 +1,24 @@
 
 type FilterFunction = (data: object) => boolean ;
 
-type MultiSyncHandles = {
+export type MultiSyncHandles = {
     unsync: () => void;
     upsert: (newData: object[]) => any;
 }
-type SingleSyncHandles = {
+export type SingleSyncHandles = {
     get: () => object;
     unsync: () => any;
     delete: () => void;
     update: (data: object) => void;
     set: (data: object) => void;
 }
-type SubscriptionSingle = {
+export type SubscriptionSingle = {
     onChange: (data: object, delta: object) => object;
     idObj: object | FilterFunction;
     handlesOnData?: boolean;
     handles?: SingleSyncHandles;
 }
-type SubscriptionMulti = {
+export type SubscriptionMulti = {
     onChange: (data: object[], delta: object)=> object[];
     idObj?: object | FilterFunction;
     handlesOnData?: boolean;

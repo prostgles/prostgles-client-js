@@ -4,13 +4,14 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { DBHandler, TableHandler, DbJoinMaker } from "prostgles-types";
+import { MultiSyncHandles, SingleSyncHandles } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
-    sync?: any;
-    syncOne?: any;
+    sync?: (basicFilter: any, onChange: (data: any[]) => any, handlesOnData: boolean) => MultiSyncHandles;
+    syncOne?: (basicFilter: any, onChange: (data: any[]) => any, handlesOnData: boolean) => SingleSyncHandles;
     _sync?: any;
 }
 
@@ -29,7 +30,7 @@ export type Auth = {
 
 export type InitOptions = {
     socket: any;
-    onReady: (dbo: DBHandler, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
     onDisconnect?: (socket: any) => any;
 }
 type SubscriptionHandler = {

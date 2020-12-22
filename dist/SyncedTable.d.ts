@@ -1,22 +1,22 @@
 declare type FilterFunction = (data: object) => boolean;
-declare type MultiSyncHandles = {
+export declare type MultiSyncHandles = {
     unsync: () => void;
     upsert: (newData: object[]) => any;
 };
-declare type SingleSyncHandles = {
+export declare type SingleSyncHandles = {
     get: () => object;
     unsync: () => any;
     delete: () => void;
     update: (data: object) => void;
     set: (data: object) => void;
 };
-declare type SubscriptionSingle = {
+export declare type SubscriptionSingle = {
     onChange: (data: object, delta: object) => object;
     idObj: object | FilterFunction;
     handlesOnData?: boolean;
     handles?: SingleSyncHandles;
 };
-declare type SubscriptionMulti = {
+export declare type SubscriptionMulti = {
     onChange: (data: object[], delta: object) => object[];
     idObj?: object | FilterFunction;
     handlesOnData?: boolean;

@@ -1,10 +1,11 @@
-import { DBHandler, TableHandler, DbJoinMaker } from "prostgles-types";
+import { TableHandler, DbJoinMaker } from "prostgles-types";
+import { MultiSyncHandles, SingleSyncHandles } from "./SyncedTable";
 export declare type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
-    sync?: any;
-    syncOne?: any;
+    sync?: (basicFilter: any, onChange: (data: any[]) => any, handlesOnData: boolean) => MultiSyncHandles;
+    syncOne?: (basicFilter: any, onChange: (data: any[]) => any, handlesOnData: boolean) => SingleSyncHandles;
     _sync?: any;
 };
 export declare type DBHandlerClient = {
@@ -20,7 +21,7 @@ export declare type Auth = {
 };
 export declare type InitOptions = {
     socket: any;
-    onReady: (dbo: DBHandler, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
     onDisconnect?: (socket: any) => any;
 };
 export declare type SyncTriggers = {
