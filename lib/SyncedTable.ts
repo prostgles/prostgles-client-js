@@ -196,8 +196,14 @@ export class SyncedTable {
                     $update: (newData: object): Promise<boolean> => {
                         return this.updateOne({ ...d }, newData);
                     },
-                    $delete: (item): Promise<boolean> => {
-                        return this.delete(this.getIdObj(item));
+                    $delete: async (): Promise<boolean> => {
+                        try {
+                            const idObj = this.getIdObj({ ...d });
+                            await this.db[this.name].delete(idObj)
+                            return this.delete(idObj);
+                        } catch(err) {
+                            return Promise.reject(err);
+                        }
                     }
                 }));
             }
