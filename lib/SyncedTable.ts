@@ -124,7 +124,21 @@ export class SyncedTable {
 
         const handles: MultiSyncHandles = {
                 unsync: () => { this.unsubscribe(onChange); },
-                upsert: (newData) => this.upsert(newData, newData)
+                upsert: (newData) => {
+                    if(newData){
+                        const upsertOne = (d) => {
+                            this.updateOne(d, d);
+                        }
+
+                        if(Array.isArray(newData)){
+                            newData.map(d => upsertOne(d));
+                        } else {
+                            upsertOne(newData);
+                        }
+                    }
+                      
+                    // this.upsert(newData, newData)
+                }
             },
             sub: SubscriptionMulti = { 
                 onChange,
@@ -443,7 +457,7 @@ export class SyncedTable {
             if(this.onChange){
                 this.onChange(items, newData);
             }
-            
+
             /* Local updates. Need to push to server */
             if(!from_server && this.dbSync && this.dbSync.syncData){
                 pushDataToServer(newData, deletedData, () => {
