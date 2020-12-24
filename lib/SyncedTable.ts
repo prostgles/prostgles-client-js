@@ -1,12 +1,42 @@
+import { FieldFilter } from "prostgles-types";
 
-type FilterFunction = (data: object) => boolean ;
+type FilterFunction = (data: object) => boolean;
 
-/* CRUD handles added if initialised with handlesOnData = true */
+export type SyncOptions = {
+    select: FieldFilter;
+    handlesOnData?: boolean;
+}
+export type SyncOneOptions = {
+    handlesOnData: boolean;
+}
+/**
+ * Creates a local synchronized table
+ */
+export type Sync = (basicFilter: any, options: SyncOptions, onChange: (data: SyncDataItems[]) => any) => MultiSyncHandles;
+
+/**
+ * Creates a local synchronized record
+ */
+export type SyncOne = (basicFilter: any, options: SyncOneOptions, onChange: (data: SyncDataItem[]) => any) => SingleSyncHandles;
+
+export type SyncBatchRequest = {
+    from_synced?: string | number;
+    to_synced?: string | number;
+    offset: number;
+    limit: number; 
+}
+
+/**
+ * CRUD handles added if initialised with handlesOnData = true
+ */
 export type SyncDataItems = {
     [key: string]: any;
     $update?: (newData: any) => any;
     $delete?: () => any;
 }
+/**
+ * CRUD handles added if initialised with handlesOnData = true
+ */
 export type SyncDataItem = SyncDataItems & {
     $unsync?: () => any;
 }
@@ -37,41 +67,74 @@ export type SubscriptionMulti = {
 
 const STORAGE_TYPES = {
     array: "array",
-    localStorage: "localStorage"
-}
+    localStorage: "localStorage",
+    object: "object"
+};
+
+export type MultiChangeListener = (items: SyncDataItems[], delta: object[]) => any;
+export type SingleChangeListener = (item: SyncDataItem, delta: object) => any;
+
+export type SyncedTableOptions = {
+    name: string;
+    filter?: object;
+    onChange?: MultiChangeListener;
+    db: any;
+    pushDebounce?: number; 
+    skipFirstTrigger?: boolean; 
+    select?: "*" | {};
+    storageType: string;
+};
 
 export class SyncedTable {
 
     db: any;
     name:string;
+    select?: "*" | {};
     filter?: object;
     onChange: (data: object[], delta: object)=> object[];
     id_fields: string[];
     synced_field: string;
-    pushDebounce: number = 100;
+    throttle: number = 100;
+    batch_size: number = 50;
     skipFirstTrigger: boolean = false;
-    isSendingData: { [key: string]: { n: object, o: object, cbs: Function[] } };
+    isSendingData: { 
+        [key: string]: { 
+            n: object, 
+            o: object,
+            sending: boolean; 
+            // cbs: Function[] 
+        } 
+    };
+    isSendingBatch: {
+        items: any[];
+        deleted: any[];
+        // cb: Function;
+    }[]
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions:  SubscriptionSingle[];
     dbSync: any;
     items: object[] = [];
-    storageType?: string = STORAGE_TYPES.array;
+    storageType: string;
     itemsObj: object = {};
 
-    constructor({ name, filter, onChange, db, pushDebounce = 100, skipFirstTrigger = false }){
+    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object }: SyncedTableOptions){
         this.name = name;
         this.filter = filter;
+        this.select = select;
         this.onChange = onChange;
+        if(!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
+        this.storageType = storageType;
 
         if(!db) throw "db missing";
         this.db = db;
 
-        const { id_fields, synced_field } = db[this.name]._syncInfo;
+        const { id_fields, synced_field, throttle = 100, batch_size = 50 } = db[this.name]._syncInfo;
         if(!id_fields || !synced_field) throw "id_fields/synced_field missing";
         this.id_fields = id_fields;
         this.synced_field = synced_field;
+        this.batch_size = batch_size;
 
-        this.pushDebounce = pushDebounce;
+        this.throttle = throttle;
         this.isSendingData = {};
 
         this.skipFirstTrigger = skipFirstTrigger;
@@ -106,11 +169,10 @@ export class SyncedTable {
                 return data;
             };
         
-        // this.dbSync = db[this.name]._sync(filter, { },{ onSyncRequest, onPullRequest, onUpdates: (data) => { 
-        //     this.upsert(data, data, true) 
-        // } });
-        db[this.name]._sync(filter, { },{ onSyncRequest, onPullRequest, onUpdates: (data) => { 
-            this.upsert(data, data, true) 
+        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates: (data) => {
+
+            /* Delta left empty so we can prepare it here */
+            this.upsert(data, null, true);
         } }).then(s => {
             this.dbSync = s;
         });
@@ -120,8 +182,12 @@ export class SyncedTable {
         }
     }
 
-    sync(onChange, handlesOnData = false): MultiSyncHandles {
-
+    /**
+     * Returns a sync handler to all records within the SyncedTable instance
+     * @param onChange change listener <(items: object[], delta: object[]) => any >
+     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. False by default;
+     */
+    sync(onChange: MultiChangeListener, handlesOnData = false): MultiSyncHandles {
         const handles: MultiSyncHandles = {
                 unsync: () => { this.unsubscribe(onChange); },
                 upsert: (newData) => {
@@ -148,26 +214,33 @@ export class SyncedTable {
 
         this.multiSubscriptions.push(sub);
         if(!this.skipFirstTrigger){
-            onChange(this.getItems());
+            let items = this.getItems();
+            onChange(items, items);
         }
         return Object.freeze({ ...handles });
     }
 
-    syncOne(idObj, onChange, handlesOnData = false): SingleSyncHandles{
+    /**
+     * Returns a sync handler to a specific record within the SyncedTable instance
+     * @param idObj object containing the target id_fields properties
+     * @param onChange change listener <(item: object, delta: object) => any >
+     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. False by default;
+     */
+    syncOne(idObj: object, onChange: SingleChangeListener, handlesOnData = false): SingleSyncHandles{
         if(!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
-        const getIdObj = () => this.getIdObj(this.findOne(idObj));
+        // const getIdObj = () => this.getIdObj(this.findOne(idObj));
 
         const handles: SingleSyncHandles = {
-            get: () => this.findOne(idObj),
+            get: () => this.getItem(idObj).data,
             unsync: () => {
                 this.unsubscribe(onChange)
             },
             delete: () => {
-                return this.delete(getIdObj());
+                return this.delete(idObj);
             },
             update: data => {
-                this.updateOne(getIdObj(), data);                
+                this.updateOne(idObj, data);                
             },
             set: data => {
                 const newData = { ...data, ...idObj }
@@ -200,7 +273,11 @@ export class SyncedTable {
         return Object.freeze({ ...handles });
     }
 
-    notifyMultiSubscriptions = (newData: object[], delta: object[]) => {
+    /**
+     * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
+     * @param newData -> updates. Must include id_fields + updates
+     */
+    private notifyMultiSubscriptions = (newData: object[]) => {
 
         this.multiSubscriptions.map(s => {
             let items = this.getItems();
@@ -240,9 +317,14 @@ export class SyncedTable {
         });
     };
 
+    /**
+     * Update one row locally. id_fields update dissallowed
+     * @param idObj object -> item to be updated
+     * @param newData object -> new data
+     */
     updateOne(idObj: object, newData: object): Promise<boolean> {
         let id = this.getIdObj(idObj);
-        return this.upsert({ ...this.findOne(id), ...newData, ...id }, { ...newData });
+        return this.upsert({ ...this.getItem(idObj), ...newData, ...id }, { ...newData });
     }
 
     unsubscribe = (onChange) => {
@@ -250,22 +332,25 @@ export class SyncedTable {
         this.multiSubscriptions = this.multiSubscriptions.filter(s => s.onChange !== onChange);
     }
 
-    findOne(idObj){
-        this.getItems();
-        let itemIdx = -1;
-        if(typeof idObj === "function"){
-            itemIdx = this.items.findIndex(idObj);
-        } else if(
-            (!idObj || !Object.keys(idObj)) &&
-            this.items.length === 1
-        ){
-            itemIdx = 0; 
-        } else {
-            itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d) )
-        }
-        return this.items[itemIdx];
-    }
+    // findOne(idObj){
+    //     this.getItems();
+    //     let itemIdx = -1;
+    //     if(typeof idObj === "function"){
+    //         itemIdx = this.items.findIndex(idObj);
+    //     } else if(
+    //         (!idObj || !Object.keys(idObj)) &&
+    //         this.items.length === 1
+    //     ){
+    //         itemIdx = 0; 
+    //     } else {
+    //         itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d) )
+    //     }
+    //     return this.items[itemIdx];
+    // }
 
+    private getIdStr(d){
+        return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
+    }
     private getIdObj(d){
         let res = {};
         this.id_fields.sort().map(key => {
@@ -278,22 +363,11 @@ export class SyncedTable {
         if(this.dbSync && this.dbSync.unsync) this.dbSync.unsync();
     }
 
-    private matchesIdObj(idObj, d){
-        return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
+    private matchesIdObj(a, b){
+        return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
+        //return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
     }
 
-    deleteAll(){
-        this.getItems().map(this.getIdObj).map(this.delete);
-    }
-
-    private delete = (idObj) => {
-        let items = this.getItems();
-        items = items.filter(d => !this.matchesIdObj(idObj, d) );
-
-        // window.localStorage.setItem(this.name, JSON.stringify(items));
-        this.setItems(items);
-        return this.onDataChanged(null, null, [idObj]);
-    }
 
     private setDeleted(idObj, fullArray){
         let deleted: object[] = [];
@@ -321,10 +395,49 @@ export class SyncedTable {
         }
     }
 
+    /**
+     * Returns properties that are present in {n} and are different to {o}
+     * @param o current full data item
+     * @param n new data item
+     */
+    private getDelta(o: object, n: object): object {
+        if(!o) return { ...n };
+        return Object.keys(o)
+            .filter(k => !this.id_fields.includes(k))
+            .reduce((a, k) => {
+                let delta = {};
+                if(k in n && n[k] !== o[k]){
+                    delta = { [k]: n[k] };
+                }
+                return { ...a, ...delta };
+            }, {});
+    }
+
+    deleteAll(){
+        this.getItems().map(this.getIdObj).map(this.delete);
+    }
+
+    private delete = (idObj) => {
+        // let items = this.getItems();
+        // items = items.filter(d => !this.matchesIdObj(idObj, d) );
+
+        // // window.localStorage.setItem(this.name, JSON.stringify(items));
+        // this.setItems(items);
+        this.setItem(idObj, null, true, true)
+        return this.onDataChanged(null, null, [idObj]);
+    }
+
+    /**
+     * Upserts data locally and sends to server if required
+     * synced_field is populated if data is not from server
+     * @param data object | object[] -> data to be updated/inserted. Must include id_fields
+     * @param delta object | object[] -> data that has changed. 
+     * @param from_server If false then updates will be sent to server
+     */
     upsert = async (data: object | object[], delta: object | object[], from_server = false): Promise<boolean> => {
         if(!data) throw "No data provided for upsert";
         
-
+        /* If data has been deleted then wait for it to sync with server before continuing */
         if(from_server && this.getDeleted().length){
             await this.syncDeleted();
         }
@@ -332,41 +445,33 @@ export class SyncedTable {
         let _data = Array.isArray(data)? data : [data];
         let _delta = Array.isArray(delta)? delta : [delta];
 
-        let items = this.getItems();
+        // let items = this.getItems();
 
         let updates = [], inserts = [], deltas = [];
         _data.map((_d, i)=> {
             let d = { ..._d };
-            /* Add synced if missing */
+
+            /* Add synced if local update */
             if(!from_server) d[this.synced_field] = Date.now();
 
-            let existing_idx = items.findIndex(c => !this.id_fields.find(key => c[key] !== d[key])),
-                existing = items[existing_idx];
+            let ex = this.getItem(d),
+                ex_idx = ex.index,
+                existing = ex.data;
+
+            /* Update existing -> Expecting delta */
             if(existing && existing[this.synced_field] < d[this.synced_field]){
-                items[existing_idx] = { ...d };
-                updates.push(d);
+                // updates.push(d);
 
                 if(_delta && _delta[i]){
                     deltas.push(_delta[i]);
                 } else {
-                    deltas.push(d);
-                    // Object.keys(_d)
-                    // let dlt = Array.from(new Set()).map(key => ).reduce((a, v) => {
-
-                    // }, {})
+                    deltas.push(this.getDelta(existing, d));
                 }
                 
-                // if(from_server){
-                //     this.singleSubscriptions.filter(s => s.idObj && this.matchesIdObj(s.idObj, d))
-                //         .map(s => {
-                //             s.onChange({ ...d }, { ...d });
-                //         });
-                // }
             } else if(!existing) {
-                items.push({ ...d });
-                inserts.push(d);
                 deltas.push(d);
             }
+            this.setItem(d, ex_idx)
 
             /* TODO: Deletes from server */
             // if(allow_deletes){
@@ -374,50 +479,89 @@ export class SyncedTable {
             // }
         });
         // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
-        const newData = [...inserts, ...updates].map(d => ({ ...d }));
+        const newData = _data.map(d => ({ ...d }));
         
         // window.localStorage.setItem(this.name, JSON.stringify(items));
-        this.setItems(items);
+        // this.setItems(items);
         
         return this.onDataChanged(newData, deltas, null, from_server);
-        
-        // return true;
     }
 
-    onDataChanged = async (newData: object[] = null, delta: object[] = null, deletedData = null, from_server = false): Promise<boolean> => {
-        const setSending = (rows, cb) => {
+   /**
+    * Notifies local subscriptions immediately
+    * Sends data to server (if changes are local) 
+    * Notifies local subscriptions with old data if server push fails
+    * @param newData object[] -> upserted data. Must include id_fields
+    * @param delta object[] -> deltas for upserted data
+    * @param deletedData 
+    * @param from_server 
+    */
+    isSendingTimeout = null;
+    isSending: boolean = false;
+    private onDataChanged = async (newData: object[] = null, delta: object[] = null, deletedData = null, from_server = false): Promise<boolean> => {
+        const setSending = (rows) => {
                 this.isSendingData = this.isSendingData || {};
                 rows.map(r => {
-                    let idStr = JSON.stringify(this.getIdObj(r));
+                    let idStr = this.getIdStr(r);
                     if(this.isSendingData[idStr]){
                         this.isSendingData[idStr].n = { ...this.isSendingData[idStr].n, ...r };
-                        if(cb) this.isSendingData[idStr].cbs.push(cb);
+                        // if(cb) this.isSendingData[idStr].cbs.push(cb);
                     } else {
                         this.isSendingData[idStr] = {
-                            o: this.findOne(this.getIdObj(r)),
+                            o: this.getItem(r),
                             n: r,
-                            cbs: cb? [cb] : []
+                            sending: false
+                            // cbs: cb? [cb] : []
                         }
                     }
                 });
             },
             getSending = () => {
-                const PUSH_BATCH_SIZE = 20;
-                return Object.keys(this.isSendingData).slice(0, PUSH_BATCH_SIZE).map(k => this.isSendingData[k].n)
+                return Object.keys(this.isSendingData)
+                    .filter(k => !this.isSendingData[k].sending)
+                    .slice(0, this.batch_size).map(k => {
+                        this.isSendingData[k].sending = true; 
+                        return this.isSendingData[k].n;
+                    })
             },
             finishSending = (rows, revert = false) => {
                 rows.map(r => {
+                    const id = this.getIdStr(r);
                     if(revert){
 
                     } else {
-                        this.isSendingData[JSON.stringify(this.getIdObj(r))].cbs.map(cb =>{ cb() })
-                        delete this.isSendingData[JSON.stringify(this.getIdObj(r))];
+                        if(this.isSendingData[id]){
+                            // this.isSendingData[id].cbs.map(cb =>{ cb() })
+                            delete this.isSendingData[id];
+                        } else {
+                            console.warn("isSendingData missing -> Concurrency bug");
+                        }
                     }
                 })
             },
-            pushDataToServer = async (newItems = null, deletedData = null, callback = null) => {
+            pushDataToServer = async (newItems = null, deletedData = null) => {
+                
+                // if(newItems || deletedData){
+                //     this.isSendingBatch.push({
+                //         items: newItems,
+                //         deleted: deletedData,
+                //         cb: callback
+                //     });
+                // }
+
+                if(!this.isSendingTimeout){
+                    this.isSendingTimeout = setTimeout(() => {
+                        this.isSendingTimeout = null;
+                        if(Object.keys(this.isSendingData).length){
+                            pushDataToServer();
+                        }
+                    }, this.throttle)
+                } else if(this.isSending) return;
+                this.isSending = true;
+
+
                 if(newItems) {
-                    setSending(newItems, callback);
+                    setSending(newItems);
                 }
                 // if(callback) this.isSendingDataCallbacks.push(callback);
 
@@ -430,8 +574,10 @@ export class SyncedTable {
                     try {
                         await this.dbSync.syncData(newBatch, deletedData);
                         finishSending(newBatch);
+                        this.isSending = false;
                         pushDataToServer();
                     } catch(err) {
+                        this.isSending = false;
                         console.error(err)
                     }
                 } else {
@@ -453,33 +599,129 @@ export class SyncedTable {
                 });
             }
 
-            this.notifyMultiSubscriptions(items, newData);
+            this.notifyMultiSubscriptions(newData);
             if(this.onChange){
                 this.onChange(items, newData);
             }
 
-            /* Local updates. Need to push to server */
+            /* Local updates. Push to server */
             if(!from_server && this.dbSync && this.dbSync.syncData){
-                pushDataToServer(newData, deletedData, () => {
-                    resolve(true);
-                });
+                pushDataToServer(newData, deletedData);
+                // , () => {
+                //     resolve(true);
+                // }).catch(reject);
             } else {
-                resolve(true);
+                // resolve(true);
             }
+            resolve(true);
         });
     }
 
+
+
+
+    getItem(idObj: object): { data?: object, index: number } {
+        let data, index = -1;
+        if(this.storageType === STORAGE_TYPES.localStorage){
+            let items = this.getItems();
+            let d = items.find(d => this.matchesIdObj(d, idObj));
+            data = { ...d };
+        } else if(this.storageType === STORAGE_TYPES.array){
+            let d = this.items.find(d => this.matchesIdObj(d, idObj));
+            data = { ...d };
+        } else {
+            this.itemsObj = this.itemsObj || {};
+            let d = this.itemsObj[this.getIdStr(idObj)];
+            data = { ...d };
+        }
+
+        return { data, index };
+    }
+
+    /**
+     * 
+     * @param item data to be inserted/updated/deleted. Must include id_fields
+     * @param index (optional) index within array
+     * @param isFullData 
+     * @param deleteItem 
+     */
+    setItem(item: object, index: number, isFullData: boolean = false, deleteItem: boolean = false){
+        const getExIdx = (arr: object[]): number => index;// arr.findIndex(d => this.matchesIdObj(d, item));
+        if(this.storageType === STORAGE_TYPES.localStorage){
+            let items = this.getItems();
+            if(!deleteItem){
+                let existing_idx = getExIdx(items);
+                if(items[existing_idx]) items[existing_idx] = isFullData? { ...item } : { ...items[existing_idx], ...item };
+                else items.push(item);
+            } else items = items.filter(d => !this.matchesIdObj(d, item));
+            window.localStorage.setItem(this.name, JSON.stringify(items));
+        } else if(this.storageType === STORAGE_TYPES.array){
+            if(!deleteItem){
+                if(!this.items[index]){
+                    this.items.push(item);
+                } else {
+                    this.items[index] = isFullData? { ...item } : { ...this.items[index], ...item };
+                }
+            } else this.items = this.items.filter(d => !this.matchesIdObj(d, item));
+        } else {
+            this.itemsObj = this.itemsObj || {};
+            if(!deleteItem){
+                let existing = this.itemsObj[this.getIdStr(item)] || {};
+                this.itemsObj[this.getIdStr(item)] = isFullData? { ...item } : { ...existing,  ...item };
+            } else {
+                delete this.itemsObj[this.getIdStr(item)];
+            }
+        }
+    }
+
+    // upsertItem = (item: object, index: number, isFullData: boolean = false) => {
+    //     const getExIdx = (arr: object[]): number => arr.findIndex(d => this.matchesIdObj(d, item));
+    //     if(this.storageType === STORAGE_TYPES.localStorage){
+    //         let items = this.getItems();
+    //         let existing_idx = getExIdx(items);
+    //         if(items[existing_idx]) items[existing_idx] = isFullData? { ...item } : { ...items[existing_idx], ...item };
+    //         else items.push(item);
+    //         window.localStorage.setItem(this.name, JSON.stringify(items));
+    //     } else if(this.storageType === STORAGE_TYPES.array){
+    //         if(this.items.length){
+                
+    //             if(this.matchesIdObj(item, this.items[index])){
+    //                 this.items[index] = isFullData? { ...item } : { ...this.items[index], ...item };
+    //             } else {
+    //                 const existing_idx = getExIdx(this.items);
+    //                 if(typeof existing_idx === "number" && this.matchesIdObj(this.items[existing_idx], item)){
+
+    //                 }
+    //             }
+    //         }
+    //     } else {
+    //         this.itemsObj = this.itemsObj || {};
+    //         let existing = this.itemsObj[this.getIdStr(item)] || {};
+    //         this.itemsObj[this.getIdStr(item)] = isFullData? { ...item } : { ...existing,  ...item };
+    //     }
+    // }
+
+    /**
+     * Sets the current data
+     * @param items data
+     */
     setItems = (items: object[]): void => {
         if(this.storageType === STORAGE_TYPES.localStorage){
             window.localStorage.setItem(this.name, JSON.stringify(items));
         } else if(this.storageType === STORAGE_TYPES.array){
             this.items = items;
         } else {
-            console.log("invalid/missing storageType -> " + this.storageType);
+            this.itemsObj = items.reduce((a, v) => ({
+                ...a,
+                [this.getIdStr(v)]: v,
+            }), {});
         }
     }
 
-    getItems = (sync_info?: any): object[] => {
+    /**
+     * Returns the current data ordered by synced_field ASC and matching the main filter;
+     */
+    getItems = (): object[] => {
 
         let items = [];
 
@@ -495,7 +737,7 @@ export class SyncedTable {
         } else if(this.storageType === STORAGE_TYPES.array){
             items = this.items.slice(0);
         } else {
-            console.log("invalid/missing storageType -> " + this.storageType);
+            items = Object.values(this.itemsObj);
         }
 
         if(this.id_fields && this.synced_field){
@@ -514,10 +756,14 @@ export class SyncedTable {
         return items.map(d => ({ ...d }));
     }
 
-    getBatch = (params) => {
+    /**
+     * Sync data request
+     * @param param0: SyncBatchRequest
+     */
+    getBatch = ({ from_synced, to_synced, offset, limit }: SyncBatchRequest = { offset: 0, limit: null}) => {
         let items = this.getItems();
-        params = params || {};
-        const { from_synced, to_synced, offset = 0, limit = null } = params;
+        // params = params || {};
+        // const { from_synced, to_synced, offset = 0, limit = null } = params;
         let res = items.map(c => ({ ...c }))
             .filter(c =>
                 (!from_synced || c[this.synced_field] >= from_synced) &&

@@ -4,14 +4,14 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { DBHandler, TableHandler, DbJoinMaker } from "prostgles-types";
-import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncDataItems } from "./SyncedTable";
+import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncDataItems, Sync, SyncOne } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
-    sync?: (basicFilter: any, onChange: (data: SyncDataItems[]) => any, handlesOnData: boolean) => MultiSyncHandles;
-    syncOne?: (basicFilter: any, onChange: (data: SyncDataItem[]) => any, handlesOnData: boolean) => SingleSyncHandles;
+    sync?: Sync;
+    syncOne?: SyncOne;
     _sync?: any;
 }
 
@@ -386,20 +386,20 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             dbo[tableName].getSync = (filter, params = {}) => {
                                 return new syncedTable({ name: tableName, filter, db: dbo, ...params });
                             }
-                            const usertSTable = (basicFilter) => {
-                                const syncName = `${tableName}.${JSON.stringify(basicFilter || {})}`
+                            const usertSTable = (basicFilter = {}, options = {}) => {
+                                const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`
                                 if(!syncedTables[syncName]){
                                     syncedTables[syncName] = new syncedTable({ name: tableName, filter: basicFilter, db: dbo });
                                 }
                                 return syncedTables[syncName]
                             }
-                            dbo[tableName].sync = (basicFilter, onChange, handlesOnData = false) => {
-                                const s = usertSTable(basicFilter);
-                                return s.sync(onChange, handlesOnData);
+                            dbo[tableName].sync = (basicFilter, options, onChange) => {
+                                const s = usertSTable(basicFilter, options);
+                                return s.sync(onChange, options);
                             }
-                            dbo[tableName].syncOne = (basicFilter, onChange, handlesOnData = false) => {
-                                const s = usertSTable(basicFilter);
-                                return s.syncOne(basicFilter, onChange, handlesOnData);
+                            dbo[tableName].syncOne = (basicFilter, options, onChange) => {
+                                const s = usertSTable(basicFilter, options);
+                                return s.syncOne(basicFilter, options, onChange);
                             }
                         }
                         
