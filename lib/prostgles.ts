@@ -389,17 +389,17 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             const usertSTable = (basicFilter = {}, options = {}) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`
                                 if(!syncedTables[syncName]){
-                                    syncedTables[syncName] = new syncedTable({ name: tableName, filter: basicFilter, db: dbo });
+                                    syncedTables[syncName] = new syncedTable({ name: tableName, filter: basicFilter, db: dbo, ...options });
                                 }
                                 return syncedTables[syncName]
                             }
-                            dbo[tableName].sync = (basicFilter, options, onChange) => {
+                            dbo[tableName].sync = (basicFilter, options = { handlesOnData: true, select: "*" }, onChange) => {
                                 const s = usertSTable(basicFilter, options);
                                 return s.sync(onChange, options);
                             }
-                            dbo[tableName].syncOne = (basicFilter, options, onChange) => {
+                            dbo[tableName].syncOne = (basicFilter, options = { handlesOnData: true }, onChange) => {
                                 const s = usertSTable(basicFilter, options);
-                                return s.syncOne(basicFilter, options, onChange);
+                                return s.syncOne(basicFilter, onChange, options.handlesOnData);
                             }
                         }
                         

@@ -42,8 +42,8 @@ class SyncedTable {
             });
         };
         this.notifySingleSubscriptions = (idObj, newData, delta) => {
-            this.singleSubscriptions.filter(s => s.idObj &&
-                this.matchesIdObj(s.idObj, idObj) &&
+            this.singleSubscriptions.filter(s => this.matchesIdObj(s.idObj, idObj) &&
+                /* What's the point here? That left filter includes the right one?? */
                 Object.keys(s.idObj).length <= Object.keys(idObj).length)
                 .map(s => {
                 let newItem = { ...newData };
@@ -154,7 +154,7 @@ class SyncedTable {
                     }
                     else {
                         this.isSendingData[idStr] = {
-                            o: this.getItem(r),
+                            o: this.getItem(r).data,
                             n: r,
                             sending: false
                             // cbs: cb? [cb] : []
@@ -194,7 +194,7 @@ class SyncedTable {
                 if (!this.isSendingTimeout) {
                     this.isSendingTimeout = setTimeout(() => {
                         this.isSendingTimeout = null;
-                        if (Object.keys(this.isSendingData).length) {
+                        if (!isEmpty(this.isSendingData)) {
                             pushDataToServer();
                         }
                     }, this.throttle);
@@ -202,11 +202,12 @@ class SyncedTable {
                 else if (this.isSending)
                     return;
                 this.isSending = true;
+                /* Add items to the sending object */
                 if (newItems) {
                     setSending(newItems);
                 }
                 // if(callback) this.isSendingDataCallbacks.push(callback);
-                if (deletedData || this.isSendingData && Object.keys(this.isSendingData).length) {
+                if (deletedData || !isEmpty(this.isSendingData)) {
                     window.onbeforeunload = confirmExit;
                     function confirmExit() {
                         return "Data may be lost. Are you sure?";
@@ -484,7 +485,7 @@ class SyncedTable {
      */
     updateOne(idObj, newData) {
         let id = this.getIdObj(idObj);
-        return this.upsert({ ...this.getItem(idObj), ...newData, ...id }, { ...newData });
+        return this.upsert({ ...this.getItem(idObj).data, ...newData, ...id }, { ...newData });
     }
     // findOne(idObj){
     //     this.getItems();
@@ -551,22 +552,19 @@ class SyncedTable {
         this.getItems().map(this.getIdObj).map(this.delete);
     }
     getItem(idObj) {
-        let data, index = -1;
+        let index = -1, d;
         if (this.storageType === STORAGE_TYPES.localStorage) {
             let items = this.getItems();
-            let d = items.find(d => this.matchesIdObj(d, idObj));
-            data = { ...d };
+            d = items.find(d => this.matchesIdObj(d, idObj));
         }
         else if (this.storageType === STORAGE_TYPES.array) {
-            let d = this.items.find(d => this.matchesIdObj(d, idObj));
-            data = { ...d };
+            d = this.items.find(d => this.matchesIdObj(d, idObj));
         }
         else {
             this.itemsObj = this.itemsObj || {};
-            let d = this.itemsObj[this.getIdStr(idObj)];
-            data = { ...d };
+            d = this.itemsObj[this.getIdStr(idObj)];
         }
-        return { data, index };
+        return { data: d ? { ...d } : d, index };
     }
     /**
      *
@@ -615,3 +613,8 @@ class SyncedTable {
     }
 }
 exports.SyncedTable = SyncedTable;
+function isEmpty(obj) {
+    for (var v in obj)
+        return false;
+    return true;
+}

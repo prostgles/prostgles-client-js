@@ -303,9 +303,12 @@ export class SyncedTable {
     }
     notifySingleSubscriptions = (idObj, newData, delta) => {
         this.singleSubscriptions.filter(s => 
-            s.idObj &&
-            this.matchesIdObj(s.idObj, idObj) && 
-            Object.keys(s.idObj).length <= Object.keys(idObj).length)
+            
+            this.matchesIdObj(s.idObj, idObj) &&
+
+            /* What's the point here? That left filter includes the right one?? */
+            Object.keys(s.idObj).length <= Object.keys(idObj).length
+        )
         .map(s => {
             let newItem = { ...newData };
             if(s.handlesOnData && s.handles){
@@ -324,7 +327,7 @@ export class SyncedTable {
      */
     updateOne(idObj: object, newData: object): Promise<boolean> {
         let id = this.getIdObj(idObj);
-        return this.upsert({ ...this.getItem(idObj), ...newData, ...id }, { ...newData });
+        return this.upsert({ ...this.getItem(idObj).data, ...newData, ...id }, { ...newData });
     }
 
     unsubscribe = (onChange) => {
@@ -508,7 +511,7 @@ export class SyncedTable {
                         // if(cb) this.isSendingData[idStr].cbs.push(cb);
                     } else {
                         this.isSendingData[idStr] = {
-                            o: this.getItem(r),
+                            o: this.getItem(r).data,
                             n: r,
                             sending: false
                             // cbs: cb? [cb] : []
@@ -552,20 +555,20 @@ export class SyncedTable {
                 if(!this.isSendingTimeout){
                     this.isSendingTimeout = setTimeout(() => {
                         this.isSendingTimeout = null;
-                        if(Object.keys(this.isSendingData).length){
+                        if(!isEmpty(this.isSendingData)){
                             pushDataToServer();
                         }
                     }, this.throttle)
                 } else if(this.isSending) return;
                 this.isSending = true;
 
-
+                /* Add items to the sending object */
                 if(newItems) {
                     setSending(newItems);
                 }
                 // if(callback) this.isSendingDataCallbacks.push(callback);
 
-                if(deletedData || this.isSendingData && Object.keys(this.isSendingData).length){
+                if(deletedData || !isEmpty(this.isSendingData)){
                     window.onbeforeunload = confirmExit;
                     function confirmExit() {
                         return "Data may be lost. Are you sure?";
@@ -621,21 +624,18 @@ export class SyncedTable {
 
 
     getItem(idObj: object): { data?: object, index: number } {
-        let data, index = -1;
+        let index = -1, d;
         if(this.storageType === STORAGE_TYPES.localStorage){
             let items = this.getItems();
-            let d = items.find(d => this.matchesIdObj(d, idObj));
-            data = { ...d };
+            d = items.find(d => this.matchesIdObj(d, idObj));
         } else if(this.storageType === STORAGE_TYPES.array){
-            let d = this.items.find(d => this.matchesIdObj(d, idObj));
-            data = { ...d };
+            d = this.items.find(d => this.matchesIdObj(d, idObj));
         } else {
             this.itemsObj = this.itemsObj || {};
-            let d = this.itemsObj[this.getIdStr(idObj)];
-            data = { ...d };
+            d = this.itemsObj[this.getIdStr(idObj)];
         }
 
-        return { data, index };
+        return { data: d? { ...d } : d, index };
     }
 
     /**
@@ -774,4 +774,9 @@ export class SyncedTable {
 
         return res;
     }
+}
+
+function isEmpty(obj?: object): boolean {
+    for(var v in obj) return false;
+    return true;
 }
