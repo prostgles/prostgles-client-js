@@ -329,7 +329,7 @@ class SyncedTable {
                 })
                     .sort((a, b) => s_fields.map(key => a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0).find(v => v));
             }
-            this.items = items;
+            this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
             return items.map(d => ({ ...d }));
         };
         /**
@@ -511,6 +511,10 @@ class SyncedTable {
             res[key] = d[key];
         });
         return res;
+    }
+    matchesFilter(item) {
+        return Boolean(item && !Object.keys(this.filter).find(k => this.filter[k] !== item[k]));
+        //return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
     }
     matchesIdObj(a, b) {
         return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));

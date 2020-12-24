@@ -128,6 +128,7 @@ export declare class SyncedTable {
     private getIdStr;
     private getIdObj;
     unsync: () => void;
+    private matchesFilter;
     private matchesIdObj;
     private setDeleted;
     private getDeleted;

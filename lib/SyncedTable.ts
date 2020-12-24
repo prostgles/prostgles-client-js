@@ -366,6 +366,10 @@ export class SyncedTable {
         if(this.dbSync && this.dbSync.unsync) this.dbSync.unsync();
     }
 
+    private matchesFilter(item){
+        return Boolean(item && !Object.keys(this.filter).find(k => this.filter[k] !== item[k]));
+        //return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
+    }
     private matchesIdObj(a, b){
         return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
         //return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
@@ -752,7 +756,7 @@ export class SyncedTable {
                     ).find(v => v) 
                 );
         }
-        this.items = items;
+        this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
         return items.map(d => ({ ...d }));
     }
 
