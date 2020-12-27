@@ -344,7 +344,7 @@ export class SyncedTable {
         /* Multisubs must not forget about the original filter */
         this.multiSubscriptions.map(s => {
             if(s.handlesOnData && s.handles){
-                items.map((item, i)=> {
+                items = items.map((item, i)=> {
                     const idObj = ids[i];
                     return {
                         ...item,
