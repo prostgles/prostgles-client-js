@@ -128,9 +128,9 @@ class SyncedTable {
                 let idObj = { ...item.idObj };
                 let delta = { ...item.delta };
                 let oItm = this.getItem(idObj), oldIdx = oItm.index, oldItem = oItm.data;
-                /* Calc delta if missing */
-                if (isEmpty(delta) && !isEmpty(oldItem)) {
-                    delta = this.getDelta(oldItem, delta);
+                /* Calc delta if missing or if from server */
+                if ((from_server || isEmpty(delta)) && !isEmpty(oldItem)) {
+                    delta = this.getDelta(oldItem || {}, delta);
                 }
                 /* Add synced if local update */
                 if (!from_server) {
@@ -268,10 +268,17 @@ class SyncedTable {
                 const s_fields = [this.synced_field, ...this.id_fields.sort()];
                 items = items
                     .filter(d => {
-                    return !this.filter || !Object.keys(this.filter).find(key => d[key].toString() !== this.filter[key].toString());
+                    return !this.filter || !Object.keys(this.filter)
+                        .find(key => d[key] !== this.filter[key]
+                    // typeof d[key] === typeof this.filter[key] && 
+                    // d[key].toString && this.filter[key].toString &&
+                    // d[key].toString() !== this.filter[key].toString()
+                    );
                 })
                     .sort((a, b) => s_fields.map(key => a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0).find(v => v));
             }
+            else
+                throw "id_fields AND/OR synced_field missing";
             this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
             return items.map(d => ({ ...d }));
         };
@@ -334,7 +341,7 @@ class SyncedTable {
                 /* Delta left empty so we can prepare it here */
                 let updateItems = data.map(d => ({
                     idObj: this.getIdObj(d),
-                    delta: null
+                    delta: d
                 }));
                 this.upsert(updateItems, true);
             } }).then(s => {
