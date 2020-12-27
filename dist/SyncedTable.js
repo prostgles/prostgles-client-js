@@ -11,50 +11,74 @@ class SyncedTable {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
+        this.wal = {
+            changed: {},
+            sending: {}
+        };
         this.items = [];
         this.itemsObj = {};
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
          */
-        this.notifyMultiSubscriptions = (newData) => {
+        this.notifySubscribers = (changes) => {
+            let _changes = changes;
+            // if(!changes) _changes
+            let items = [], deltas = [], ids = [];
+            _changes.map(({ idObj, newItem, delta }) => {
+                /* Single subs do not care about the filter */
+                this.singleSubscriptions.filter(s => this.matchesIdObj(s.idObj, idObj)
+                /* What's the point here? That left filter includes the right one?? */
+                // && Object.keys(s.idObj).length <= Object.keys(idObj).length
+                ).map(s => {
+                    let ni = { ...newItem };
+                    if (s.handlesOnData && s.handles) {
+                        ni.$update = s.handles.update;
+                        ni.$delete = s.handles.delete;
+                        ni.$unsync = s.handles.unsync;
+                    }
+                    s.onChange(ni, delta);
+                });
+                /* Preparing data for multi subs */
+                if (this.matchesFilter(newItem)) {
+                    items.push(newItem);
+                    deltas.push(delta);
+                    ids.push(idObj);
+                }
+            });
+            /* Notify main subscription */
+            if (this.onChange) {
+                this.onChange(items, deltas);
+            }
+            /* Multisubs must not forget about the original filter */
             this.multiSubscriptions.map(s => {
-                let items = this.getItems();
                 if (s.handlesOnData && s.handles) {
-                    items = items.map(d => ({
-                        ...d,
-                        $update: (newData) => {
-                            return this.updateOne({ ...d }, newData);
-                        },
-                        $delete: async () => {
-                            try {
-                                const idObj = this.getIdObj({ ...d });
-                                await this.db[this.name].delete(idObj);
+                    items.map((item, i) => {
+                        const idObj = ids[i];
+                        return {
+                            ...item,
+                            $update: (newData) => {
+                                return this.upsert([{ idObj, delta: newData }]).then(r => true);
+                            },
+                            $delete: async () => {
                                 return this.delete(idObj);
                             }
-                            catch (err) {
-                                return Promise.reject(err);
-                            }
-                        }
-                    }));
+                        };
+                    });
                 }
-                s.onChange(items, newData);
+                s.onChange(items, deltas);
             });
         };
-        this.notifySingleSubscriptions = (idObj, newData, delta) => {
-            this.singleSubscriptions.filter(s => this.matchesIdObj(s.idObj, idObj) &&
-                /* What's the point here? That left filter includes the right one?? */
-                Object.keys(s.idObj).length <= Object.keys(idObj).length)
-                .map(s => {
-                let newItem = { ...newData };
-                if (s.handlesOnData && s.handles) {
-                    newItem.$update = s.handles.update;
-                    newItem.$delete = s.handles.delete;
-                    newItem.$unsync = s.handles.unsync;
-                }
-                s.onChange(newItem, delta);
-            });
-        };
+        /**
+         * Update one row locally. id_fields update dissallowed
+         * @param idObj object -> item to be updated
+         * @param delta object -> the exact data that changed. excluding synced_field and id_fields
+         */
+        // updateOne(req: ItemUpdate): Promise<boolean> {
+        //     // idObj: object, delta: object
+        //     const { idObj, delta } = req;
+        //     return this.upsert({ ...this.getItem(idObj).data, ...delta, ...idObj });
+        // }
         this.unsubscribe = (onChange) => {
             this.singleSubscriptions = this.singleSubscriptions.filter(s => s.onChange !== onChange);
             this.multiSubscriptions = this.multiSubscriptions.filter(s => s.onChange !== onChange);
@@ -63,74 +87,131 @@ class SyncedTable {
             if (this.dbSync && this.dbSync.unsync)
                 this.dbSync.unsync();
         };
-        this.syncDeleted = async () => {
-            try {
-                await Promise.all(this.getDeleted().map(async (idObj) => {
-                    return this.db[this.name].delete(idObj);
-                }));
-                this.setDeleted(null, []);
-                return true;
-            }
-            catch (e) {
-                throw e;
-            }
+        this.destroy = () => {
+            this.unsync();
+            this.multiSubscriptions = [];
+            this.singleSubscriptions = [];
+            this.itemsObj = {};
+            this.items = [];
+            this.onChange = null;
         };
-        this.delete = (idObj) => {
-            // let items = this.getItems();
-            // items = items.filter(d => !this.matchesIdObj(idObj, d) );
-            // // window.localStorage.setItem(this.name, JSON.stringify(items));
-            // this.setItems(items);
+        this.delete = async (item) => {
+            const idObj = this.getIdObj(item);
+            await this.db[this.name].delete(idObj);
             this.setItem(idObj, null, true, true);
-            return this.onDataChanged(null, null, [idObj]);
+            this.notifySubscribers();
+            return true;
         };
         /**
-         * Upserts data locally and sends to server if required
+         * Upserts data locally -> notify subs -> sends to server if required
          * synced_field is populated if data is not from server
          * @param data object | object[] -> data to be updated/inserted. Must include id_fields
          * @param delta object | object[] -> data that has changed.
          * @param from_server If false then updates will be sent to server
          */
-        this.upsert = async (data, delta, from_server = false) => {
-            if (!data)
+        // upsert = async (data: object | object[], delta: object | object[], from_server = false): Promise<boolean> => {
+        this.upsert = async (items, from_server = false) => {
+            if (!items || !items.length)
                 throw "No data provided for upsert";
             /* If data has been deleted then wait for it to sync with server before continuing */
-            if (from_server && this.getDeleted().length) {
-                await this.syncDeleted();
-            }
-            let _data = Array.isArray(data) ? data : [data];
-            let _delta = Array.isArray(delta) ? delta : [delta];
+            // if(from_server && this.getDeleted().length){
+            //     await this.syncDeleted();
+            // }
+            // let _data = Array.isArray(data)? data : [data];
+            // let _delta = Array.isArray(delta)? delta : [delta];
             // let items = this.getItems();
             let updates = [], inserts = [], deltas = [];
-            _data.map((_d, i) => {
-                let d = { ..._d };
+            let results = [];
+            let status;
+            items.map((item, i) => {
+                // let d = { ...item.idObj, ...item.delta };
+                let idObj = { ...item.idObj };
+                let delta = { ...item.delta };
+                let oItm = this.getItem(idObj), oldIdx = oItm.index, oldItem = oItm.data;
+                /* Calc delta if missing */
+                if (isEmpty(delta) && !isEmpty(oldItem)) {
+                    delta = this.getDelta(oldItem, delta);
+                }
                 /* Add synced if local update */
-                if (!from_server)
-                    d[this.synced_field] = Date.now();
-                let ex = this.getItem(d), ex_idx = ex.index, existing = ex.data;
+                if (!from_server) {
+                    delta[this.synced_field] = Date.now();
+                }
+                let newItem = { ...oldItem, ...delta, ...idObj };
                 /* Update existing -> Expecting delta */
-                if (existing && existing[this.synced_field] < d[this.synced_field]) {
-                    // updates.push(d);
-                    if (_delta && _delta[i]) {
-                        deltas.push(_delta[i]);
+                if (oldItem && oldItem[this.synced_field] < newItem[this.synced_field]) {
+                    status = "updated";
+                    /* Insert new item */
+                }
+                else if (!oldItem) {
+                    status = "inserted";
+                }
+                this.setItem(newItem, oldIdx);
+                let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
+                /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
+                if (!from_server) {
+                    if (this.wal.changed[idObj]) {
+                        this.wal.changed[idObj] = {
+                            ...changeInfo,
+                            oldItem: this.wal.changed[idObj].oldItem
+                        };
                     }
                     else {
-                        deltas.push(this.getDelta(existing, d));
+                        this.wal.changed[idObj] = changeInfo;
                     }
                 }
-                else if (!existing) {
-                    deltas.push(d);
-                }
-                this.setItem(d, ex_idx);
+                results.push(changeInfo);
                 /* TODO: Deletes from server */
                 // if(allow_deletes){
                 //     items = this.getItems();
                 // }
             });
             // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
-            const newData = _data.map(d => ({ ...d }));
-            // window.localStorage.setItem(this.name, JSON.stringify(items));
-            // this.setItems(items);
-            return this.onDataChanged(newData, deltas, null, from_server);
+            // const newData = _data.map(d => ({ ...d }));
+            this.notifySubscribers(results);
+            /* Push to server */
+            if (!from_server) {
+            }
+        };
+        this.pushDataToServer = async () => {
+            // Sending data. stop here
+            if (this.isSendingTimeout || this.wal.sending && !isEmpty(this.wal.sending))
+                return;
+            // Nothing to send. stop here
+            if (!this.wal.changed || isEmpty(this.wal.changed))
+                return;
+            // Prepare batch to send
+            let batch = [];
+            Object.keys(this.wal.changed)
+                .slice(0, this.batch_size)
+                .map(key => {
+                let item = { ...this.wal.changed[key] };
+                this.wal.sending[key] = item;
+                batch.push({ ...item.delta, ...item.idObj });
+                delete this.wal.changed[key];
+            });
+            // Throttle next data send
+            this.isSendingTimeout = setTimeout(() => {
+                this.isSendingTimeout = null;
+                if (!isEmpty(this.wal.changed)) {
+                    this.pushDataToServer();
+                }
+            }, this.throttle);
+            window.onbeforeunload = confirmExit;
+            function confirmExit() {
+                return "Data may be lost. Are you sure?";
+            }
+            try {
+                await this.dbSync.syncData(batch); //, deletedData);
+                if (!isEmpty(this.wal.changed)) {
+                    this.pushDataToServer();
+                }
+                else {
+                    window.onbeforeunload = null;
+                }
+            }
+            catch (err) {
+                console.error(err);
+            }
         };
         /**
          * Notifies local subscriptions immediately
@@ -143,144 +224,6 @@ class SyncedTable {
          */
         this.isSendingTimeout = null;
         this.isSending = false;
-        this.onDataChanged = async (newData = null, delta = null, deletedData = null, from_server = false) => {
-            const setSending = (rows) => {
-                this.isSendingData = this.isSendingData || {};
-                rows.map(r => {
-                    let idStr = this.getIdStr(r);
-                    if (this.isSendingData[idStr]) {
-                        this.isSendingData[idStr].n = { ...this.isSendingData[idStr].n, ...r };
-                        // if(cb) this.isSendingData[idStr].cbs.push(cb);
-                    }
-                    else {
-                        this.isSendingData[idStr] = {
-                            o: this.getItem(r).data,
-                            n: r,
-                            sending: false
-                            // cbs: cb? [cb] : []
-                        };
-                    }
-                });
-            }, getSending = () => {
-                return Object.keys(this.isSendingData)
-                    .filter(k => !this.isSendingData[k].sending)
-                    .slice(0, this.batch_size).map(k => {
-                    this.isSendingData[k].sending = true;
-                    return this.isSendingData[k].n;
-                });
-            }, finishSending = (rows, revert = false) => {
-                rows.map(r => {
-                    const id = this.getIdStr(r);
-                    if (revert) {
-                    }
-                    else {
-                        if (this.isSendingData[id]) {
-                            // this.isSendingData[id].cbs.map(cb =>{ cb() })
-                            delete this.isSendingData[id];
-                        }
-                        else {
-                            console.warn("isSendingData missing -> Concurrency bug");
-                        }
-                    }
-                });
-            }, pushDataToServer = async (newItems = null, deletedData = null) => {
-                // if(newItems || deletedData){
-                //     this.isSendingBatch.push({
-                //         items: newItems,
-                //         deleted: deletedData,
-                //         cb: callback
-                //     });
-                // }
-                if (!this.isSendingTimeout) {
-                    this.isSendingTimeout = setTimeout(() => {
-                        this.isSendingTimeout = null;
-                        if (!isEmpty(this.isSendingData)) {
-                            pushDataToServer();
-                        }
-                    }, this.throttle);
-                }
-                else if (this.isSending)
-                    return;
-                this.isSending = true;
-                /* Add items to the sending object */
-                if (newItems) {
-                    setSending(newItems);
-                }
-                // if(callback) this.isSendingDataCallbacks.push(callback);
-                if (deletedData || !isEmpty(this.isSendingData)) {
-                    window.onbeforeunload = confirmExit;
-                    function confirmExit() {
-                        return "Data may be lost. Are you sure?";
-                    }
-                    const newBatch = getSending(); // this.isSendingData.slice(0, PUSH_BATCH_SIZE);
-                    try {
-                        await this.dbSync.syncData(newBatch, deletedData);
-                        finishSending(newBatch);
-                        this.isSending = false;
-                        pushDataToServer();
-                    }
-                    catch (err) {
-                        this.isSending = false;
-                        console.error(err);
-                    }
-                }
-                else {
-                    window.onbeforeunload = null;
-                    // this.isSendingDataCallbacks.map(cb => { cb(); });
-                    // this.isSendingDataCallbacks = [];
-                }
-            };
-            return new Promise((resolve, reject) => {
-                const items = this.getItems();
-                if (newData && newData.length) {
-                    newData.map((d, i) => {
-                        let dlt = {};
-                        if (delta && delta.length)
-                            dlt = delta[i];
-                        this.notifySingleSubscriptions(this.getIdObj({ ...d }), { ...d }, { ...dlt });
-                    });
-                }
-                this.notifyMultiSubscriptions(newData);
-                if (this.onChange) {
-                    this.onChange(items, newData);
-                }
-                /* Local updates. Push to server */
-                if (!from_server && this.dbSync && this.dbSync.syncData) {
-                    pushDataToServer(newData, deletedData);
-                    // , () => {
-                    //     resolve(true);
-                    // }).catch(reject);
-                }
-                else {
-                    // resolve(true);
-                }
-                resolve(true);
-            });
-        };
-        // upsertItem = (item: object, index: number, isFullData: boolean = false) => {
-        //     const getExIdx = (arr: object[]): number => arr.findIndex(d => this.matchesIdObj(d, item));
-        //     if(this.storageType === STORAGE_TYPES.localStorage){
-        //         let items = this.getItems();
-        //         let existing_idx = getExIdx(items);
-        //         if(items[existing_idx]) items[existing_idx] = isFullData? { ...item } : { ...items[existing_idx], ...item };
-        //         else items.push(item);
-        //         window.localStorage.setItem(this.name, JSON.stringify(items));
-        //     } else if(this.storageType === STORAGE_TYPES.array){
-        //         if(this.items.length){
-        //             if(this.matchesIdObj(item, this.items[index])){
-        //                 this.items[index] = isFullData? { ...item } : { ...this.items[index], ...item };
-        //             } else {
-        //                 const existing_idx = getExIdx(this.items);
-        //                 if(typeof existing_idx === "number" && this.matchesIdObj(this.items[existing_idx], item)){
-        //                 }
-        //             }
-        //         }
-        //     } else {
-        //         this.itemsObj = this.itemsObj || {};
-        //         let existing = this.itemsObj[this.getIdStr(item)] || {};
-        //         this.itemsObj[this.getIdStr(item)] = isFullData? { ...item } : { ...existing,  ...item };
-        //     }
-        // }
         /**
          * Sets the current data
          * @param items data
@@ -364,7 +307,6 @@ class SyncedTable {
         this.synced_field = synced_field;
         this.batch_size = batch_size;
         this.throttle = throttle;
-        this.isSendingData = {};
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
@@ -381,16 +323,20 @@ class SyncedTable {
             // console.log("onSyncRequest", res);
             return res;
         }, onPullRequest = async (params) => {
-            if (this.getDeleted().length) {
-                await this.syncDeleted();
-            }
+            // if(this.getDeleted().length){
+            //     await this.syncDeleted();
+            // }
             const data = this.getBatch(params);
             // console.log(`onPullRequest: total(${ data.length })`)
             return data;
         };
         db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates: (data) => {
                 /* Delta left empty so we can prepare it here */
-                this.upsert(data, null, true);
+                let updateItems = data.map(d => ({
+                    idObj: this.getIdObj(d),
+                    delta: null
+                }));
+                this.upsert(updateItems, true);
             } }).then(s => {
             this.dbSync = s;
         });
@@ -408,14 +354,17 @@ class SyncedTable {
             unsync: () => { this.unsubscribe(onChange); },
             upsert: (newData) => {
                 if (newData) {
-                    const upsertOne = (d) => {
-                        this.updateOne(d, d);
+                    const prepareOne = (d) => {
+                        return ({
+                            idObj: this.getIdObj(d),
+                            delta: d
+                        });
                     };
                     if (Array.isArray(newData)) {
-                        newData.map(d => upsertOne(d));
+                        this.upsert(newData.map(d => prepareOne(d)));
                     }
                     else {
-                        upsertOne(newData);
+                        this.upsert([prepareOne(newData)]);
                     }
                 }
                 // this.upsert(newData, newData)
@@ -450,14 +399,14 @@ class SyncedTable {
             delete: () => {
                 return this.delete(idObj);
             },
-            update: data => {
-                this.updateOne(idObj, data);
-            },
-            set: data => {
-                const newData = { ...data, ...idObj };
-                // this.notifySubscriptions(idObj, newData, data);
-                this.upsert(newData, newData);
+            update: newData => {
+                this.upsert([{ idObj, delta: newData }]);
             }
+            // set: data => {
+            //     const newData = { ...data, ...idObj }
+            //     // this.notifySubscriptions(idObj, newData, data);
+            //     this.upsert(newData, newData);
+            // }
         };
         const sub = {
             onChange,
@@ -477,15 +426,6 @@ class SyncedTable {
         //     setTimeout(()=>onChange(item, item), 0);
         // }
         return Object.freeze({ ...handles });
-    }
-    /**
-     * Update one row locally. id_fields update dissallowed
-     * @param idObj object -> item to be updated
-     * @param newData object -> new data
-     */
-    updateOne(idObj, newData) {
-        let id = this.getIdObj(idObj);
-        return this.upsert({ ...this.getItem(idObj).data, ...newData, ...id }, { ...newData });
     }
     // findOne(idObj){
     //     this.getItems();
@@ -513,27 +453,39 @@ class SyncedTable {
         return res;
     }
     matchesFilter(item) {
-        return Boolean(item && !Object.keys(this.filter).find(k => this.filter[k] !== item[k]));
-        //return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
+        return Boolean(item &&
+            (!this.filter ||
+                isEmpty(this.filter) ||
+                !Object.keys(this.filter).find(k => this.filter[k] !== item[k])));
     }
     matchesIdObj(a, b) {
         return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
-        //return Object.keys(idObj).length && !Object.keys(idObj).find(key => d[key] !== idObj[key])
     }
-    setDeleted(idObj, fullArray) {
-        let deleted = [];
-        if (fullArray)
-            deleted = fullArray;
-        else {
-            deleted = this.getDeleted();
-            deleted.push(idObj);
-        }
-        window.localStorage.setItem(this.name + "_$$psql$$_deleted", deleted);
-    }
-    getDeleted() {
-        const delStr = window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
-        return JSON.parse(delStr);
-    }
+    // TODO: offline-first deletes if allow_delete = true
+    // private setDeleted(idObj, fullArray){
+    //     let deleted: object[] = [];
+    //     if(fullArray) deleted = fullArray;
+    //     else {
+    //         deleted = this.getDeleted();
+    //         deleted.push(idObj);
+    //     }
+    //     window.localStorage.setItem(this.name + "_$$psql$$_deleted", <any>deleted);
+    // }
+    // private getDeleted(){
+    //     const delStr = window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
+    //     return JSON.parse(delStr);
+    // }
+    // private syncDeleted = async () => {
+    //     try {
+    //         await Promise.all(this.getDeleted().map(async idObj => {
+    //             return this.db[this.name].delete(idObj);
+    //         }));
+    //         this.setDeleted(null, []);
+    //         return true;
+    //     } catch(e){
+    //         throw e;
+    //     }
+    // }
     /**
      * Returns properties that are present in {n} and are different to {o}
      * @param o current full data item
@@ -553,7 +505,7 @@ class SyncedTable {
         }, {});
     }
     deleteAll() {
-        this.getItems().map(this.getIdObj).map(this.delete);
+        this.getItems().map(this.delete);
     }
     getItem(idObj) {
         let index = -1, d;

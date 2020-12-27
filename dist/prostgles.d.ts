@@ -22,6 +22,7 @@ export declare type Auth = {
 export declare type InitOptions = {
     socket: any;
     onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 };
 export declare type SyncTriggers = {

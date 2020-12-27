@@ -21,6 +21,16 @@ export declare type SyncBatchRequest = {
     offset: number;
     limit: number;
 };
+export declare type ItemUpdate = {
+    idObj: any;
+    delta: any;
+};
+export declare type ItemUpdated = ItemUpdate & {
+    oldItem: any;
+    newItem: any;
+    status: "inserted" | "updated" | "deleted";
+    from_server: boolean;
+};
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
@@ -44,7 +54,6 @@ export declare type SingleSyncHandles = {
     unsync: () => any;
     delete: () => void;
     update: (data: object) => void;
-    set: (data: object) => void;
 };
 export declare type SubscriptionSingle = {
     onChange: (data: object, delta: object) => object;
@@ -81,17 +90,14 @@ export declare class SyncedTable {
     throttle: number;
     batch_size: number;
     skipFirstTrigger: boolean;
-    isSendingData: {
-        [key: string]: {
-            n: object;
-            o: object;
-            sending: boolean;
+    wal: {
+        changed: {
+            [key: string]: ItemUpdated;
+        };
+        sending: {
+            [key: string]: ItemUpdated;
         };
     };
-    isSendingBatch: {
-        items: any[];
-        deleted: any[];
-    }[];
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions: SubscriptionSingle[];
     dbSync: any;
@@ -116,23 +122,19 @@ export declare class SyncedTable {
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
      */
-    private notifyMultiSubscriptions;
-    notifySingleSubscriptions: (idObj: any, newData: any, delta: any) => void;
+    private notifySubscribers;
     /**
      * Update one row locally. id_fields update dissallowed
      * @param idObj object -> item to be updated
-     * @param newData object -> new data
+     * @param delta object -> the exact data that changed. excluding synced_field and id_fields
      */
-    updateOne(idObj: object, newData: object): Promise<boolean>;
     unsubscribe: (onChange: any) => void;
     private getIdStr;
     private getIdObj;
     unsync: () => void;
+    destroy: () => void;
     private matchesFilter;
     private matchesIdObj;
-    private setDeleted;
-    private getDeleted;
-    private syncDeleted;
     /**
      * Returns properties that are present in {n} and are different to {o}
      * @param o current full data item
@@ -142,13 +144,14 @@ export declare class SyncedTable {
     deleteAll(): void;
     private delete;
     /**
-     * Upserts data locally and sends to server if required
+     * Upserts data locally -> notify subs -> sends to server if required
      * synced_field is populated if data is not from server
      * @param data object | object[] -> data to be updated/inserted. Must include id_fields
      * @param delta object | object[] -> data that has changed.
      * @param from_server If false then updates will be sent to server
      */
-    upsert: (data: object | object[], delta: object | object[], from_server?: boolean) => Promise<boolean>;
+    upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<any>;
+    pushDataToServer: () => Promise<void>;
     /**
      * Notifies local subscriptions immediately
      * Sends data to server (if changes are local)
@@ -160,7 +163,6 @@ export declare class SyncedTable {
      */
     isSendingTimeout: any;
     isSending: boolean;
-    private onDataChanged;
     getItem(idObj: object): {
         data?: object;
         index: number;

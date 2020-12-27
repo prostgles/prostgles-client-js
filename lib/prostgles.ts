@@ -31,21 +31,26 @@ export type Auth = {
 export type InitOptions = {
     socket: any;
     onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 }
 type SubscriptionHandler = {
     unsubscribe: Function;
     update?: (object)=>Promise<any> | any;
 }
+
+type Subscription = {
+    tableName: string, 
+    command: string, 
+    param1: object, 
+    param2: object,
+    onCall: Function, 
+    handlers: Function[];
+    destroy: () => any;
+};
+
 type Subscriptions = {
-    [ke: string]: { 
-        tableName: string, 
-        command: string, 
-        param1: object, 
-        param2: object,
-        onCall: Function, 
-        handlers: Function[]
-    }
+    [ke: string]: Subscription
 };
 export type SyncTriggers = {
     onSyncRequest: (params, sync_info) => { c_fr: object, c_lr: object, c_count: number }, 
@@ -57,25 +62,38 @@ export type SyncInfo = {
     synced_field: string, 
     channelName: string
 }
+type SyncConfig = {
+    tableName: string,
+    command: string,
+    param1: object, 
+    param2: object,
+    onCall: Function,
+    syncInfo: SyncInfo;
+    triggers: SyncTriggers[]
+}
 type Syncs = {
-    [channelName: string]: { 
-        tableName: string,
-        command: string,
-        param1: object, 
-        param2: object,
-        onCall: Function,
-        syncInfo: SyncInfo;
-        triggers: SyncTriggers[]
-    }
+    [channelName: string]: SyncConfig;
 };
 export function prostgles(initOpts: InitOptions, syncedTable: any){
-    const { socket, onReady, onDisconnect } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect } = initOpts;
     const preffix = "_psqlWS_.";
     let subscriptions: Subscriptions = {};
     // window["subscriptions"] = subscriptions;
     let syncedTables = {};
-    let syncs = [];
+    // let syncs = [];
     let ssyncs: Syncs = {};
+
+    let connected = false;
+
+    const destroySyncs = () => {
+        Object.values(subscriptions).map(s => s.destroy());
+        subscriptions = {};
+        ssyncs = {};
+        Object.values(syncedTables).map((s: any)=> {
+            if(s && s.destroy) s.destroy();
+        });
+        syncedTables = {};
+    }
 
     function _unsubscribe(channelName: string, handler: Function){
         if(subscriptions[channelName]){
@@ -304,7 +322,15 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 param1,
                 param2,
                 onCall,
-                handlers: [onChange]
+                handlers: [onChange],
+                destroy: () => {
+                    if(subscriptions[channelName]){
+                        Object.values(subscriptions[channelName]).map((s: Subscription)=> {
+                            s.handlers.map(h => _unsubscribe(channelName, h))
+                        });
+                        delete subscriptions[channelName];
+                    }
+                }
             }                        
             return makeHandler(channelName);   
         }
@@ -319,6 +345,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         /* Schema = published schema */
         socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
             if(err) throw err;
+
+            destroySyncs();
+            if(connected && onReconnect){
+                onReconnect(socket);
+            }
+            connected = true;
 
             let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)),

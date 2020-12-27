@@ -2,13 +2,24 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = void 0;
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect } = initOpts;
     const preffix = "_psqlWS_.";
     let subscriptions = {};
     // window["subscriptions"] = subscriptions;
     let syncedTables = {};
-    let syncs = [];
+    // let syncs = [];
     let ssyncs = {};
+    let connected = false;
+    const destroySyncs = () => {
+        Object.values(subscriptions).map(s => s.destroy());
+        subscriptions = {};
+        ssyncs = {};
+        Object.values(syncedTables).map((s) => {
+            if (s && s.destroy)
+                s.destroy();
+        });
+        syncedTables = {};
+    };
     function _unsubscribe(channelName, handler) {
         if (subscriptions[channelName]) {
             subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
@@ -225,7 +236,15 @@ function prostgles(initOpts, syncedTable) {
                 param1,
                 param2,
                 onCall,
-                handlers: [onChange]
+                handlers: [onChange],
+                destroy: () => {
+                    if (subscriptions[channelName]) {
+                        Object.values(subscriptions[channelName]).map((s) => {
+                            s.handlers.map(h => _unsubscribe(channelName, h));
+                        });
+                        delete subscriptions[channelName];
+                    }
+                }
             };
             return makeHandler(channelName);
         }
@@ -238,6 +257,11 @@ function prostgles(initOpts, syncedTable) {
         socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
             if (err)
                 throw err;
+            destroySyncs();
+            if (connected && onReconnect) {
+                onReconnect(socket);
+            }
+            connected = true;
             let dbo = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
             if (auth) {
