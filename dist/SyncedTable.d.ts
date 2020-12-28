@@ -1,11 +1,11 @@
 import { FieldFilter } from "prostgles-types";
 declare type FilterFunction = (data: object) => boolean;
 export declare type SyncOptions = {
-    select: FieldFilter;
+    select?: FieldFilter;
     handlesOnData?: boolean;
 };
 export declare type SyncOneOptions = {
-    handlesOnData: boolean;
+    handlesOnData?: boolean;
 };
 /**
  * Creates a local synchronized table

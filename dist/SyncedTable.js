@@ -152,9 +152,16 @@ class SyncedTable {
                                     patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.delta[c.name]);
                                 }
                             });
-                            if (patchedDelta)
-                                await this.db[this.name].update(idObj, patchedDelta);
-                            console.log("json-stable-stringify ???");
+                            if (patchedDelta) {
+                                try {
+                                    await this.db[this.name].update(idObj, patchedDelta);
+                                    updatedWithPatch = true;
+                                }
+                                catch (e) {
+                                    console.log("failed to patch update", e);
+                                }
+                            }
+                            // console.log("json-stable-stringify ???")
                         }
                     }
                     if (!updatedWithPatch) {
