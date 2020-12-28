@@ -7,7 +7,7 @@ const STORAGE_TYPES = {
     object: "object"
 };
 class SyncedTable {
-    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object }) {
+    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = true, patchJSON = true }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
@@ -17,6 +17,8 @@ class SyncedTable {
         };
         this.items = [];
         this.itemsObj = {};
+        this.patchText = true;
+        this.patchJSON = true;
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
@@ -117,9 +119,6 @@ class SyncedTable {
             // if(from_server && this.getDeleted().length){
             //     await this.syncDeleted();
             // }
-            // let _data = Array.isArray(data)? data : [data];
-            // let _delta = Array.isArray(delta)? delta : [delta];
-            // let items = this.getItems();
             let updates = [], inserts = [], deltas = [];
             let results = [];
             let status;
@@ -146,17 +145,30 @@ class SyncedTable {
                     status = "inserted";
                 }
                 this.setItem(newItem, oldIdx);
-                let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
+                let changeInfo = { idObj, delta, oldItem, newItem, status, from_server, patchedDelta: delta };
+                const idStr = this.getIdStr(idObj);
                 /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
                 if (!from_server) {
-                    if (this.wal.changed[idObj]) {
-                        this.wal.changed[idObj] = {
+                    /* Patch server data if necessary */
+                    if (this.columns && this.columns.length && (this.patchText || this.patchJSON)) {
+                        // const jCols = this.columns.filter(c => c.data_type === "json")
+                        const txtCols = this.columns.filter(c => c.data_type === "text");
+                        if (this.patchText && txtCols.length) {
+                            txtCols.map(c => {
+                                if (c.name in changeInfo.delta) {
+                                    changeInfo.patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.patchedDelta[c.name]);
+                                }
+                            });
+                        }
+                    }
+                    if (this.wal.changed[idStr]) {
+                        this.wal.changed[idStr] = {
                             ...changeInfo,
-                            oldItem: this.wal.changed[idObj].oldItem
+                            oldItem: this.wal.changed[idStr].oldItem
                         };
                     }
                     else {
-                        this.wal.changed[idObj] = changeInfo;
+                        this.wal.changed[idStr] = changeInfo;
                     }
                 }
                 results.push(changeInfo);
@@ -170,6 +182,7 @@ class SyncedTable {
             this.notifySubscribers(results);
             /* Push to server */
             if (!from_server) {
+                this.pushDataToServer();
             }
         };
         this.pushDataToServer = async () => {
@@ -186,7 +199,7 @@ class SyncedTable {
                 .map(key => {
                 let item = { ...this.wal.changed[key] };
                 this.wal.sending[key] = item;
-                batch.push({ ...item.delta, ...item.idObj });
+                batch.push({ ...item.patchedDelta, ...item.idObj });
                 delete this.wal.changed[key];
             });
             // Throttle next data send
@@ -202,6 +215,7 @@ class SyncedTable {
             }
             try {
                 await this.dbSync.syncData(batch); //, deletedData);
+                this.wal.sending = {};
                 if (!isEmpty(this.wal.changed)) {
                     this.pushDataToServer();
                 }
@@ -304,6 +318,8 @@ class SyncedTable {
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         this.storageType = storageType;
+        this.patchText = patchText;
+        this.patchJSON = patchJSON;
         if (!db)
             throw "db missing";
         this.db = db;
@@ -322,8 +338,8 @@ class SyncedTable {
             let batch = this.getBatch(params);
             if (batch.length) {
                 res = {
-                    c_fr: batch[0] || null,
-                    c_lr: batch[batch.length - 1] || null,
+                    c_fr: this.getRowSyncObj(batch[0]) || null,
+                    c_lr: this.getRowSyncObj(batch[batch.length - 1]) || null,
                     c_count: batch.length
                 };
             }
@@ -347,6 +363,11 @@ class SyncedTable {
             } }).then(s => {
             this.dbSync = s;
         });
+        if (db[this.name].getColumns) {
+            db[this.name].getColumns().then(cols => {
+                this.columns = cols;
+            });
+        }
         if (this.onChange && !this.skipFirstTrigger) {
             setTimeout(this.onChange, 0);
         }
@@ -459,6 +480,13 @@ class SyncedTable {
         });
         return res;
     }
+    getRowSyncObj(d) {
+        let res = {};
+        [this.synced_field, ...this.id_fields].sort().map(key => {
+            res[key] = d[key];
+        });
+        return res;
+    }
     matchesFilter(item) {
         return Boolean(item &&
             (!this.filter ||
@@ -499,9 +527,9 @@ class SyncedTable {
      * @param n new data item
      */
     getDelta(o, n) {
-        if (!o)
+        if (isEmpty(o))
             return { ...n };
-        return Object.keys(o)
+        return Object.keys({ ...o, ...n })
             .filter(k => !this.id_fields.includes(k))
             .reduce((a, k) => {
             let delta = {};
@@ -580,4 +608,31 @@ function isEmpty(obj) {
     for (var v in obj)
         return false;
     return true;
+}
+function getTextPatch(oldStr, newStr) {
+    /* Big change, no point getting diff */
+    if (!oldStr || !newStr || !oldStr.trim().length || !newStr.trim().length)
+        return newStr;
+    function findLastIdx(direction = 1) {
+        let idx = direction < 1 ? -1 : 0, found = false;
+        while (!found && Math.abs(idx) <= newStr.length) {
+            const args = direction < 1 ? [idx] : [0, idx];
+            let os = oldStr.slice(...args), ns = newStr.slice(...args);
+            if (os !== ns)
+                found = true;
+            else
+                idx += Math.sign(direction) * 1;
+        }
+        return idx;
+    }
+    let from = findLastIdx() - 1, to = oldStr.length + findLastIdx(-1) + 1, toNew = newStr.length + findLastIdx(-1) + 1;
+    return {
+        from,
+        to,
+        text: newStr.slice(from, toNew)
+    };
+    /* Other end
+        s = oldStr.slice(0, from) + text + oldStr.slice(to)
+    
+    */
 }

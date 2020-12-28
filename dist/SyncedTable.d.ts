@@ -28,6 +28,7 @@ export declare type ItemUpdate = {
 export declare type ItemUpdated = ItemUpdate & {
     oldItem: any;
     newItem: any;
+    patchedDelta: any;
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 };
@@ -78,6 +79,8 @@ export declare type SyncedTableOptions = {
     skipFirstTrigger?: boolean;
     select?: "*" | {};
     storageType: string;
+    patchText: boolean;
+    patchJSON: boolean;
 };
 export declare class SyncedTable {
     db: any;
@@ -90,6 +93,10 @@ export declare class SyncedTable {
     throttle: number;
     batch_size: number;
     skipFirstTrigger: boolean;
+    columns: {
+        name: string;
+        data_type: string;
+    }[];
     wal: {
         changed: {
             [key: string]: ItemUpdated;
@@ -104,7 +111,9 @@ export declare class SyncedTable {
     items: object[];
     storageType: string;
     itemsObj: object;
-    constructor({ name, filter, onChange, db, skipFirstTrigger, select, storageType }: SyncedTableOptions);
+    patchText: boolean;
+    patchJSON: boolean;
+    constructor({ name, filter, onChange, db, skipFirstTrigger, select, storageType, patchText, patchJSON }: SyncedTableOptions);
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >
@@ -131,6 +140,7 @@ export declare class SyncedTable {
     unsubscribe: (onChange: any) => void;
     private getIdStr;
     private getIdObj;
+    private getRowSyncObj;
     unsync: () => void;
     destroy: () => void;
     private matchesFilter;
@@ -190,5 +200,10 @@ export declare class SyncedTable {
      */
     getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchRequest) => {}[];
 }
+export declare type TextPatch = {
+    from: number;
+    to: number;
+    text: string;
+};
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map
