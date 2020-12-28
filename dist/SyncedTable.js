@@ -1,13 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SyncedTable = void 0;
+const md5_1 = require("./md5");
 const STORAGE_TYPES = {
     array: "array",
     localStorage: "localStorage",
     object: "object"
 };
 class SyncedTable {
-    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = true, patchJSON = true }) {
+    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
@@ -17,8 +18,6 @@ class SyncedTable {
         };
         this.items = [];
         this.itemsObj = {};
-        this.patchText = true;
-        this.patchJSON = true;
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
@@ -71,16 +70,6 @@ class SyncedTable {
                 s.onChange(items, deltas);
             });
         };
-        /**
-         * Update one row locally. id_fields update dissallowed
-         * @param idObj object -> item to be updated
-         * @param delta object -> the exact data that changed. excluding synced_field and id_fields
-         */
-        // updateOne(req: ItemUpdate): Promise<boolean> {
-        //     // idObj: object, delta: object
-        //     const { idObj, delta } = req;
-        //     return this.upsert({ ...this.getItem(idObj).data, ...delta, ...idObj });
-        // }
         this.unsubscribe = (onChange) => {
             this.singleSubscriptions = this.singleSubscriptions.filter(s => s.onChange !== onChange);
             this.multiSubscriptions = this.multiSubscriptions.filter(s => s.onChange !== onChange);
@@ -107,9 +96,8 @@ class SyncedTable {
         /**
          * Upserts data locally -> notify subs -> sends to server if required
          * synced_field is populated if data is not from server
-         * @param data object | object[] -> data to be updated/inserted. Must include id_fields
-         * @param delta object | object[] -> data that has changed.
-         * @param from_server If false then updates will be sent to server
+         * @param items <{ idObj: object, delta: object }[]> Data items that changed
+         * @param from_server : <boolean> If false then updates will be sent to server
          */
         // upsert = async (data: object | object[], delta: object | object[], from_server = false): Promise<boolean> => {
         this.upsert = async (items, from_server = false) => {
@@ -122,7 +110,7 @@ class SyncedTable {
             let updates = [], inserts = [], deltas = [];
             let results = [];
             let status;
-            items.map((item, i) => {
+            await Promise.all(items.map(async (item, i) => {
                 // let d = { ...item.idObj, ...item.delta };
                 let idObj = { ...item.idObj };
                 let delta = { ...item.delta };
@@ -145,30 +133,40 @@ class SyncedTable {
                     status = "inserted";
                 }
                 this.setItem(newItem, oldIdx);
-                let changeInfo = { idObj, delta, oldItem, newItem, status, from_server, patchedDelta: delta };
+                let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
                 const idStr = this.getIdStr(idObj);
                 /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
                 if (!from_server) {
-                    /* Patch server data if necessary */
+                    /* Patch server data if necessary and update separately to account for errors */
+                    let updatedWithPatch = false;
                     if (this.columns && this.columns.length && (this.patchText || this.patchJSON)) {
                         // const jCols = this.columns.filter(c => c.data_type === "json")
                         const txtCols = this.columns.filter(c => c.data_type === "text");
-                        if (this.patchText && txtCols.length) {
+                        if (this.patchText && txtCols.length && this.db[this.name].update) {
+                            let patchedDelta;
                             txtCols.map(c => {
                                 if (c.name in changeInfo.delta) {
-                                    changeInfo.patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.patchedDelta[c.name]);
+                                    patchedDelta = patchedDelta || {
+                                        ...changeInfo.delta,
+                                    };
+                                    patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.delta[c.name]);
                                 }
                             });
+                            if (patchedDelta)
+                                await this.db[this.name].update(idObj, patchedDelta);
+                            console.log("json-stable-stringify ???");
                         }
                     }
-                    if (this.wal.changed[idStr]) {
-                        this.wal.changed[idStr] = {
-                            ...changeInfo,
-                            oldItem: this.wal.changed[idStr].oldItem
-                        };
-                    }
-                    else {
-                        this.wal.changed[idStr] = changeInfo;
+                    if (!updatedWithPatch) {
+                        if (this.wal.changed[idStr]) {
+                            this.wal.changed[idStr] = {
+                                ...changeInfo,
+                                oldItem: this.wal.changed[idStr].oldItem
+                            };
+                        }
+                        else {
+                            this.wal.changed[idStr] = changeInfo;
+                        }
                     }
                 }
                 results.push(changeInfo);
@@ -176,15 +174,17 @@ class SyncedTable {
                 // if(allow_deletes){
                 //     items = this.getItems();
                 // }
-            });
+                return true;
+            }));
             // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
-            // const newData = _data.map(d => ({ ...d }));
             this.notifySubscribers(results);
             /* Push to server */
             if (!from_server) {
                 this.pushDataToServer();
             }
         };
+        this.isSendingTimeout = null;
+        this.isSending = false;
         this.pushDataToServer = async () => {
             // Sending data. stop here
             if (this.isSendingTimeout || this.wal.sending && !isEmpty(this.wal.sending))
@@ -199,7 +199,7 @@ class SyncedTable {
                 .map(key => {
                 let item = { ...this.wal.changed[key] };
                 this.wal.sending[key] = item;
-                batch.push({ ...item.patchedDelta, ...item.idObj });
+                batch.push({ ...item.delta, ...item.idObj });
                 delete this.wal.changed[key];
             });
             // Throttle next data send
@@ -227,17 +227,6 @@ class SyncedTable {
                 console.error(err);
             }
         };
-        /**
-         * Notifies local subscriptions immediately
-         * Sends data to server (if changes are local)
-         * Notifies local subscriptions with old data if server push fails
-         * @param newData object[] -> upserted data. Must include id_fields
-         * @param delta object[] -> deltas for upserted data
-         * @param deletedData
-         * @param from_server
-         */
-        this.isSendingTimeout = null;
-        this.isSending = false;
         /**
          * Sets the current data
          * @param items data
@@ -443,33 +432,8 @@ class SyncedTable {
             handles
         };
         this.singleSubscriptions.push(sub);
-        // const item = this.findOne(idObj);
-        // if(!item) {
-        //     this.db[this.name].findOne(idObj).then(d => {
-        //         onChange(d, d)
-        //     }).catch(err => {
-        //         throw err;
-        //     });
-        // } else {
-        //     setTimeout(()=>onChange(item, item), 0);
-        // }
         return Object.freeze({ ...handles });
     }
-    // findOne(idObj){
-    //     this.getItems();
-    //     let itemIdx = -1;
-    //     if(typeof idObj === "function"){
-    //         itemIdx = this.items.findIndex(idObj);
-    //     } else if(
-    //         (!idObj || !Object.keys(idObj)) &&
-    //         this.items.length === 1
-    //     ){
-    //         itemIdx = 0; 
-    //     } else {
-    //         itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d) )
-    //     }
-    //     return this.items[itemIdx];
-    // }
     getIdStr(d) {
         return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
     }
@@ -542,6 +506,7 @@ class SyncedTable {
     deleteAll() {
         this.getItems().map(this.delete);
     }
+    /* Returns an item by idObj from the local store */
     getItem(idObj) {
         let index = -1, d;
         if (this.storageType === STORAGE_TYPES.localStorage) {
@@ -629,7 +594,8 @@ function getTextPatch(oldStr, newStr) {
     return {
         from,
         to,
-        text: newStr.slice(from, toNew)
+        text: newStr.slice(from, toNew),
+        md5: md5_1.default(newStr)
     };
     /* Other end
         s = oldStr.slice(0, from) + text + oldStr.slice(to)

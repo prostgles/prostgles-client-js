@@ -1,4 +1,5 @@
 import { FieldFilter } from "prostgles-types";
+import md5 from "./md5";
 
 type FilterFunction = (data: object) => boolean;
 
@@ -33,7 +34,6 @@ export type ItemUpdate = {
 export type ItemUpdated = ItemUpdate & {
     oldItem: any;
     newItem: any;
-    patchedDelta: any;
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 }
@@ -123,19 +123,6 @@ export class SyncedTable {
         changed: {},
         sending: {}
     }
-    // isSendingData: { 
-    //     [key: string]: { 
-    //         n: object, 
-    //         o: object,
-    //         sending: boolean; 
-    //         // cbs: Function[] 
-    //     } 
-    // };
-    // isSendingBatch: {
-    //     items: any[];
-    //     deleted: any[];
-    //     // cb: Function;
-    // }[]
 
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions:  SubscriptionSingle[];
@@ -143,10 +130,10 @@ export class SyncedTable {
     items: object[] = [];
     storageType: string;
     itemsObj: object = {};
-    patchText = true
-    patchJSON = true;
+    patchText: boolean;
+    patchJSON: boolean;
 
-    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = true, patchJSON = true }: SyncedTableOptions){
+    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }: SyncedTableOptions){
         this.name = name;
         this.filter = filter;
         this.select = select;
@@ -299,19 +286,7 @@ export class SyncedTable {
         };
         
 
-        this.singleSubscriptions.push(sub);
-
-        // const item = this.findOne(idObj);
-        // if(!item) {
-        //     this.db[this.name].findOne(idObj).then(d => {
-        //         onChange(d, d)
-        //     }).catch(err => {
-        //         throw err;
-        //     });
-        // } else {
-        //     setTimeout(()=>onChange(item, item), 0);
-        // }
-            
+        this.singleSubscriptions.push(sub);           
 
         return Object.freeze({ ...handles });
     }
@@ -378,37 +353,10 @@ export class SyncedTable {
         });
     }
 
-    /**
-     * Update one row locally. id_fields update dissallowed
-     * @param idObj object -> item to be updated
-     * @param delta object -> the exact data that changed. excluding synced_field and id_fields
-     */
-    // updateOne(req: ItemUpdate): Promise<boolean> {
-    //     // idObj: object, delta: object
-    //     const { idObj, delta } = req;
-    //     return this.upsert({ ...this.getItem(idObj).data, ...delta, ...idObj });
-    // }
-
     unsubscribe = (onChange) => {
         this.singleSubscriptions = this.singleSubscriptions.filter(s => s.onChange !== onChange);
         this.multiSubscriptions = this.multiSubscriptions.filter(s => s.onChange !== onChange);
     }
-
-    // findOne(idObj){
-    //     this.getItems();
-    //     let itemIdx = -1;
-    //     if(typeof idObj === "function"){
-    //         itemIdx = this.items.findIndex(idObj);
-    //     } else if(
-    //         (!idObj || !Object.keys(idObj)) &&
-    //         this.items.length === 1
-    //     ){
-    //         itemIdx = 0; 
-    //     } else {
-    //         itemIdx = this.items.findIndex(d => this.matchesIdObj(idObj, d) )
-    //     }
-    //     return this.items[itemIdx];
-    // }
 
     private getIdStr(d){
         return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
@@ -516,9 +464,8 @@ export class SyncedTable {
     /**
      * Upserts data locally -> notify subs -> sends to server if required
      * synced_field is populated if data is not from server
-     * @param data object | object[] -> data to be updated/inserted. Must include id_fields
-     * @param delta object | object[] -> data that has changed. 
-     * @param from_server If false then updates will be sent to server
+     * @param items <{ idObj: object, delta: object }[]> Data items that changed
+     * @param from_server : <boolean> If false then updates will be sent to server
      */
     // upsert = async (data: object | object[], delta: object | object[], from_server = false): Promise<boolean> => {
     upsert = async (items: ItemUpdate[], from_server = false): Promise<any> => {
@@ -532,7 +479,7 @@ export class SyncedTable {
         let updates = [], inserts = [], deltas = [];
         let results: ItemUpdated[] = [];
         let status;
-        items.map((item, i)=> {
+        await Promise.all(items.map(async (item, i) => {
             // let d = { ...item.idObj, ...item.delta };
             let idObj = { ...item.idObj };
             let delta = { ...item.delta };
@@ -567,32 +514,41 @@ export class SyncedTable {
             
             this.setItem(newItem, oldIdx);
 
-            let changeInfo = { idObj, delta, oldItem, newItem, status, from_server, patchedDelta: delta };
+            let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
 
             const idStr = this.getIdStr(idObj);
             /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
             if(!from_server){
 
-                /* Patch server data if necessary */
+                /* Patch server data if necessary and update separately to account for errors */
+                let updatedWithPatch = false;
                 if(this.columns && this.columns.length && (this.patchText || this.patchJSON)){
                     // const jCols = this.columns.filter(c => c.data_type === "json")
                     const txtCols = this.columns.filter(c => c.data_type === "text");
-                    if(this.patchText && txtCols.length){
+                    if(this.patchText && txtCols.length && this.db[this.name].update){
+                        let patchedDelta;
                         txtCols.map(c => {
                             if(c.name in changeInfo.delta){
-                                changeInfo.patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.patchedDelta[c.name]);
+                                patchedDelta = patchedDelta || {
+                                    ...changeInfo.delta,
+                                }
+                                patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.delta[c.name]);
                             }
-                        })
+                        });
+                        if(patchedDelta) await this.db[this.name].update(idObj, patchedDelta)
+                        console.log("json-stable-stringify ???")
                     }
                 }
 
-                if(this.wal.changed[idStr]){
-                    this.wal.changed[idStr] = {
-                        ...changeInfo,
-                        oldItem: this.wal.changed[idStr].oldItem
+                if(!updatedWithPatch){
+                    if(this.wal.changed[idStr]){
+                        this.wal.changed[idStr] = {
+                            ...changeInfo,
+                            oldItem: this.wal.changed[idStr].oldItem
+                        }
+                    } else {
+                        this.wal.changed[idStr] = changeInfo;
                     }
-                } else {
-                    this.wal.changed[idStr] = changeInfo;
                 }
             }
             results.push(changeInfo);
@@ -601,9 +557,11 @@ export class SyncedTable {
             // if(allow_deletes){
             //     items = this.getItems();
             // }
-        });
+
+            return true;
+        }));
         // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
-        // const newData = _data.map(d => ({ ...d }));
+        
         this.notifySubscribers(results);
         
         /* Push to server */
@@ -611,6 +569,10 @@ export class SyncedTable {
             this.pushDataToServer();
         }
     }
+
+
+    isSendingTimeout = null;
+    isSending: boolean = false;
     pushDataToServer = async () => {
         
         // Sending data. stop here
@@ -626,7 +588,7 @@ export class SyncedTable {
             .map(key => {
                 let item = { ...this.wal.changed[key] };
                 this.wal.sending[key] = item;
-                batch.push({ ...item.patchedDelta, ...item.idObj })
+                batch.push({ ...item.delta, ...item.idObj })
                 delete this.wal.changed[key];
             });
 
@@ -657,19 +619,7 @@ export class SyncedTable {
         }
     };
 
-   /**
-    * Notifies local subscriptions immediately
-    * Sends data to server (if changes are local) 
-    * Notifies local subscriptions with old data if server push fails
-    * @param newData object[] -> upserted data. Must include id_fields
-    * @param delta object[] -> deltas for upserted data
-    * @param deletedData 
-    * @param from_server 
-    */
-    isSendingTimeout = null;
-    isSending: boolean = false;
-
-
+    /* Returns an item by idObj from the local store */
     getItem(idObj: object): { data?: object, index: number } {
         let index = -1, d;
         if(this.storageType === STORAGE_TYPES.localStorage){
@@ -811,6 +761,7 @@ export type TextPatch = {
     from: number;
     to: number;
     text: string;
+    md5: string;
 }
 
 function getTextPatch(oldStr: string, newStr: string): TextPatch | string {
@@ -841,7 +792,8 @@ function getTextPatch(oldStr: string, newStr: string): TextPatch | string {
     return {
         from,
         to,
-        text: newStr.slice(from, toNew)
+        text: newStr.slice(from, toNew),
+        md5: md5(newStr)
     }
 
     /* Other end 

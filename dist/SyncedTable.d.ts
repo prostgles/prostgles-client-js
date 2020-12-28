@@ -28,7 +28,6 @@ export declare type ItemUpdate = {
 export declare type ItemUpdated = ItemUpdate & {
     oldItem: any;
     newItem: any;
-    patchedDelta: any;
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 };
@@ -132,11 +131,6 @@ export declare class SyncedTable {
      * @param newData -> updates. Must include id_fields + updates
      */
     private notifySubscribers;
-    /**
-     * Update one row locally. id_fields update dissallowed
-     * @param idObj object -> item to be updated
-     * @param delta object -> the exact data that changed. excluding synced_field and id_fields
-     */
     unsubscribe: (onChange: any) => void;
     private getIdStr;
     private getIdObj;
@@ -156,23 +150,13 @@ export declare class SyncedTable {
     /**
      * Upserts data locally -> notify subs -> sends to server if required
      * synced_field is populated if data is not from server
-     * @param data object | object[] -> data to be updated/inserted. Must include id_fields
-     * @param delta object | object[] -> data that has changed.
-     * @param from_server If false then updates will be sent to server
+     * @param items <{ idObj: object, delta: object }[]> Data items that changed
+     * @param from_server : <boolean> If false then updates will be sent to server
      */
     upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<any>;
-    pushDataToServer: () => Promise<void>;
-    /**
-     * Notifies local subscriptions immediately
-     * Sends data to server (if changes are local)
-     * Notifies local subscriptions with old data if server push fails
-     * @param newData object[] -> upserted data. Must include id_fields
-     * @param delta object[] -> deltas for upserted data
-     * @param deletedData
-     * @param from_server
-     */
     isSendingTimeout: any;
     isSending: boolean;
+    pushDataToServer: () => Promise<void>;
     getItem(idObj: object): {
         data?: object;
         index: number;
@@ -204,6 +188,7 @@ export declare type TextPatch = {
     from: number;
     to: number;
     text: string;
+    md5: string;
 };
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map
