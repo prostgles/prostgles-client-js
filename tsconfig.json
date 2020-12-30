@@ -12,13 +12,13 @@
     // "strict": true,
     "module": "commonjs",
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
+    // "allowSyntheticDefaultImports": true,
     // "removeComments": true,
     // "sourceMap": true,
 
     /* OMG. webpack ts-loader bypased due to this */
     "rootDir": "./lib",
-    "esModuleInterop": true,
+    // "esModuleInterop": true,
 
     "outDir": "dist",
     // "moduleResolution": "node"

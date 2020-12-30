@@ -140,7 +140,7 @@ export class SyncedTable {
         this.select = select;
         this.onChange = onChange;
         if(!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
-        if(typeof window === "undefined") {
+        if(typeof window === "undefined" && storageType === STORAGE_TYPES.localStorage) {
             console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
             storageType = "object";
         }
@@ -333,15 +333,22 @@ export class SyncedTable {
             }
         });
 
+        let allItems = [], allDeltas = [];
+        this.getItems().map(d => {
+            allItems.push({ ...d });
+            const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
+            allDeltas.push(deltas[dIdx]);
+        })
+
         /* Notify main subscription */
         if(this.onChange){
-            this.onChange(items, deltas);
+            this.onChange(allItems, allDeltas);
         }
 
         /* Multisubs must not forget about the original filter */
         this.multiSubscriptions.map(s => {
             if(s.handlesOnData && s.handles){
-                items = items.map((item, i)=> {
+                allItems = allItems.map((item, i)=> {
                     const idObj = ids[i];
                     return {
                         ...item,
@@ -354,7 +361,7 @@ export class SyncedTable {
                     };
                 });
             }
-            s.onChange(items, deltas);
+            s.onChange(allItems, allDeltas);
         });
     }
 
