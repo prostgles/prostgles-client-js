@@ -184,11 +184,5 @@ export declare class SyncedTable {
      */
     getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchRequest) => {}[];
 }
-export declare type TextPatch = {
-    from: number;
-    to: number;
-    text: string;
-    md5: string;
-};
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

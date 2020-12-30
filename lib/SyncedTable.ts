@@ -1,5 +1,6 @@
-import { FieldFilter } from "prostgles-types";
-import md5 from "./md5";
+import { FieldFilter, getTextPatch } from "prostgles-types";
+
+const hasWnd =  typeof window !== "undefined";
 
 type FilterFunction = (data: object) => boolean;
 
@@ -139,6 +140,10 @@ export class SyncedTable {
         this.select = select;
         this.onChange = onChange;
         if(!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
+        if(typeof window === "undefined") {
+            console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
+            storageType = "object";
+        }
         this.storageType = storageType;
         this.patchText = patchText
         this.patchJSON = patchJSON;
@@ -412,10 +417,10 @@ export class SyncedTable {
     //         deleted = this.getDeleted();
     //         deleted.push(idObj);
     //     }
-    //     window.localStorage.setItem(this.name + "_$$psql$$_deleted", <any>deleted);
+    //     if(hasWnd) window.localStorage.setItem(this.name + "_$$psql$$_deleted", <any>deleted);
     // }
     // private getDeleted(){
-    //     const delStr = window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
+    //     const delStr = if(hasWnd) window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
     //     return JSON.parse(delStr);
     // }
     // private syncDeleted = async () => {
@@ -608,7 +613,7 @@ export class SyncedTable {
             }
         }, this.throttle);
 
-        window.onbeforeunload = confirmExit;
+        if(hasWnd) window.onbeforeunload = confirmExit;
         function confirmExit() {
             return "Data may be lost. Are you sure?";
         }
@@ -619,7 +624,7 @@ export class SyncedTable {
             if(!isEmpty(this.wal.changed)){
                 this.pushDataToServer();
             } else {
-                window.onbeforeunload = null;
+                if(hasWnd) window.onbeforeunload = null;
             }
         } catch(err) {
             
@@ -659,7 +664,7 @@ export class SyncedTable {
                 if(items[existing_idx]) items[existing_idx] = isFullData? { ...item } : { ...items[existing_idx], ...item };
                 else items.push(item);
             } else items = items.filter(d => !this.matchesIdObj(d, item));
-            window.localStorage.setItem(this.name, JSON.stringify(items));
+            if(hasWnd) window.localStorage.setItem(this.name, JSON.stringify(items));
         } else if(this.storageType === STORAGE_TYPES.array){
             if(!deleteItem){
                 if(!this.items[index]){
@@ -685,6 +690,7 @@ export class SyncedTable {
      */
     setItems = (items: object[]): void => {
         if(this.storageType === STORAGE_TYPES.localStorage){
+            if(!hasWnd) throw "Cannot access window object. Choose another storage method (array OR object)";
             window.localStorage.setItem(this.name, JSON.stringify(items));
         } else if(this.storageType === STORAGE_TYPES.array){
             this.items = items;
@@ -704,6 +710,7 @@ export class SyncedTable {
         let items = [];
 
         if(this.storageType === STORAGE_TYPES.localStorage){
+            if(!hasWnd) throw "Cannot access window object. Choose another storage method (array OR object)";
             let cachedStr = window.localStorage.getItem(this.name);
             if(cachedStr){
                 try {
@@ -763,49 +770,4 @@ export class SyncedTable {
 function isEmpty(obj?: object): boolean {
     for(var v in obj) return false;
     return true;
-}
-
-export type TextPatch = {
-    from: number;
-    to: number;
-    text: string;
-    md5: string;
-}
-
-function getTextPatch(oldStr: string, newStr: string): TextPatch | string {
-
-    /* Big change, no point getting diff */
-    if(!oldStr || !newStr || !oldStr.trim().length || !newStr.trim().length) return newStr;
-
-
-    function findLastIdx(direction = 1){
-
-        let idx = direction < 1? -1 : 0, found = false;
-        while(!found && Math.abs(idx) <= newStr.length){
-            const args = direction < 1? [idx] : [0, idx];
-
-            let os = oldStr.slice(...args),
-                ns = newStr.slice(...args);
-
-            if(os !== ns) found = true;
-            else idx += Math.sign(direction) * 1;
-        }
-
-        return idx;
-    }
-
-    let from = findLastIdx() - 1,
-        to = oldStr.length + findLastIdx(-1) + 1,
-        toNew = newStr.length + findLastIdx(-1) + 1;
-    return {
-        from,
-        to,
-        text: newStr.slice(from, toNew),
-        md5: md5(newStr)
-    }
-
-    /* Other end 
-        s = oldStr.slice(0, from) + text + oldStr.slice(to)
-    
-    */
 }
