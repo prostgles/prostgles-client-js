@@ -1,4 +1,4 @@
-import { FieldFilter, getTextPatch } from "prostgles-types";
+import { FieldFilter, getTextPatch, isEmpty, WAL } from "prostgles-types";
 
 const hasWnd =  typeof window !== "undefined";
 
@@ -115,15 +115,16 @@ export class SyncedTable {
     batch_size: number = 50;
     skipFirstTrigger: boolean = false;
 
-    columns: { name: string, data_type: string }[]
+    columns: { name: string, data_type: string }[] = [];
 
-    wal: {
-        changed: { [key: string]: ItemUpdated },
-        sending: { [key: string]: ItemUpdated },
-    } = {
-        changed: {},
-        sending: {}
-    }
+    // wal: {
+    //     changed: { [key: string]: ItemUpdated },
+    //     sending: { [key: string]: ItemUpdated },
+    // } = {
+    //     changed: {},
+    //     sending: {}
+    // }
+    wal: WAL;
 
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions:  SubscriptionSingle[];
@@ -156,8 +157,22 @@ export class SyncedTable {
         this.id_fields = id_fields;
         this.synced_field = synced_field;
         this.batch_size = batch_size;
-
         this.throttle = throttle;
+
+        function confirmExit() {  return "Data may be lost. Are you sure?"; }
+        this.wal = new WAL({
+            id_fields, 
+            synced_field, 
+            throttle, 
+            batch_size,
+            onSendStart: () => {
+                if(hasWnd) window.onbeforeunload = confirmExit;
+            },
+            onSend: (data) => this.dbSync.syncData(data),//, deletedData);,
+            onSendEnd: () => {
+                if(hasWnd) window.onbeforeunload = null;
+            }
+        });
 
         this.skipFirstTrigger = skipFirstTrigger;
 
@@ -204,7 +219,7 @@ export class SyncedTable {
         });
 
         if(db[this.name].getColumns){
-            db[this.name].getColumns().then(cols => {
+            db[this.name].getColumns().then((cols: any) => {
                 this.columns = cols;
             });
         }
@@ -479,7 +494,6 @@ export class SyncedTable {
      * @param items <{ idObj: object, delta: object }[]> Data items that changed
      * @param from_server : <boolean> If false then updates will be sent to server
      */
-    // upsert = async (data: object | object[], delta: object | object[], from_server = false): Promise<boolean> => {
     upsert = async (items: ItemUpdate[], from_server = false): Promise<any> => {
         if(!items || !items.length) throw "No data provided for upsert";
         
@@ -491,6 +505,7 @@ export class SyncedTable {
         let updates = [], inserts = [], deltas = [];
         let results: ItemUpdated[] = [];
         let status;
+        let walItems: ItemUpdated[] = [];
         await Promise.all(items.map(async (item, i) => {
             // let d = { ...item.idObj, ...item.delta };
             let idObj = { ...item.idObj };
@@ -513,8 +528,6 @@ export class SyncedTable {
             
             let newItem = { ...oldItem, ...delta, ...idObj };
 
-            
-
             /* Update existing -> Expecting delta */
             if(oldItem && oldItem[this.synced_field] < newItem[this.synced_field]){
                 status = "updated";
@@ -528,7 +541,7 @@ export class SyncedTable {
 
             let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
 
-            const idStr = this.getIdStr(idObj);
+            // const idStr = this.getIdStr(idObj);
             /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
             if(!from_server){
 
@@ -559,16 +572,17 @@ export class SyncedTable {
                         // console.log("json-stable-stringify ???")
                     }
                 }
-
+                
                 if(!updatedWithPatch){
-                    if(this.wal.changed[idStr]){
-                        this.wal.changed[idStr] = {
-                            ...changeInfo,
-                            oldItem: this.wal.changed[idStr].oldItem
-                        }
-                    } else {
-                        this.wal.changed[idStr] = changeInfo;
-                    }
+                    walItems.push({ ...delta, ...idObj });
+                    // if(this.wal.changed[idStr]){
+                    //     this.wal.changed[idStr] = {
+                    //         ...changeInfo,
+                    //         oldItem: this.wal.changed[idStr].oldItem
+                    //     }
+                    // } else {
+                    //     this.wal.changed[idStr] = changeInfo;
+                    // }
                 }
             }
             results.push(changeInfo);
@@ -585,59 +599,10 @@ export class SyncedTable {
         this.notifySubscribers(results);
         
         /* Push to server */
-        if(!from_server){
-            this.pushDataToServer();
+        if(!from_server && walItems.length){
+            this.wal.addData(walItems);
         }
     }
-
-
-    isSendingTimeout = null;
-    isSending: boolean = false;
-    pushDataToServer = async () => {
-        
-        // Sending data. stop here
-        if(this.isSendingTimeout || this.wal.sending && !isEmpty(this.wal.sending)) return;
-
-        // Nothing to send. stop here
-        if(!this.wal.changed || isEmpty(this.wal.changed)) return;
-        
-        // Prepare batch to send
-        let batch = [];
-        Object.keys(this.wal.changed)
-            .slice(0, this.batch_size)
-            .map(key => {
-                let item = { ...this.wal.changed[key] };
-                this.wal.sending[key] = item;
-                batch.push({ ...item.delta, ...item.idObj })
-                delete this.wal.changed[key];
-            });
-
-        // Throttle next data send
-        this.isSendingTimeout = setTimeout(() => {
-            this.isSendingTimeout = null;
-            if(!isEmpty(this.wal.changed)){
-                this.pushDataToServer();
-            }
-        }, this.throttle);
-
-        if(hasWnd) window.onbeforeunload = confirmExit;
-        function confirmExit() {
-            return "Data may be lost. Are you sure?";
-        }
-
-        try {
-            await this.dbSync.syncData(batch);//, deletedData);
-            this.wal.sending = {};
-            if(!isEmpty(this.wal.changed)){
-                this.pushDataToServer();
-            } else {
-                if(hasWnd) window.onbeforeunload = null;
-            }
-        } catch(err) {
-            
-            console.error(err)
-        }
-    };
 
     /* Returns an item by idObj from the local store */
     getItem(idObj: object): { data?: object, index: number } {
@@ -772,9 +737,4 @@ export class SyncedTable {
 
         return res;
     }
-}
-
-function isEmpty(obj?: object): boolean {
-    for(var v in obj) return false;
-    return true;
 }

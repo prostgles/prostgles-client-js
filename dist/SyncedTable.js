@@ -13,10 +13,7 @@ class SyncedTable {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
-        this.wal = {
-            changed: {},
-            sending: {}
-        };
+        this.columns = [];
         this.items = [];
         this.itemsObj = {};
         /**
@@ -106,7 +103,6 @@ class SyncedTable {
          * @param items <{ idObj: object, delta: object }[]> Data items that changed
          * @param from_server : <boolean> If false then updates will be sent to server
          */
-        // upsert = async (data: object | object[], delta: object | object[], from_server = false): Promise<boolean> => {
         this.upsert = async (items, from_server = false) => {
             if (!items || !items.length)
                 throw "No data provided for upsert";
@@ -117,13 +113,14 @@ class SyncedTable {
             let updates = [], inserts = [], deltas = [];
             let results = [];
             let status;
+            let walItems = [];
             await Promise.all(items.map(async (item, i) => {
                 // let d = { ...item.idObj, ...item.delta };
                 let idObj = { ...item.idObj };
                 let delta = { ...item.delta };
                 let oItm = this.getItem(idObj), oldIdx = oItm.index, oldItem = oItm.data;
                 /* Calc delta if missing or if from server */
-                if ((from_server || isEmpty(delta)) && !isEmpty(oldItem)) {
+                if ((from_server || prostgles_types_1.isEmpty(delta)) && !prostgles_types_1.isEmpty(oldItem)) {
                     delta = this.getDelta(oldItem || {}, delta);
                 }
                 /* Add synced if local update */
@@ -141,7 +138,7 @@ class SyncedTable {
                 }
                 this.setItem(newItem, oldIdx);
                 let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
-                const idStr = this.getIdStr(idObj);
+                // const idStr = this.getIdStr(idObj);
                 /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
                 if (!from_server) {
                     /* Patch server data if necessary and update separately to account for errors */
@@ -172,15 +169,15 @@ class SyncedTable {
                         }
                     }
                     if (!updatedWithPatch) {
-                        if (this.wal.changed[idStr]) {
-                            this.wal.changed[idStr] = {
-                                ...changeInfo,
-                                oldItem: this.wal.changed[idStr].oldItem
-                            };
-                        }
-                        else {
-                            this.wal.changed[idStr] = changeInfo;
-                        }
+                        walItems.push({ ...delta, ...idObj });
+                        // if(this.wal.changed[idStr]){
+                        //     this.wal.changed[idStr] = {
+                        //         ...changeInfo,
+                        //         oldItem: this.wal.changed[idStr].oldItem
+                        //     }
+                        // } else {
+                        //     this.wal.changed[idStr] = changeInfo;
+                        // }
                     }
                 }
                 results.push(changeInfo);
@@ -193,54 +190,8 @@ class SyncedTable {
             // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
             this.notifySubscribers(results);
             /* Push to server */
-            if (!from_server) {
-                this.pushDataToServer();
-            }
-        };
-        this.isSendingTimeout = null;
-        this.isSending = false;
-        this.pushDataToServer = async () => {
-            // Sending data. stop here
-            if (this.isSendingTimeout || this.wal.sending && !isEmpty(this.wal.sending))
-                return;
-            // Nothing to send. stop here
-            if (!this.wal.changed || isEmpty(this.wal.changed))
-                return;
-            // Prepare batch to send
-            let batch = [];
-            Object.keys(this.wal.changed)
-                .slice(0, this.batch_size)
-                .map(key => {
-                let item = { ...this.wal.changed[key] };
-                this.wal.sending[key] = item;
-                batch.push({ ...item.delta, ...item.idObj });
-                delete this.wal.changed[key];
-            });
-            // Throttle next data send
-            this.isSendingTimeout = setTimeout(() => {
-                this.isSendingTimeout = null;
-                if (!isEmpty(this.wal.changed)) {
-                    this.pushDataToServer();
-                }
-            }, this.throttle);
-            if (hasWnd)
-                window.onbeforeunload = confirmExit;
-            function confirmExit() {
-                return "Data may be lost. Are you sure?";
-            }
-            try {
-                await this.dbSync.syncData(batch); //, deletedData);
-                this.wal.sending = {};
-                if (!isEmpty(this.wal.changed)) {
-                    this.pushDataToServer();
-                }
-                else {
-                    if (hasWnd)
-                        window.onbeforeunload = null;
-                }
-            }
-            catch (err) {
-                console.error(err);
+            if (!from_server && walItems.length) {
+                this.wal.addData(walItems);
             }
         };
         /**
@@ -302,7 +253,7 @@ class SyncedTable {
             }
             else
                 throw "id_fields AND/OR synced_field missing";
-            this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
+            this.items = items.filter(d => prostgles_types_1.isEmpty(this.filter) || this.matchesFilter(d));
             return items.map(d => ({ ...d }));
         };
         /**
@@ -343,6 +294,22 @@ class SyncedTable {
         this.synced_field = synced_field;
         this.batch_size = batch_size;
         this.throttle = throttle;
+        function confirmExit() { return "Data may be lost. Are you sure?"; }
+        this.wal = new prostgles_types_1.WAL({
+            id_fields,
+            synced_field,
+            throttle,
+            batch_size,
+            onSendStart: () => {
+                if (hasWnd)
+                    window.onbeforeunload = confirmExit;
+            },
+            onSend: (data) => this.dbSync.syncData(data),
+            onSendEnd: () => {
+                if (hasWnd)
+                    window.onbeforeunload = null;
+            }
+        });
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
@@ -377,7 +344,7 @@ class SyncedTable {
             this.dbSync = s;
         });
         if (db[this.name].getColumns) {
-            db[this.name].getColumns().then(cols => {
+            db[this.name].getColumns().then((cols) => {
                 this.columns = cols;
             });
         }
@@ -478,7 +445,7 @@ class SyncedTable {
     matchesFilter(item) {
         return Boolean(item &&
             (!this.filter ||
-                isEmpty(this.filter) ||
+                prostgles_types_1.isEmpty(this.filter) ||
                 !Object.keys(this.filter).find(k => this.filter[k] !== item[k])));
     }
     matchesIdObj(a, b) {
@@ -515,7 +482,7 @@ class SyncedTable {
      * @param n new data item
      */
     getDelta(o, n) {
-        if (isEmpty(o))
+        if (prostgles_types_1.isEmpty(o))
             return { ...n };
         return Object.keys({ ...o, ...n })
             .filter(k => !this.id_fields.includes(k))
@@ -594,8 +561,3 @@ class SyncedTable {
     }
 }
 exports.SyncedTable = SyncedTable;
-function isEmpty(obj) {
-    for (var v in obj)
-        return false;
-    return true;
-}

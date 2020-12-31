@@ -1,4 +1,4 @@
-import { FieldFilter } from "prostgles-types";
+import { FieldFilter, WAL } from "prostgles-types";
 declare type FilterFunction = (data: object) => boolean;
 export declare type SyncOptions = {
     select?: FieldFilter;
@@ -96,14 +96,7 @@ export declare class SyncedTable {
         name: string;
         data_type: string;
     }[];
-    wal: {
-        changed: {
-            [key: string]: ItemUpdated;
-        };
-        sending: {
-            [key: string]: ItemUpdated;
-        };
-    };
+    wal: WAL;
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions: SubscriptionSingle[];
     dbSync: any;
@@ -154,9 +147,6 @@ export declare class SyncedTable {
      * @param from_server : <boolean> If false then updates will be sent to server
      */
     upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<any>;
-    isSendingTimeout: any;
-    isSending: boolean;
-    pushDataToServer: () => Promise<void>;
     getItem(idObj: object): {
         data?: object;
         index: number;
