@@ -330,7 +330,7 @@ function prostgles(initOpts, syncedTable) {
                             const usertSTable = (basicFilter = {}, options = {}) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`;
                                 if (!syncedTables[syncName]) {
-                                    syncedTables[syncName] = new syncedTable({ name: tableName, filter: basicFilter, db: dbo, ...options });
+                                    syncedTables[syncName] = new syncedTable({ ...options, name: tableName, filter: basicFilter, db: dbo });
                                 }
                                 return syncedTables[syncName];
                             };

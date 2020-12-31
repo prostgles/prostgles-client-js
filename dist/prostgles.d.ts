@@ -1,5 +1,8 @@
 import { TableHandler, DbJoinMaker } from "prostgles-types";
-import { Sync, SyncOne } from "./SyncedTable";
+import { SyncedTableOptions, Sync, SyncOne } from "./SyncedTable";
+export declare type SyncOptions = SyncedTableOptions & {
+    handlesOnData: boolean;
+};
 export declare type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
