@@ -59,7 +59,7 @@ class SyncedTable {
             this.multiSubscriptions.map(s => {
                 if (s.handlesOnData && s.handles) {
                     allItems = allItems.map((item, i) => {
-                        const idObj = ids[i];
+                        const idObj = this.wal.getIdObj(item);
                         return {
                             ...item,
                             $update: (newData) => {
