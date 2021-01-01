@@ -16,11 +16,14 @@ class SyncedTable {
         this.columns = [];
         this.items = [];
         this.itemsObj = {};
+        this.isSynced = false;
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
          */
         this.notifySubscribers = (changes) => {
+            if (!this.isSynced)
+                return;
             let _changes = changes;
             // if(!changes) _changes
             let items = [], deltas = [], ids = [];
@@ -332,15 +335,16 @@ class SyncedTable {
             const data = this.getBatch(params);
             // console.log(`onPullRequest: total(${ data.length })`)
             return data;
+        }, onUpdates = ({ data, isSynced }) => {
+            this.isSynced = isSynced;
+            /* Delta left empty so we can prepare it here */
+            let updateItems = data.map(d => ({
+                idObj: this.getIdObj(d),
+                delta: d
+            }));
+            this.upsert(updateItems, true);
         };
-        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates: (data) => {
-                /* Delta left empty so we can prepare it here */
-                let updateItems = data.map(d => ({
-                    idObj: this.getIdObj(d),
-                    delta: d
-                }));
-                this.upsert(updateItems, true);
-            } }).then(s => {
+        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
             this.dbSync = s;
         });
         if (db[this.name].getColumns) {

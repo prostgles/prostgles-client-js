@@ -6,10 +6,6 @@
 import { DBHandler, TableHandler, DbJoinMaker } from "prostgles-types";
 import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne } from "./SyncedTable";
 
-export type SyncOptions = SyncedTableOptions & {
-    handlesOnData: boolean;
-}
-
 export type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
@@ -56,10 +52,13 @@ type Subscription = {
 type Subscriptions = {
     [ke: string]: Subscription
 };
+
+export type onUpdatesParams = { data: object[]; isSynced: boolean }
+
 export type SyncTriggers = {
     onSyncRequest: (params, sync_info) => { c_fr: object, c_lr: object, c_count: number }, 
     onPullRequest: ({ from_synced, offset, limit }, sync_info) => object[], 
-    onUpdates: (data: object[], sync_info) => any | void;
+    onUpdates: (params: onUpdatesParams, sync_info) => any | void;
 };
 export type SyncInfo = {
     id_fields: string[], 
@@ -223,7 +222,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 ssyncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest })=>{
                     // onChange(data.data);
                     if(data.data && data.data.length){
-                        Promise.resolve(onUpdates(data.data, sync_info))
+                        Promise.resolve(onUpdates(data, sync_info))
                             .then(() =>{ 
                                 if(cb) cb({ ok: true })
                             })
@@ -429,11 +428,11 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                 }
                                 return syncedTables[syncName]
                             }
-                            dbo[tableName].sync = (basicFilter, options: Partial<SyncOptions> = { handlesOnData: true, select: "*" }, onChange) => {
+                            dbo[tableName].sync = (basicFilter, options: { handlesOnData: true, select: "*" }, onChange) => {
                                 const s = usertSTable(basicFilter, options);
                                 return s.sync(onChange, options);
                             }
-                            dbo[tableName].syncOne = (basicFilter, options: Partial<SyncOptions>  = { handlesOnData: true }, onChange) => {
+                            dbo[tableName].syncOne = (basicFilter, options: { handlesOnData: true }, onChange) => {
                                 const s = usertSTable(basicFilter, options);
                                 return s.syncOne(basicFilter, onChange, options.handlesOnData);
                             }

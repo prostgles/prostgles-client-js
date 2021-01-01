@@ -1,10 +1,10 @@
 import { FieldFilter, WAL } from "prostgles-types";
 declare type FilterFunction = (data: object) => boolean;
-export declare type SyncOptions = {
+export declare type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;
     handlesOnData?: boolean;
 };
-export declare type SyncOneOptions = {
+export declare type SyncOneOptions = Partial<SyncedTableOptions> & {
     handlesOnData?: boolean;
 };
 /**
@@ -105,6 +105,7 @@ export declare class SyncedTable {
     itemsObj: object;
     patchText: boolean;
     patchJSON: boolean;
+    isSynced: boolean;
     constructor({ name, filter, onChange, db, skipFirstTrigger, select, storageType, patchText, patchJSON }: SyncedTableOptions);
     /**
      * Returns a sync handler to all records within the SyncedTable instance

@@ -1,8 +1,5 @@
 import { TableHandler, DbJoinMaker } from "prostgles-types";
-import { SyncedTableOptions, Sync, SyncOne } from "./SyncedTable";
-export declare type SyncOptions = SyncedTableOptions & {
-    handlesOnData: boolean;
-};
+import { Sync, SyncOne } from "./SyncedTable";
 export declare type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
@@ -28,6 +25,10 @@ export declare type InitOptions = {
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 };
+export declare type onUpdatesParams = {
+    data: object[];
+    isSynced: boolean;
+};
 export declare type SyncTriggers = {
     onSyncRequest: (params: any, sync_info: any) => {
         c_fr: object;
@@ -39,7 +40,7 @@ export declare type SyncTriggers = {
         offset: any;
         limit: any;
     }, sync_info: any) => object[];
-    onUpdates: (data: object[], sync_info: any) => any | void;
+    onUpdates: (params: onUpdatesParams, sync_info: any) => any | void;
 };
 export declare type SyncInfo = {
     id_fields: string[];

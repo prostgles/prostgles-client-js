@@ -135,7 +135,7 @@ function prostgles(initOpts, syncedTable) {
                 ssyncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
                     // onChange(data.data);
                     if (data.data && data.data.length) {
-                        Promise.resolve(onUpdates(data.data, sync_info))
+                        Promise.resolve(onUpdates(data, sync_info))
                             .then(() => {
                             if (cb)
                                 cb({ ok: true });
@@ -334,11 +334,11 @@ function prostgles(initOpts, syncedTable) {
                                 }
                                 return syncedTables[syncName];
                             };
-                            dbo[tableName].sync = (basicFilter, options = { handlesOnData: true, select: "*" }, onChange) => {
+                            dbo[tableName].sync = (basicFilter, options, onChange) => {
                                 const s = usertSTable(basicFilter, options);
                                 return s.sync(onChange, options);
                             };
-                            dbo[tableName].syncOne = (basicFilter, options = { handlesOnData: true }, onChange) => {
+                            dbo[tableName].syncOne = (basicFilter, options, onChange) => {
                                 const s = usertSTable(basicFilter, options);
                                 return s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
