@@ -93,10 +93,12 @@ class SyncedTable {
             this.items = [];
             this.onChange = null;
         };
-        this.delete = async (item) => {
+        this.delete = async (item, from_server = false) => {
             const idObj = this.getIdObj(item);
-            await this.db[this.name].delete(idObj);
             this.setItem(idObj, null, true, true);
+            if (!from_server) {
+                await this.db[this.name].delete(idObj);
+            }
             this.notifySubscribers();
             return true;
         };
@@ -506,7 +508,7 @@ class SyncedTable {
         }, {});
     }
     deleteAll() {
-        this.getItems().map(this.delete);
+        this.getItems().map(d => this.delete(d));
     }
     /* Returns an item by idObj from the local store */
     getItem(idObj) {
