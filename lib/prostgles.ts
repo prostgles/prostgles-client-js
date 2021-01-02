@@ -221,7 +221,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
                 ssyncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest })=>{
                     // onChange(data.data);
-                    if(data.data && data.data.length){
+                    if(data.data){
                         Promise.resolve(onUpdates(data, sync_info))
                             .then(() =>{ 
                                 if(cb) cb({ ok: true })

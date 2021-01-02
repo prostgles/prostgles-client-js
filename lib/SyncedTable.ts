@@ -200,14 +200,20 @@ export class SyncedTable {
                 return data;
             },
             onUpdates = ({ data, isSynced }) => {
-                this.isSynced = isSynced;
+                if(isSynced && !this.isSynced){
+                    this.isSynced = isSynced;
+                    let items = this.getItems().map(d => ({ ...d }));
+                    this.setItems([]);
+                    this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d }})), true)
+                } else {
+                    /* Delta left empty so we can prepare it here */
+                    let updateItems = data.map(d => ({
+                        idObj: this.getIdObj(d),
+                        delta: d
+                    }));
+                    this.upsert(updateItems,  true);
+                }
 
-                /* Delta left empty so we can prepare it here */
-                let updateItems = data.map(d => ({
-                    idObj: this.getIdObj(d),
-                    delta: d
-                }));
-                this.upsert(updateItems,  true);
             };
         
         db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
@@ -311,7 +317,7 @@ export class SyncedTable {
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
      */
-    private notifySubscribers = (changes?: ItemUpdated[]) => {
+    private notifySubscribers = (changes: ItemUpdated[] = []) => {
         if(!this.isSynced) return;
 
         let _changes = changes;
@@ -492,7 +498,7 @@ export class SyncedTable {
      * @param from_server : <boolean> If false then updates will be sent to server
      */
     upsert = async (items: ItemUpdate[], from_server = false): Promise<any> => {
-        if(!items || !items.length) throw "No data provided for upsert";
+        if((!items || !items.length) && !from_server) throw "No data provided for upsert";
         
         /* If data has been deleted then wait for it to sync with server before continuing */
         // if(from_server && this.getDeleted().length){
