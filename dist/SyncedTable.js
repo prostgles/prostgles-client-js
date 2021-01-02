@@ -238,10 +238,10 @@ class SyncedTable {
                 }
             }
             else if (this.storageType === STORAGE_TYPES.array) {
-                items = this.items.slice(0);
+                items = this.items.map(d => ({ ...d }));
             }
             else {
-                items = Object.values(this.itemsObj);
+                items = Object.values({ ...this.itemsObj });
             }
             if (this.id_fields && this.synced_field) {
                 const s_fields = [this.synced_field, ...this.id_fields.sort()];
@@ -258,7 +258,7 @@ class SyncedTable {
             }
             else
                 throw "id_fields AND/OR synced_field missing";
-            this.items = items.filter(d => prostgles_types_1.isEmpty(this.filter) || this.matchesFilter(d));
+            // this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
             return items.map(d => ({ ...d }));
         };
         /**
