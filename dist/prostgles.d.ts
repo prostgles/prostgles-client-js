@@ -1,4 +1,4 @@
-import { TableHandler, DbJoinMaker } from "prostgles-types";
+import { TableHandler, DbJoinMaker, SQLOptions } from "prostgles-types";
 import { Sync, SyncOne } from "./SyncedTable";
 export declare type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
@@ -11,7 +11,7 @@ export declare type TableHandlerClient = TableHandler & {
 export declare type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
 } & DbJoinMaker & {
-    sql?: (query: string, params?: any, options?: any) => Promise<any>;
+    sql?: (query: string, params?: any | any[], options?: SQLOptions) => Promise<any>;
 };
 export declare type Auth = {
     register?: (params: any) => Promise<any>;
