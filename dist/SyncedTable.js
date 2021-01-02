@@ -215,7 +215,7 @@ class SyncedTable {
             else {
                 this.itemsObj = items.reduce((a, v) => ({
                     ...a,
-                    [this.getIdStr(v)]: v,
+                    [this.getIdStr(v)]: ({ ...v }),
                 }), {});
             }
         };
@@ -522,7 +522,7 @@ class SyncedTable {
         }
         else {
             this.itemsObj = this.itemsObj || {};
-            d = this.itemsObj[this.getIdStr(idObj)];
+            d = ({ ...this.itemsObj })[this.getIdStr(idObj)];
         }
         return { data: d ? { ...d } : d, index };
     }

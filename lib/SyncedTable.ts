@@ -619,7 +619,7 @@ export class SyncedTable {
             d = this.items.find(d => this.matchesIdObj(d, idObj));
         } else {
             this.itemsObj = this.itemsObj || {};
-            d = this.itemsObj[this.getIdStr(idObj)];
+            d = ({ ...this.itemsObj })[this.getIdStr(idObj)];
         }
 
         return { data: d? { ...d } : d, index };
@@ -674,7 +674,7 @@ export class SyncedTable {
         } else {
             this.itemsObj = items.reduce((a, v) => ({
                 ...a,
-                [this.getIdStr(v)]: v,
+                [this.getIdStr(v)]: ({ ...v }),
             }), {});
         }
     }
