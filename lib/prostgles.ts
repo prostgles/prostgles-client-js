@@ -38,7 +38,7 @@ export type DBHandlerClient = {
      * @param params <any[] | object> query arguments to be escaped. e.g.: 
      * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
      */
-    sql?: (query: string, args?: any | any[], options?: SQLOptions) => Promise<string | SQLResult | SQLResultRows>;
+    sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
 };
 
 export type Auth = {

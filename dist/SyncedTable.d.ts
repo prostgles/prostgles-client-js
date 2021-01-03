@@ -10,11 +10,11 @@ export declare type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export declare type Sync = <T>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[]) => any) => MultiSyncHandles;
+export declare type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any) => MultiSyncHandles;
 /**
  * Creates a local synchronized record
  */
-export declare type SyncOne = <T>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T)[]) => any) => SingleSyncHandles;
+export declare type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any) => SingleSyncHandles;
 export declare type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
