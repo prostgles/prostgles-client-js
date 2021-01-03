@@ -15,11 +15,31 @@ export type TableHandlerClient = TableHandler & {
     _sync?: any;
 }
 
+export type SQLResultRows = (any | { [key: string]: any })[];
+export type SQLResult = {
+    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER";
+    rowCount: number;
+    rows: SQLResultRows;
+    fields: {
+        name: string;
+        dataType: string;
+        tableName?: string;
+    }[];
+    duration: number;
+}
+
 export type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
   } & DbJoinMaker & {
-    sql?: (query: string, params?: any | any[], options?: SQLOptions) => Promise<any>;
-  };
+
+    /**
+     * 
+     * @param query <string> query. e.g.: SELECT * FROM users;
+     * @param params <any[] | object> query arguments to be escaped. e.g.: 
+     * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
+     */
+    sql?: (query: string, args?: any | any[], options?: SQLOptions) => Promise<string | SQLResult | SQLResultRows>;
+};
 
 export type Auth = {
     register?: (params: any) => Promise<any>;

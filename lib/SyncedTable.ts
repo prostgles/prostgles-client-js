@@ -14,12 +14,12 @@ export type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export type Sync = (basicFilter: any, options: SyncOptions, onChange: (data: SyncDataItems[]) => any) => MultiSyncHandles;
+export type Sync = <T>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[]) => any) => MultiSyncHandles;
 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne = (basicFilter: any, options: SyncOneOptions, onChange: (data: SyncDataItem[]) => any) => SingleSyncHandles;
+export type SyncOne = <T>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T)[]) => any) => SingleSyncHandles;
 
 export type SyncBatchRequest = {
     from_synced?: string | number;
@@ -49,6 +49,7 @@ export type SyncDataItems = {
 }
 /**
  * CRUD handles added if initialised with handlesOnData = true
+ * A single data item can also be unsynced
  */
 export type SyncDataItem = SyncDataItems & {
     $unsync?: () => any;
