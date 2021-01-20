@@ -10,11 +10,11 @@ export declare type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export declare type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any) => MultiSyncHandles;
+export declare type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any) => Promise<MultiSyncHandles>;
 /**
  * Creates a local synchronized record
  */
-export declare type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any) => SingleSyncHandles;
+export declare type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any) => Promise<SingleSyncHandles>;
 export declare type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
@@ -107,7 +107,8 @@ export declare class SyncedTable {
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean;
-    constructor({ name, filter, onChange, db, skipFirstTrigger, select, storageType, patchText, patchJSON }: SyncedTableOptions);
+    private constructor();
+    create: (options: SyncedTableOptions) => Promise<SyncedTable>;
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >

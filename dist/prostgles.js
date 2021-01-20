@@ -325,22 +325,22 @@ function prostgles(initOpts, syncedTable) {
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
                         if (syncedTable) {
                             dbo[tableName].getSync = (filter, params = {}) => {
-                                return new syncedTable({ name: tableName, filter, db: dbo, ...params });
+                                return syncedTable.create({ name: tableName, filter, db: dbo, ...params });
                             };
-                            const usertSTable = (basicFilter = {}, options = {}) => {
+                            const usertSTable = async (basicFilter = {}, options = {}) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`;
                                 if (!syncedTables[syncName]) {
-                                    syncedTables[syncName] = new syncedTable({ ...options, name: tableName, filter: basicFilter, db: dbo });
+                                    syncedTables[syncName] = await syncedTable.create({ ...options, name: tableName, filter: basicFilter, db: dbo });
                                 }
                                 return syncedTables[syncName];
                             };
-                            dbo[tableName].sync = (basicFilter, options, onChange) => {
-                                const s = usertSTable(basicFilter, options);
-                                return s.sync(onChange, options);
+                            dbo[tableName].sync = async (basicFilter, options, onChange) => {
+                                const s = await usertSTable(basicFilter, options);
+                                return await s.sync(onChange, options);
                             };
-                            dbo[tableName].syncOne = (basicFilter, options, onChange) => {
-                                const s = usertSTable(basicFilter, options);
-                                return s.syncOne(basicFilter, onChange, options.handlesOnData);
+                            dbo[tableName].syncOne = async (basicFilter, options, onChange) => {
+                                const s = await usertSTable(basicFilter, options);
+                                return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
                         }
                         dbo[tableName]._sync = function (param1, param2, syncHandles) {
