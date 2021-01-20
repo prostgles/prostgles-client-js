@@ -441,7 +441,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             dbo[tableName].getSync = (filter, params = {}) => {
                                 return syncedTable.create({ name: tableName, filter, db: dbo, ...params });
                             }
-                            const usertSTable = async (basicFilter = {}, options = {}) => {
+                            const upsertSTable = async (basicFilter = {}, options = {}) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`
                                 if(!syncedTables[syncName]){
                                     syncedTables[syncName] = await syncedTable.create({ ...options, name: tableName, filter: basicFilter, db: dbo });
@@ -449,11 +449,11 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                 return syncedTables[syncName]
                             }
                             dbo[tableName].sync = async (basicFilter, options: { handlesOnData: true, select: "*" }, onChange) => {
-                                const s = await usertSTable(basicFilter, options);
+                                const s = await upsertSTable(basicFilter, options);
                                 return await s.sync(onChange, options);
                             }
                             dbo[tableName].syncOne = async (basicFilter, options: { handlesOnData: true }, onChange) => {
-                                const s = await usertSTable(basicFilter, options);
+                                const s = await upsertSTable(basicFilter, options);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             }
                         }

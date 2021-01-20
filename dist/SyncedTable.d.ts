@@ -81,6 +81,7 @@ export declare type SyncedTableOptions = {
     storageType: string;
     patchText: boolean;
     patchJSON: boolean;
+    onReady: () => any;
 };
 export declare class SyncedTable {
     db: any;
@@ -107,8 +108,8 @@ export declare class SyncedTable {
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean;
-    private constructor();
-    create: (options: SyncedTableOptions) => Promise<SyncedTable>;
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger, select, storageType, patchText, patchJSON }: SyncedTableOptions);
+    static create(opts: SyncedTableOptions): Promise<SyncedTable>;
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >

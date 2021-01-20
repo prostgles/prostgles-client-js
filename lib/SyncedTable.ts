@@ -1,4 +1,6 @@
 import { FieldFilter, getTextPatch, isEmpty, WAL } from "prostgles-types";
+import { resolve } from "path";
+import { rejects } from "assert";
 
 const hasWnd =  typeof window !== "undefined";
 
@@ -101,6 +103,7 @@ export type SyncedTableOptions = {
     /* If true then only the delta of text field is sent to server */
     patchText: boolean;
     patchJSON: boolean;
+    onReady: () => any;
 };
 
 export class SyncedTable {
@@ -130,7 +133,7 @@ export class SyncedTable {
     patchJSON: boolean;
     isSynced: boolean = false;
 
-    private constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }: SyncedTableOptions){
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }: SyncedTableOptions){
         this.name = name;
         this.filter = filter;
         this.select = select;
@@ -154,88 +157,56 @@ export class SyncedTable {
         this.batch_size = batch_size;
         this.throttle = throttle;
 
-        // function confirmExit() {  return "Data may be lost. Are you sure?"; }
-        // this.wal = new WAL({
-        //     id_fields, 
-        //     synced_field, 
-        //     throttle, 
-        //     batch_size,
-        //     onSendStart: () => {
-        //         if(hasWnd) window.onbeforeunload = confirmExit;
-        //     },
-        //     onSend: (data) => this.dbSync.syncData(data),//, deletedData);,
-        //     onSendEnd: () => {
-        //         if(hasWnd) window.onbeforeunload = null;
-        //     }
-        // });
-
         this.skipFirstTrigger = skipFirstTrigger;
 
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
         
-    }
+        const onSyncRequest = (params) => {
+                
+                let res = { c_lr: null, c_fr: null, c_count: 0 };
 
-    create = async (options: SyncedTableOptions): Promise<SyncedTable> => {
-        let inst = new SyncedTable(options);
-        const { id_fields, synced_field, throttle, batch_size, db, filter, select } = this;
+                let batch = this.getBatch(params);
+                if(batch.length){
 
-        try {
+                    res = {
+                        c_fr: this.getRowSyncObj(batch[0]) || null,
+                        c_lr: this.getRowSyncObj(batch[batch.length - 1]) || null, 
+                        c_count: batch.length
+                    };
+                }
+                
+                // console.log("onSyncRequest", res);
+                return res;
+            },
+            onPullRequest = async (params) => {
+                
+                // if(this.getDeleted().length){
+                //     await this.syncDeleted();
+                // }
+                const data = this.getBatch(params);
+                // console.log(`onPullRequest: total(${ data.length })`)
+                return data;
+            },
+            onUpdates = ({ data, isSynced }) => {
+                if(isSynced && !this.isSynced){
+                    this.isSynced = isSynced;
+                    let items = this.getItems().map(d => ({ ...d }));
+                    this.setItems([]);
+                    this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d }})), true)
+                } else {
+                    /* Delta left empty so we can prepare it here */
+                    let updateItems = data.map(d => ({
+                        idObj: this.getIdObj(d),
+                        delta: d
+                    }));
+                    this.upsert(updateItems,  true);
+                }
 
-            const onSyncRequest = (params) => {
-                        
-                    let res = { c_lr: null, c_fr: null, c_count: 0 };
-
-                    let batch = this.getBatch(params);
-                    if(batch.length){
-
-                        res = {
-                            c_fr: this.getRowSyncObj(batch[0]) || null,
-                            c_lr: this.getRowSyncObj(batch[batch.length - 1]) || null, 
-                            c_count: batch.length
-                        };
-                    }
-                    
-                    // console.log("onSyncRequest", res);
-                    return res;
-                },
-                onPullRequest = async (params) => {
-                    
-                    // if(this.getDeleted().length){
-                    //     await this.syncDeleted();
-                    // }
-                    const data = this.getBatch(params);
-                    // console.log(`onPullRequest: total(${ data.length })`)
-                    return data;
-                },
-                onUpdates = ({ data, isSynced }) => {
-                    if(isSynced && !this.isSynced){
-                        this.isSynced = isSynced;
-                        let items = this.getItems().map(d => ({ ...d }));
-                        this.setItems([]);
-                        this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d }})), true)
-                    } else {
-                        /* Delta left empty so we can prepare it here */
-                        let updateItems = data.map(d => ({
-                            idObj: this.getIdObj(d),
-                            delta: d
-                        }));
-                        this.upsert(updateItems,  true);
-                    }
-
-                };
-            
-            this.dbSync = await db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates });
-
-            if(db[this.name].getColumns){
-                db[this.name].getColumns().then((cols: any) => {
-                    this.columns = cols;
-                });
-            }
-
-            if(this.onChange && !this.skipFirstTrigger){
-                setTimeout(this.onChange, 0);
-            }
+            };
+        
+        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
+            this.dbSync = s;
 
             function confirmExit() {  return "Data may be lost. Are you sure?"; }
             this.wal = new WAL({
@@ -252,10 +223,32 @@ export class SyncedTable {
                 }
             });
 
-            return inst
-        } catch (err){
-            throw err;
+            onReady();
+        });
+
+        if(db[this.name].getColumns){
+            db[this.name].getColumns().then((cols: any) => {
+                this.columns = cols;
+            });
         }
+
+        if(this.onChange && !this.skipFirstTrigger){
+            setTimeout(this.onChange, 0);
+        }
+    }
+
+    static create(opts: SyncedTableOptions): Promise<SyncedTable> {
+        return new Promise((resolve, reject) => {
+            try {
+                const res = new SyncedTable({ ...opts, onReady: () => {
+                    setTimeout(() => {
+                        resolve(res);
+                    }, 0)
+                }})
+            } catch(err) {
+                reject(err);
+            }
+        })
     }
 
     /**

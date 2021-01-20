@@ -9,7 +9,7 @@ const STORAGE_TYPES = {
     object: "object"
 };
 class SyncedTable {
-    constructor({ name, filter, onChange, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }) {
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
@@ -17,76 +17,6 @@ class SyncedTable {
         this.items = [];
         this.itemsObj = {};
         this.isSynced = false;
-        this.create = async (options) => {
-            let inst = new SyncedTable(options);
-            const { id_fields, synced_field, throttle, batch_size, db, filter, select } = this;
-            try {
-                const onSyncRequest = (params) => {
-                    let res = { c_lr: null, c_fr: null, c_count: 0 };
-                    let batch = this.getBatch(params);
-                    if (batch.length) {
-                        res = {
-                            c_fr: this.getRowSyncObj(batch[0]) || null,
-                            c_lr: this.getRowSyncObj(batch[batch.length - 1]) || null,
-                            c_count: batch.length
-                        };
-                    }
-                    // console.log("onSyncRequest", res);
-                    return res;
-                }, onPullRequest = async (params) => {
-                    // if(this.getDeleted().length){
-                    //     await this.syncDeleted();
-                    // }
-                    const data = this.getBatch(params);
-                    // console.log(`onPullRequest: total(${ data.length })`)
-                    return data;
-                }, onUpdates = ({ data, isSynced }) => {
-                    if (isSynced && !this.isSynced) {
-                        this.isSynced = isSynced;
-                        let items = this.getItems().map(d => ({ ...d }));
-                        this.setItems([]);
-                        this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d } })), true);
-                    }
-                    else {
-                        /* Delta left empty so we can prepare it here */
-                        let updateItems = data.map(d => ({
-                            idObj: this.getIdObj(d),
-                            delta: d
-                        }));
-                        this.upsert(updateItems, true);
-                    }
-                };
-                this.dbSync = await db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates });
-                if (db[this.name].getColumns) {
-                    db[this.name].getColumns().then((cols) => {
-                        this.columns = cols;
-                    });
-                }
-                if (this.onChange && !this.skipFirstTrigger) {
-                    setTimeout(this.onChange, 0);
-                }
-                function confirmExit() { return "Data may be lost. Are you sure?"; }
-                this.wal = new prostgles_types_1.WAL({
-                    id_fields,
-                    synced_field,
-                    throttle,
-                    batch_size,
-                    onSendStart: () => {
-                        if (hasWnd)
-                            window.onbeforeunload = confirmExit;
-                    },
-                    onSend: (data) => this.dbSync.syncData(data),
-                    onSendEnd: () => {
-                        if (hasWnd)
-                            window.onbeforeunload = null;
-                    }
-                });
-                return inst;
-            }
-            catch (err) {
-                throw err;
-            }
-        };
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
@@ -369,23 +299,86 @@ class SyncedTable {
         this.synced_field = synced_field;
         this.batch_size = batch_size;
         this.throttle = throttle;
-        // function confirmExit() {  return "Data may be lost. Are you sure?"; }
-        // this.wal = new WAL({
-        //     id_fields, 
-        //     synced_field, 
-        //     throttle, 
-        //     batch_size,
-        //     onSendStart: () => {
-        //         if(hasWnd) window.onbeforeunload = confirmExit;
-        //     },
-        //     onSend: (data) => this.dbSync.syncData(data),//, deletedData);,
-        //     onSendEnd: () => {
-        //         if(hasWnd) window.onbeforeunload = null;
-        //     }
-        // });
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
+        const onSyncRequest = (params) => {
+            let res = { c_lr: null, c_fr: null, c_count: 0 };
+            let batch = this.getBatch(params);
+            if (batch.length) {
+                res = {
+                    c_fr: this.getRowSyncObj(batch[0]) || null,
+                    c_lr: this.getRowSyncObj(batch[batch.length - 1]) || null,
+                    c_count: batch.length
+                };
+            }
+            // console.log("onSyncRequest", res);
+            return res;
+        }, onPullRequest = async (params) => {
+            // if(this.getDeleted().length){
+            //     await this.syncDeleted();
+            // }
+            const data = this.getBatch(params);
+            // console.log(`onPullRequest: total(${ data.length })`)
+            return data;
+        }, onUpdates = ({ data, isSynced }) => {
+            if (isSynced && !this.isSynced) {
+                this.isSynced = isSynced;
+                let items = this.getItems().map(d => ({ ...d }));
+                this.setItems([]);
+                this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d } })), true);
+            }
+            else {
+                /* Delta left empty so we can prepare it here */
+                let updateItems = data.map(d => ({
+                    idObj: this.getIdObj(d),
+                    delta: d
+                }));
+                this.upsert(updateItems, true);
+            }
+        };
+        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
+            this.dbSync = s;
+            function confirmExit() { return "Data may be lost. Are you sure?"; }
+            this.wal = new prostgles_types_1.WAL({
+                id_fields,
+                synced_field,
+                throttle,
+                batch_size,
+                onSendStart: () => {
+                    if (hasWnd)
+                        window.onbeforeunload = confirmExit;
+                },
+                onSend: (data) => this.dbSync.syncData(data),
+                onSendEnd: () => {
+                    if (hasWnd)
+                        window.onbeforeunload = null;
+                }
+            });
+            onReady();
+        });
+        if (db[this.name].getColumns) {
+            db[this.name].getColumns().then((cols) => {
+                this.columns = cols;
+            });
+        }
+        if (this.onChange && !this.skipFirstTrigger) {
+            setTimeout(this.onChange, 0);
+        }
+    }
+    static create(opts) {
+        return new Promise((resolve, reject) => {
+            try {
+                const res = new SyncedTable({ ...opts, onReady: () => {
+                        setTimeout(() => {
+                            resolve(res);
+                        }, 0);
+                    } });
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
     }
     /**
      * Returns a sync handler to all records within the SyncedTable instance
