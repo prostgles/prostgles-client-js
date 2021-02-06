@@ -349,7 +349,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 destroy: () => {
                     if(subscriptions[channelName]){
                         Object.values(subscriptions[channelName]).map((s: Subscription)=> {
-                            s.handlers.map(h => _unsubscribe(channelName, h))
+                            if(s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, h))
                         });
                         delete subscriptions[channelName];
                     }
