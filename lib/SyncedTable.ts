@@ -328,7 +328,12 @@ export class SyncedTable {
         };
         
 
-        this.singleSubscriptions.push(sub);           
+        this.singleSubscriptions.push(sub);
+
+        let existingData = handles.get();
+        if(existingData){
+            sub.onChange(existingData, existingData);
+        }
 
         return Object.freeze({ ...handles });
     }
