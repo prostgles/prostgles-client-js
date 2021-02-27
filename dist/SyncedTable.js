@@ -33,13 +33,7 @@ class SyncedTable {
                 /* What's the point here? That left filter includes the right one?? */
                 // && Object.keys(s.idObj).length <= Object.keys(idObj).length
                 ).map(s => {
-                    let ni = { ...newItem };
-                    if (s.handlesOnData && s.handles) {
-                        ni.$update = s.handles.update;
-                        ni.$delete = s.handles.delete;
-                        ni.$unsync = s.handles.unsync;
-                    }
-                    s.onChange(ni, delta);
+                    s.notify(newItem, delta);
                 });
                 /* Preparing data for multi subs */
                 if (this.matchesFilter(newItem)) {
@@ -60,26 +54,12 @@ class SyncedTable {
             }
             /* Multisubs must not forget about the original filter */
             this.multiSubscriptions.map(s => {
-                if (s.handlesOnData && s.handles) {
-                    allItems = allItems.map((item, i) => {
-                        const idObj = this.wal.getIdObj(item);
-                        return {
-                            ...item,
-                            $update: (newData) => {
-                                return this.upsert([{ idObj, delta: newData }]).then(r => true);
-                            },
-                            $delete: async () => {
-                                return this.delete(idObj);
-                            }
-                        };
-                    });
-                }
-                s.onChange(allItems, allDeltas);
+                s.notify(allItems, allDeltas);
             });
         };
         this.unsubscribe = (onChange) => {
-            this.singleSubscriptions = this.singleSubscriptions.filter(s => s.onChange !== onChange);
-            this.multiSubscriptions = this.multiSubscriptions.filter(s => s.onChange !== onChange);
+            this.singleSubscriptions = this.singleSubscriptions.filter(s => s._onChange !== onChange);
+            this.multiSubscriptions = this.multiSubscriptions.filter(s => s._onChange !== onChange);
         };
         this.unsync = () => {
             if (this.dbSync && this.dbSync.unsync)
@@ -406,9 +386,27 @@ class SyncedTable {
                 // this.upsert(newData, newData)
             }
         }, sub = {
-            onChange,
+            _onChange: onChange,
             handlesOnData,
-            handles
+            handles,
+            notify: (_allItems, _allDeltas) => {
+                let allItems = [..._allItems], allDeltas = [..._allDeltas];
+                if (handlesOnData) {
+                    allItems = allItems.map((item, i) => {
+                        const idObj = this.wal.getIdObj(item);
+                        return {
+                            ...item,
+                            $update: (newData) => {
+                                return this.upsert([{ idObj, delta: newData }]).then(r => true);
+                            },
+                            $delete: async () => {
+                                return this.delete(idObj);
+                            }
+                        };
+                    });
+                }
+                return onChange(allItems, allDeltas);
+            }
         };
         this.multiSubscriptions.push(sub);
         if (!this.skipFirstTrigger) {
@@ -445,15 +443,24 @@ class SyncedTable {
             // }
         };
         const sub = {
-            onChange,
+            _onChange: onChange,
             idObj,
             handlesOnData,
-            handles
+            handles,
+            notify: (data, delta) => {
+                let newData = { ...data };
+                if (handlesOnData) {
+                    newData.$update = handles.update;
+                    newData.$delete = handles.delete;
+                    newData.$unsync = handles.unsync;
+                }
+                return onChange(newData, delta);
+            }
         };
         this.singleSubscriptions.push(sub);
         let existingData = handles.get();
         if (existingData) {
-            sub.onChange(existingData, existingData);
+            sub.notify(existingData, existingData);
         }
         return Object.freeze({ ...handles });
     }

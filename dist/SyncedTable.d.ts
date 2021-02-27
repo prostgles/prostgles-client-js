@@ -1,5 +1,7 @@
 import { FieldFilter, WAL } from "prostgles-types";
-declare type FilterFunction = (data: object) => boolean;
+export declare type POJO = {
+    [key: string]: any;
+};
 export declare type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;
     handlesOnData?: boolean;
@@ -34,9 +36,8 @@ export declare type ItemUpdated = ItemUpdate & {
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export declare type SyncDataItems = {
-    [key: string]: any;
-    $update?: (newData: any) => any;
+export declare type SyncDataItems = POJO & {
+    $update?: (newData: POJO) => any;
     $delete?: () => any;
 };
 /**
@@ -48,31 +49,33 @@ export declare type SyncDataItem = SyncDataItems & {
 };
 export declare type MultiSyncHandles = {
     unsync: () => void;
-    upsert: (newData: object[]) => any;
+    upsert: (newData: POJO[]) => any;
 };
 export declare type SingleSyncHandles = {
-    get: () => object;
+    get: () => POJO;
     unsync: () => any;
     delete: () => void;
-    update: (data: object) => void;
+    update: (data: POJO) => void;
 };
 export declare type SubscriptionSingle = {
-    onChange: (data: object, delta: object) => object;
-    idObj: object | FilterFunction;
+    _onChange: (data: POJO, delta: POJO) => POJO;
+    notify: (data: POJO, delta: POJO) => POJO;
+    idObj: POJO;
     handlesOnData?: boolean;
     handles?: SingleSyncHandles;
 };
 export declare type SubscriptionMulti = {
-    onChange: (data: object[], delta: object) => object[];
-    idObj?: object | FilterFunction;
+    _onChange: (data: POJO[], delta: POJO[]) => POJO[];
+    notify: (data: POJO[], delta: POJO[]) => POJO[];
+    idObj?: POJO;
     handlesOnData?: boolean;
     handles?: MultiSyncHandles;
 };
-export declare type MultiChangeListener = (items: SyncDataItems[], delta: object[]) => any;
-export declare type SingleChangeListener = (item: SyncDataItem, delta: object) => any;
+export declare type MultiChangeListener = (items: SyncDataItems[], delta: POJO[]) => any;
+export declare type SingleChangeListener = (item: SyncDataItem, delta: POJO) => any;
 export declare type SyncedTableOptions = {
     name: string;
-    filter?: object;
+    filter?: POJO;
     onChange?: MultiChangeListener;
     db: any;
     pushDebounce?: number;
@@ -87,8 +90,8 @@ export declare class SyncedTable {
     db: any;
     name: string;
     select?: "*" | {};
-    filter?: object;
-    onChange: (data: object[], delta: object) => object[];
+    filter?: POJO;
+    onChange: (data: POJO[], delta: POJO) => POJO[];
     id_fields: string[];
     synced_field: string;
     throttle: number;
@@ -102,9 +105,9 @@ export declare class SyncedTable {
     multiSubscriptions: SubscriptionMulti[];
     singleSubscriptions: SubscriptionSingle[];
     dbSync: any;
-    items: object[];
+    items: POJO[];
     storageType: string;
-    itemsObj: object;
+    itemsObj: POJO;
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean;
@@ -122,7 +125,7 @@ export declare class SyncedTable {
      * @param onChange change listener <(item: object, delta: object) => any >
      * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. False by default;
      */
-    syncOne(idObj: object, onChange: SingleChangeListener, handlesOnData?: boolean): SingleSyncHandles;
+    syncOne(idObj: POJO, onChange: SingleChangeListener, handlesOnData?: boolean): SingleSyncHandles;
     /**
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
@@ -151,8 +154,8 @@ export declare class SyncedTable {
      * @param from_server : <boolean> If false then updates will be sent to server
      */
     upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<any>;
-    getItem(idObj: object): {
-        data?: object;
+    getItem(idObj: POJO): {
+        data?: POJO;
         index: number;
     };
     /**
@@ -162,21 +165,22 @@ export declare class SyncedTable {
      * @param isFullData
      * @param deleteItem
      */
-    setItem(item: object, index: number, isFullData?: boolean, deleteItem?: boolean): void;
+    setItem(item: POJO, index: number, isFullData?: boolean, deleteItem?: boolean): void;
     /**
      * Sets the current data
      * @param items data
      */
-    setItems: (items: object[]) => void;
+    setItems: (items: POJO[]) => void;
     /**
      * Returns the current data ordered by synced_field ASC and matching the main filter;
      */
-    getItems: () => object[];
+    getItems: () => POJO[];
     /**
      * Sync data request
      * @param param0: SyncBatchRequest
      */
-    getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchRequest) => {}[];
+    getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchRequest) => {
+        [x: string]: any;
+    }[];
 }
-export {};
 //# sourceMappingURL=SyncedTable.d.ts.map
