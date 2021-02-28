@@ -309,6 +309,12 @@ function prostgles(initOpts, syncedTable) {
                 };
             }
             /* Building DBO object */
+            const isPojo = (obj) => Object.prototype.toString.call(obj) === "[object Object]";
+            const checkArgs = (basicFilter, options, onChange) => {
+                if (!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function")) {
+                    throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> ) but got something else";
+                }
+            };
             const sub_commands = ["subscribe", "subscribeOne"];
             Object.keys(dbo).forEach(tableName => {
                 Object.keys(dbo[tableName])
@@ -336,10 +342,12 @@ function prostgles(initOpts, syncedTable) {
                                 return syncedTables[syncName];
                             };
                             dbo[tableName].sync = async (basicFilter, options, onChange) => {
+                                checkArgs(basicFilter, options, onChange);
                                 const s = await upsertSTable(basicFilter, options);
                                 return await s.sync(onChange, options);
                             };
                             dbo[tableName].syncOne = async (basicFilter, options, onChange) => {
+                                checkArgs(basicFilter, options, onChange);
                                 const s = await upsertSTable(basicFilter, options);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
@@ -350,6 +358,7 @@ function prostgles(initOpts, syncedTable) {
                     }
                     else if (sub_commands.includes(command)) {
                         dbo[tableName][command] = function (param1, param2, onChange) {
+                            checkArgs(param1, param2, onChange);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange);
                         };
                     }

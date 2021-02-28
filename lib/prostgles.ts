@@ -421,6 +421,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
 
             /* Building DBO object */
+            const isPojo = (obj) => Object.prototype.toString.call(obj) === "[object Object]";
+            const checkArgs = (basicFilter, options, onChange) => {
+                if(!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function")){
+                    throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> ) but got something else";
+                }
+            }
             const sub_commands = ["subscribe", "subscribeOne"];
             Object.keys(dbo).forEach(tableName => {
                 Object.keys(dbo[tableName])
@@ -449,10 +455,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                 return syncedTables[syncName]
                             }
                             dbo[tableName].sync = async (basicFilter, options: { handlesOnData: true, select: "*" }, onChange) => {
+                                checkArgs(basicFilter, options, onChange);
                                 const s = await upsertSTable(basicFilter, options);
                                 return await s.sync(onChange, options);
                             }
                             dbo[tableName].syncOne = async (basicFilter, options: { handlesOnData: true }, onChange) => {
+                                checkArgs(basicFilter, options, onChange);
                                 const s = await upsertSTable(basicFilter, options);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             }
@@ -463,6 +471,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                         }
                     } else if(sub_commands.includes(command)){
                         dbo[tableName][command] = function(param1, param2, onChange){
+                            checkArgs(param1, param2, onChange);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange);
                         };
                     } else {
