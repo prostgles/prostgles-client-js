@@ -112,6 +112,7 @@ export declare class SyncedTable {
     patchJSON: boolean;
     isSynced: boolean;
     constructor({ name, filter, onChange, onReady, db, skipFirstTrigger, select, storageType, patchText, patchJSON }: SyncedTableOptions);
+    private updatePatches;
     static create(opts: SyncedTableOptions): Promise<SyncedTable>;
     /**
      * Returns a sync handler to all records within the SyncedTable instance

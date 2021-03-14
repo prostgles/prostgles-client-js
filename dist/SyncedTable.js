@@ -17,6 +17,49 @@ class SyncedTable {
         this.items = [];
         this.itemsObj = {};
         this.isSynced = false;
+        this.updatePatches = async (walData) => {
+            let remaining = [];
+            let patched = [], patchedItems = [];
+            if (this.columns && this.columns.length && (this.patchText || this.patchJSON)) {
+                // const jCols = this.columns.filter(c => c.data_type === "json")
+                const txtCols = this.columns.filter(c => c.data_type === "text");
+                if (this.patchText && txtCols.length && this.db[this.name].updateBatch) {
+                    await Promise.all(walData.slice(0).map(async (d, i) => {
+                        const { current, initial } = { ...d };
+                        let patchedDelta;
+                        if (initial) {
+                            txtCols.map(c => {
+                                if (c.name in current) {
+                                    patchedDelta = patchedDelta || { ...current };
+                                    patchedDelta[c.name] = prostgles_types_1.getTextPatch(initial[c.name], current[c.name]);
+                                }
+                            });
+                            if (patchedDelta) {
+                                patchedItems.push(patchedDelta);
+                                patched.push([
+                                    this.wal.getIdObj(patchedDelta),
+                                    this.wal.getDeltaObj(patchedDelta)
+                                ]);
+                            }
+                        }
+                        // console.log("json-stable-stringify ???")
+                        if (!patchedDelta) {
+                            remaining.push(current);
+                        }
+                    }));
+                }
+            }
+            if (patched.length) {
+                try {
+                    await this.db[this.name].updateBatch(patched);
+                }
+                catch (e) {
+                    console.log("failed to patch update", e);
+                    remaining = remaining.concat(patchedItems);
+                }
+            }
+            return remaining.filter(d => d);
+        };
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
@@ -127,43 +170,46 @@ class SyncedTable {
                 /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
                 if (!from_server) {
                     /* Patch server data if necessary and update separately to account for errors */
-                    let updatedWithPatch = false;
-                    if (this.columns && this.columns.length && (this.patchText || this.patchJSON)) {
-                        // const jCols = this.columns.filter(c => c.data_type === "json")
-                        const txtCols = this.columns.filter(c => c.data_type === "text");
-                        if (this.patchText && txtCols.length && this.db[this.name].update) {
-                            let patchedDelta;
-                            txtCols.map(c => {
-                                if (c.name in changeInfo.delta) {
-                                    patchedDelta = patchedDelta || {
-                                        ...changeInfo.delta,
-                                    };
-                                    patchedDelta[c.name] = prostgles_types_1.getTextPatch(changeInfo.oldItem[c.name], changeInfo.delta[c.name]);
-                                }
-                            });
-                            if (patchedDelta) {
-                                try {
-                                    await this.db[this.name].update(idObj, patchedDelta);
-                                    updatedWithPatch = true;
-                                }
-                                catch (e) {
-                                    console.log("failed to patch update", e);
-                                }
-                            }
-                            // console.log("json-stable-stringify ???")
-                        }
-                    }
-                    if (!updatedWithPatch) {
-                        walItems.push({ ...delta, ...idObj });
-                        // if(this.wal.changed[idStr]){
-                        //     this.wal.changed[idStr] = {
-                        //         ...changeInfo,
-                        //         oldItem: this.wal.changed[idStr].oldItem
-                        //     }
-                        // } else {
-                        //     this.wal.changed[idStr] = changeInfo;
-                        // }
-                    }
+                    // let updatedWithPatch = false;
+                    // if(this.columns && this.columns.length && (this.patchText || this.patchJSON)){
+                    //     // const jCols = this.columns.filter(c => c.data_type === "json")
+                    //     const txtCols = this.columns.filter(c => c.data_type === "text");
+                    //     if(this.patchText && txtCols.length && this.db[this.name].update){
+                    //         let patchedDelta;
+                    //         txtCols.map(c => {
+                    //             if(c.name in changeInfo.delta){
+                    //                 patchedDelta = patchedDelta || {
+                    //                     ...changeInfo.delta,
+                    //                 }
+                    //                 patchedDelta[c.name] = getTextPatch(changeInfo.oldItem[c.name], changeInfo.delta[c.name]);
+                    //             }
+                    //         });
+                    //         if(patchedDelta){
+                    //             try {
+                    //                 await this.db[this.name].update(idObj, patchedDelta);
+                    //                 updatedWithPatch = true;
+                    //             } catch(e) {
+                    //                 console.log("failed to patch update", e)
+                    //             }
+                    //         }
+                    //         // console.log("json-stable-stringify ???")
+                    //     }
+                    // }
+                    // if(!updatedWithPatch){
+                    // walItems.push({ ...delta, ...idObj });
+                    // if(this.wal.changed[idStr]){
+                    //     this.wal.changed[idStr] = {
+                    //         ...changeInfo,
+                    //         oldItem: this.wal.changed[idStr].oldItem
+                    //     }
+                    // } else {
+                    //     this.wal.changed[idStr] = changeInfo;
+                    // }
+                    // }
+                    walItems.push({
+                        initial: oldItem,
+                        current: { ...delta, ...idObj }
+                    });
                 }
                 results.push(changeInfo);
                 /* TODO: Deletes from server */
@@ -176,6 +222,7 @@ class SyncedTable {
             this.notifySubscribers(results);
             /* Push to server */
             if (!from_server && walItems.length) {
+                // this.addWALItems(walItems);
                 this.wal.addData(walItems);
             }
         };
@@ -329,7 +376,23 @@ class SyncedTable {
                     if (hasWnd)
                         window.onbeforeunload = confirmExit;
                 },
-                onSend: (data) => this.dbSync.syncData(data),
+                onSend: async (data, walData) => {
+                    // if(this.patchText){
+                    //     const textCols = this.columns.filter(c => c.data_type.toLowerCase().startsWith("text"));
+                    //     data = await Promise.all(data.map(d => {
+                    //         const dataTextCols = Object.keys(d).filter(k => textCols.find(tc => tc.name === k));
+                    //         if(dataTextCols.length){
+                    //             /* Create text patches and update separately */
+                    //             dada
+                    //         }
+                    //         return d;
+                    //     }))
+                    // }
+                    let _data = await this.updatePatches(walData);
+                    if (!_data.length)
+                        return [];
+                    return this.dbSync.syncData(data);
+                },
                 onSendEnd: () => {
                     if (hasWnd)
                         window.onbeforeunload = null;
