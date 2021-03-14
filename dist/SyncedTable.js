@@ -18,12 +18,13 @@ class SyncedTable {
         this.itemsObj = {};
         this.isSynced = false;
         this.updatePatches = async (walData) => {
-            let remaining = [];
+            let remaining = walData.map(d => d.current);
             let patched = [], patchedItems = [];
-            if (this.columns && this.columns.length && (this.patchText || this.patchJSON)) {
+            if (this.columns && this.columns.length && this.db[this.name].updateBatch && (this.patchText || this.patchJSON)) {
                 // const jCols = this.columns.filter(c => c.data_type === "json")
                 const txtCols = this.columns.filter(c => c.data_type === "text");
-                if (this.patchText && txtCols.length && this.db[this.name].updateBatch) {
+                if (this.patchText && txtCols.length) {
+                    remaining = [];
                     await Promise.all(walData.slice(0).map(async (d, i) => {
                         const { current, initial } = { ...d };
                         let patchedDelta;
