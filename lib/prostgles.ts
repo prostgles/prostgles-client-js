@@ -109,13 +109,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         let cb;
         if(typeof onSchemaChange === "function"){
             cb = onSchemaChange;
-        } else if(typeof window !== "undefined") {
-            cb = () => {
-                window.location.reload()
-            }
-        } else {
-            console.warn(`Schema changed but would not location.reload(). Implement a custom reconnect func in onSchemaChange `)
-        }
+        } 
         socket.removeAllListeners(CHANNELS.SCHEMA_CHANGED)
         if(cb) socket.on(CHANNELS.SCHEMA_CHANGED, cb)
     }
@@ -383,10 +377,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
     return new Promise((resolve, reject)=>{
 
         if(onDisconnect){
+            // socket.removeAllListeners("disconnect", onDisconnect)
             socket.on("disconnect", onDisconnect);
         }
         
         /* Schema = published schema */
+        // socket.removeAllListeners(CHANNELS.SCHEMA)
         socket.on(CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
             if(err) throw err;
 
