@@ -3,7 +3,7 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { DBHandler, TableHandler, DbJoinMaker, SQLOptions } from "prostgles-types";
+import { DBHandler, TableHandler, DbJoinMaker, SQLOptions, CHANNELS } from "prostgles-types";
 import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
@@ -50,6 +50,11 @@ export type Auth = {
 
 export type InitOptions = {
     socket: any;
+
+    /**
+     * true by default
+     */
+    onSchemaChange?: false | (() => void);
     onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
@@ -98,8 +103,24 @@ type Syncs = {
     [channelName: string]: SyncConfig;
 };
 export function prostgles(initOpts: InitOptions, syncedTable: any){
-    const { socket, onReady, onDisconnect, onReconnect } = initOpts;
-    const preffix = "_psqlWS_.";
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
+
+    if(onSchemaChange){
+        let cb;
+        if(typeof onSchemaChange === "function"){
+            cb = onSchemaChange;
+        } else if(typeof window !== "undefined") {
+            cb = () => {
+                window.location.reload()
+            }
+        } else {
+            console.warn(`Schema changed but would not location.reload(). Implement a custom reconnect func in onSchemaChange `)
+        }
+        socket.removeAllListeners(CHANNELS.SCHEMA_CHANGED)
+        if(cb) socket.on(CHANNELS.SCHEMA_CHANGED, cb)
+    }
+
+    const preffix = CHANNELS._preffix;
     let subscriptions: Subscriptions = {};
     // window["subscriptions"] = subscriptions;
     let syncedTables = {};
@@ -366,7 +387,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         }
         
         /* Schema = published schema */
-        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
+        socket.on(CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
             if(err) throw err;
 
             destroySyncs();
@@ -382,7 +403,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
             if(auth){
                 _auth = { ...auth };
-                ["login", "logout", "register"].map(funcName => {
+                [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
                     if(auth[funcName]) {
                         _auth[funcName] = function(params){
                             return new Promise((resolve, reject) => {
@@ -399,7 +420,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             _methods.map(method => {
                 methodsObj[method] = function(...params){
                     return new Promise((resolve, reject)=>{
-                        socket.emit(preffix + "method", { method, params }, (err,res)=>{
+                        socket.emit(CHANNELS.METHOD, { method, params }, (err,res)=>{
                             if(err) reject(err);
                             else resolve(res);
                         });
@@ -412,7 +433,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 // dbo.schema = Object.freeze([ ...dbo.sql ]);
                 dbo.sql = function(query, params, options){
                     return new Promise((resolve, reject)=>{
-                        socket.emit(preffix + "sql", { query, params, options }, (err,res)=>{
+                        socket.emit(CHANNELS.SQL, { query, params, options }, (err,res)=>{
                             if(err) reject(err);
                             else resolve(res);
                         });

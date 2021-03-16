@@ -1,9 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = void 0;
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Stefan L. All rights reserved.
+ *  Licensed under the MIT License. See LICENSE in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+const prostgles_types_1 = require("prostgles-types");
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect, onReconnect } = initOpts;
-    const preffix = "_psqlWS_.";
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
+    if (onSchemaChange) {
+        let cb;
+        if (typeof onSchemaChange === "function") {
+            cb = onSchemaChange;
+        }
+        else if (typeof window !== "undefined") {
+            cb = () => {
+                window.location.reload();
+            };
+        }
+        else {
+            console.warn(`Schema changed but would not location.reload(). Implement a custom reconnect func in onSchemaChange `);
+        }
+        socket.removeAllListeners(prostgles_types_1.CHANNELS.SCHEMA_CHANGED);
+        if (cb)
+            socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
+    }
+    const preffix = prostgles_types_1.CHANNELS._preffix;
     let subscriptions = {};
     // window["subscriptions"] = subscriptions;
     let syncedTables = {};
@@ -255,7 +277,7 @@ function prostgles(initOpts, syncedTable) {
             socket.on("disconnect", onDisconnect);
         }
         /* Schema = published schema */
-        socket.on(preffix + 'schema', ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
+        socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
             if (err)
                 throw err;
             destroySyncs();
@@ -267,7 +289,7 @@ function prostgles(initOpts, syncedTable) {
             let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
             if (auth) {
                 _auth = { ...auth };
-                ["login", "logout", "register"].map(funcName => {
+                [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
                     if (auth[funcName]) {
                         _auth[funcName] = function (params) {
                             return new Promise((resolve, reject) => {
@@ -285,7 +307,7 @@ function prostgles(initOpts, syncedTable) {
             _methods.map(method => {
                 methodsObj[method] = function (...params) {
                     return new Promise((resolve, reject) => {
-                        socket.emit(preffix + "method", { method, params }, (err, res) => {
+                        socket.emit(prostgles_types_1.CHANNELS.METHOD, { method, params }, (err, res) => {
                             if (err)
                                 reject(err);
                             else
@@ -299,7 +321,7 @@ function prostgles(initOpts, syncedTable) {
                 // dbo.schema = Object.freeze([ ...dbo.sql ]);
                 dbo.sql = function (query, params, options) {
                     return new Promise((resolve, reject) => {
-                        socket.emit(preffix + "sql", { query, params, options }, (err, res) => {
+                        socket.emit(prostgles_types_1.CHANNELS.SQL, { query, params, options }, (err, res) => {
                             if (err)
                                 reject(err);
                             else
