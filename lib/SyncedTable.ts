@@ -267,13 +267,14 @@ export class SyncedTable {
             if(this.patchText && txtCols.length ){
                 
                 remaining = [];
+                const id_keys = [this.synced_field, ...this.id_fields];
                 await Promise.all(walData.slice(0).map(async (d, i) => {
 
                     const { current, initial } = { ...d };
                     let patchedDelta;
                     if(initial){
                         txtCols.map(c => {
-                            if(c.name in current){
+                            if(!id_keys.includes(c.name) && c.name in current){
                                 patchedDelta = patchedDelta || { ...current }
                                 
                                 patchedDelta[c.name] = getTextPatch(initial[c.name], current[c.name]);
