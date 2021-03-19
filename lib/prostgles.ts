@@ -384,7 +384,10 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
         socket.on(CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
-            if(err) throw err;
+            if(err){
+                reject(err)
+                throw err;
+            }
 
             destroySyncs();
             if(connected && onReconnect){
@@ -514,7 +517,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                         await addServerSub(s);
                         socket.on(ch, s.onCall);
                     } catch(err) {
-                        console.error("There was an issue reconnecting olf subscriptions", err)
+                        console.error("There was an issue reconnecting old subscriptions", err)
                     }               
                 });
             }
@@ -560,13 +563,17 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 }
             });
 
-            try {
-                onReady(dbo, methodsObj, fullSchema, _auth);
-            } catch(err){
-                console.error("Prostgles: Error within onReady: \n", err);
-            }
+            (async () => {
+                try {
+                    await onReady(dbo, methodsObj, fullSchema, _auth);
+                } catch(err){
+                    console.error("Prostgles: Error within onReady: \n", err);
+                    reject(err);
+                }
+    
+                resolve(dbo);
 
-            resolve(dbo);
+            })();
         });
 
     })
