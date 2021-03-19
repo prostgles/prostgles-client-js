@@ -261,19 +261,37 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             .then(() =>{ 
                                 if(cb) cb({ ok: true })
                             })
-                            .catch(err => { if(cb) { cb({ err }) } });
+                            .catch(err => { 
+                                if(cb) { 
+                                    cb({ err }) 
+                                } else {
+                                    console.error(tableName + " onUpdates error", err)
+                                } 
+                            });
                     } else if(data.onSyncRequest){
                         // cb(onSyncRequest());
                         Promise.resolve(onSyncRequest(data.onSyncRequest, sync_info))
                             .then(res => cb({ onSyncRequest: res }))
-                            .catch(err => { if(cb) { cb({ err }) } })
+                            .catch(err => { 
+                                if(cb) { 
+                                    cb({ err }) 
+                                } else {
+                                    console.error(tableName + " onSyncRequest error", err)
+                                } 
+                            })
 
                     } else if(data.onPullRequest){
                         Promise.resolve(onPullRequest(data.onPullRequest, sync_info))
                             .then(arr =>{ 
                                 cb({ data: arr });
                             })
-                            .catch(err => { if(cb) { cb({ err }) } })
+                            .catch(err => { 
+                                if(cb) { 
+                                    cb({ err }) 
+                                } else {
+                                    console.error(tableName + " onPullRequest error", err)
+                                } 
+                            })
                     } else {
                         console.log("unexpected response")
                     }
