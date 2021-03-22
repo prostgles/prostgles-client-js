@@ -1,7 +1,5 @@
 # prostgles-client
-  Isomorphic realtime client for PostgreSQL 
-  TypeScript, pg-promise, Socket.IO
-
+  Isomorphic TypeScript client for PostgreSQL
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/prostgles/prostgles-client-js/blob/master/LICENSE)
 [![npm version](https://img.shields.io/npm/v/prostgles-client.svg?style=flat)](https://www.npmjs.com/package/prostgles-client)
@@ -27,17 +25,10 @@ CDN
 
 ## Usage
 ```js
-const socket = io();
 prostgles({
-    socket, 
+    socket: io(), 
     onReady: async (db) => {
-        const latest_posts = await db.posts.find(
-            { },
-            {   
-                orderBy: { created: -1 }
-                limit: 15
-            }
-        );
+        const latest_posts = await db.posts.find({ }, { orderBy: { created: -1 } });
     }
 });
 ```
