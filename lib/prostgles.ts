@@ -3,10 +3,18 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { DBHandler, TableHandler, DbJoinMaker, SQLOptions, CHANNELS } from "prostgles-types";
+import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, SQLOptions, CHANNELS } from "prostgles-types";
 import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
+    getJoinedTables: () => string[];
+    _syncInfo?: any;
+    getSync?: any;
+    sync?: Sync;
+    syncOne?: SyncOne;
+    _sync?: any;
+}
+export type TableHandlerClientBasic = TableHandlerBasic & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
@@ -29,6 +37,18 @@ export type SQLResult = {
 }
 
 export type DBHandlerClient = {
+    [key: string]: Partial<TableHandlerClient>;
+  } & DbJoinMaker & {
+
+    /**
+     * 
+     * @param query <string> query. e.g.: SELECT * FROM users;
+     * @param params <any[] | object> query arguments to be escaped. e.g.: 
+     * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
+     */
+    sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
+};
+export type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClient>;
   } & DbJoinMaker & {
 

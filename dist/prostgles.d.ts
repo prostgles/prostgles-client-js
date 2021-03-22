@@ -1,6 +1,14 @@
-import { TableHandler, DbJoinMaker, SQLOptions } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, SQLOptions } from "prostgles-types";
 import { Sync, SyncOne } from "./SyncedTable";
 export declare type TableHandlerClient = TableHandler & {
+    getJoinedTables: () => string[];
+    _syncInfo?: any;
+    getSync?: any;
+    sync?: Sync;
+    syncOne?: SyncOne;
+    _sync?: any;
+};
+export declare type TableHandlerClientBasic = TableHandlerBasic & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
@@ -23,6 +31,17 @@ export declare type SQLResult = {
     duration: number;
 };
 export declare type DBHandlerClient = {
+    [key: string]: Partial<TableHandlerClient>;
+} & DbJoinMaker & {
+    /**
+     *
+     * @param query <string> query. e.g.: SELECT * FROM users;
+     * @param params <any[] | object> query arguments to be escaped. e.g.:
+     * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
+     */
+    sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
+};
+export declare type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClient>;
 } & DbJoinMaker & {
     /**
