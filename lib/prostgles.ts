@@ -3,7 +3,7 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, SQLOptions, CHANNELS } from "prostgles-types";
+import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS } from "prostgles-types";
 import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
@@ -49,8 +49,13 @@ export type DBHandlerClient = {
     sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
 };
 export type DBHandlerClientBasic = {
-    [key: string]: Partial<TableHandlerClient>;
-  } & DbJoinMaker & {
+    [key: string]: Partial<TableHandlerClientBasic>;
+  } & {
+    innerJoin: TableJoinBasic;
+    leftJoin: TableJoinBasic;
+    innerJoinOne: TableJoinBasic;
+    leftJoinOne: TableJoinBasic;
+  } & {
 
     /**
      * 

@@ -1,4 +1,4 @@
-import { TableHandler, TableHandlerBasic, DbJoinMaker, SQLOptions } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions } from "prostgles-types";
 import { Sync, SyncOne } from "./SyncedTable";
 export declare type TableHandlerClient = TableHandler & {
     getJoinedTables: () => string[];
@@ -42,8 +42,13 @@ export declare type DBHandlerClient = {
     sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
 };
 export declare type DBHandlerClientBasic = {
-    [key: string]: Partial<TableHandlerClient>;
-} & DbJoinMaker & {
+    [key: string]: Partial<TableHandlerClientBasic>;
+} & {
+    innerJoin: TableJoinBasic;
+    leftJoin: TableJoinBasic;
+    innerJoinOne: TableJoinBasic;
+    leftJoinOne: TableJoinBasic;
+} & {
     /**
      *
      * @param query <string> query. e.g.: SELECT * FROM users;
