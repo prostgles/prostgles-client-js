@@ -460,8 +460,12 @@ export class SyncedTable {
     
                 /* What's the point here? That left filter includes the right one?? */
                 // && Object.keys(s.idObj).length <= Object.keys(idObj).length
-            ).map(s => {
-                s.notify(newItem, delta);
+            ).map(async s => {
+                try {
+                    await s.notify(newItem, delta);
+                } catch(e){
+                    console.error("SyncedTable failed to notify: ", e)
+                }
             });
 
             /* Preparing data for multi subs */
@@ -481,12 +485,20 @@ export class SyncedTable {
 
         /* Notify main subscription */
         if(this.onChange){
-            this.onChange(allItems, allDeltas);
+            try {
+                this.onChange(allItems, allDeltas);
+            } catch(e){
+                console.error("SyncedTable failed to notify onChange: ", e)
+            }
         }
 
         /* Multisubs must not forget about the original filter */
-        this.multiSubscriptions.map(s => {
-            s.notify(allItems, allDeltas);
+        this.multiSubscriptions.map(async s => {
+            try {
+                await s.notify(allItems, allDeltas);
+            } catch(e){
+                console.error("SyncedTable failed to notify: ", e)
+            }
         });
     }
 
@@ -710,7 +722,9 @@ export class SyncedTable {
             // }
 
             return true;
-        }));
+        })).catch(err => {
+            console.error("SyncedTable failed upsert: ", err)
+        });
         // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
         
         this.notifySubscribers(results);
