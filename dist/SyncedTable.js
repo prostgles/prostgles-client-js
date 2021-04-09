@@ -2,13 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SyncedTable = void 0;
 const prostgles_types_1 = require("prostgles-types");
+const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
+let debug = () => { };
+if (hasWnd && window[DEBUG_KEY]) {
+    debug = window[DEBUG_KEY];
+}
 const STORAGE_TYPES = {
     array: "array",
     localStorage: "localStorage",
     object: "object"
 };
-const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 class SyncedTable {
     constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }) {
         this.throttle = 100;
@@ -329,7 +333,7 @@ class SyncedTable {
         this.onChange = onChange;
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
-        if (typeof window === "undefined" && storageType === STORAGE_TYPES.localStorage) {
+        if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
             console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
             storageType = "object";
         }
@@ -428,15 +432,13 @@ class SyncedTable {
         if (this.onChange && !this.skipFirstTrigger) {
             setTimeout(this.onChange, 0);
         }
-        if (window[DEBUG_KEY])
-            window[DEBUG_KEY](this);
+        debug(this);
     }
     /**
      * add debug mode to fix sudden no data and sync listeners bug
      */
     set multiSubscriptions(mSubs) {
-        if (window[DEBUG_KEY])
-            window[DEBUG_KEY](mSubs, this._multiSubscriptions);
+        debug(mSubs, this._multiSubscriptions);
         this._multiSubscriptions = mSubs.slice(0);
     }
     ;
@@ -445,8 +447,7 @@ class SyncedTable {
     }
     ;
     set singleSubscriptions(sSubs) {
-        if (window[DEBUG_KEY])
-            window[DEBUG_KEY](sSubs, this._singleSubscriptions);
+        debug(sSubs, this._singleSubscriptions);
         this._singleSubscriptions = sSubs.slice(0);
     }
     ;
