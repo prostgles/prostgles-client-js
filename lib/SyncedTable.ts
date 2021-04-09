@@ -107,6 +107,7 @@ export type SyncedTableOptions = {
     patchJSON: boolean;
     onReady: () => any;
 };
+const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 
 export class SyncedTable {
 
@@ -125,8 +126,30 @@ export class SyncedTable {
 
     wal: WAL;
 
-    multiSubscriptions: SubscriptionMulti[];
-    singleSubscriptions:  SubscriptionSingle[];
+    // multiSubscriptions: SubscriptionMulti[];
+    // singleSubscriptions:  SubscriptionSingle[];
+    _multiSubscriptions: SubscriptionMulti[];
+    _singleSubscriptions:  SubscriptionSingle[];
+
+    /**
+     * add debug mode to fix sudden no data and sync listeners bug
+     */
+    set multiSubscriptions(mSubs: SubscriptionMulti[]) {
+        if(window[DEBUG_KEY]) window[DEBUG_KEY](mSubs, this._multiSubscriptions);
+        this._multiSubscriptions = mSubs.slice(0);
+    };
+    get multiSubscriptions(): SubscriptionMulti[] {
+        return this._multiSubscriptions;
+    };
+
+    set singleSubscriptions(sSubs: SubscriptionSingle[])  { 
+        if(window[DEBUG_KEY]) window[DEBUG_KEY](sSubs, this._singleSubscriptions);
+        this._singleSubscriptions = sSubs.slice(0);
+    };
+    get singleSubscriptions():  SubscriptionSingle[] { 
+        return this._singleSubscriptions 
+    };
+
     dbSync: any;
     items: POJO[] = [];
     storageType: string;
@@ -254,6 +277,7 @@ export class SyncedTable {
         if(this.onChange && !this.skipFirstTrigger){
             setTimeout(this.onChange, 0);
         }
+        if(window[DEBUG_KEY]) window[DEBUG_KEY](this);
     }
 
     private updatePatches = async (walData: WALItem[]) => {

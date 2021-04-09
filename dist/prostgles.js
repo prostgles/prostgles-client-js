@@ -254,9 +254,14 @@ function prostgles(initOpts, syncedTable) {
             let onCall = function (data, cb) {
                 /* TO DO: confirm receiving data or server will unsubscribe */
                 // if(cb) cb(true);
-                subscriptions[channelName].handlers.map(h => {
-                    h(data.data);
-                });
+                if (subscriptions[channelName]) {
+                    subscriptions[channelName].handlers.map(h => {
+                        h(data.data);
+                    });
+                }
+                else {
+                    console.warn("Orphaned subscription: ", channelName);
+                }
             };
             socket.on(channelName, onCall);
             subscriptions[channelName] = {
@@ -399,7 +404,9 @@ function prostgles(initOpts, syncedTable) {
                         dbo[tableName][command] = function (param1, param2, param3) {
                             // if(Array.isArray(param2) || Array.isArray(param3)) throw "Expecting an object";
                             return new Promise((resolve, reject) => {
-                                socket.emit(preffix, { tableName, command, param1, param2, param3 }, (err, res) => {
+                                socket.emit(preffix, { tableName, command, param1, param2, param3 }, 
+                                /* Get col definition and re-cast data types?! */
+                                (err, res) => {
                                     if (err)
                                         reject(err);
                                     else

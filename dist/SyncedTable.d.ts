@@ -102,8 +102,15 @@ export declare class SyncedTable {
         data_type: string;
     }[];
     wal: WAL;
-    multiSubscriptions: SubscriptionMulti[];
-    singleSubscriptions: SubscriptionSingle[];
+    _multiSubscriptions: SubscriptionMulti[];
+    _singleSubscriptions: SubscriptionSingle[];
+    /**
+     * add debug mode to fix sudden no data and sync listeners bug
+     */
+    set multiSubscriptions(mSubs: SubscriptionMulti[]);
+    get multiSubscriptions(): SubscriptionMulti[];
+    set singleSubscriptions(sSubs: SubscriptionSingle[]);
+    get singleSubscriptions(): SubscriptionSingle[];
     dbSync: any;
     items: POJO[];
     storageType: string;

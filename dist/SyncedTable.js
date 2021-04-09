@@ -8,6 +8,7 @@ const STORAGE_TYPES = {
     localStorage: "localStorage",
     object: "object"
 };
+const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 class SyncedTable {
     constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }) {
         this.throttle = 100;
@@ -427,7 +428,32 @@ class SyncedTable {
         if (this.onChange && !this.skipFirstTrigger) {
             setTimeout(this.onChange, 0);
         }
+        if (window[DEBUG_KEY])
+            window[DEBUG_KEY](this);
     }
+    /**
+     * add debug mode to fix sudden no data and sync listeners bug
+     */
+    set multiSubscriptions(mSubs) {
+        if (window[DEBUG_KEY])
+            window[DEBUG_KEY](mSubs, this._multiSubscriptions);
+        this._multiSubscriptions = mSubs.slice(0);
+    }
+    ;
+    get multiSubscriptions() {
+        return this._multiSubscriptions;
+    }
+    ;
+    set singleSubscriptions(sSubs) {
+        if (window[DEBUG_KEY])
+            window[DEBUG_KEY](sSubs, this._singleSubscriptions);
+        this._singleSubscriptions = sSubs.slice(0);
+    }
+    ;
+    get singleSubscriptions() {
+        return this._singleSubscriptions;
+    }
+    ;
     static create(opts) {
         return new Promise((resolve, reject) => {
             try {
