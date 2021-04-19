@@ -2,6 +2,7 @@ import { FieldFilter, WAL } from "prostgles-types";
 export declare type POJO = {
     [key: string]: any;
 };
+export declare const debug: any;
 export declare type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;
     handlesOnData?: boolean;
@@ -12,11 +13,11 @@ export declare type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export declare type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any) => Promise<MultiSyncHandles>;
+export declare type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles>;
 /**
  * Creates a local synchronized record
  */
-export declare type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any) => Promise<SingleSyncHandles>;
+export declare type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles>;
 export declare type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
@@ -77,6 +78,7 @@ export declare type SyncedTableOptions = {
     name: string;
     filter?: POJO;
     onChange?: MultiChangeListener;
+    onError?: (error: any) => void;
     db: any;
     pushDebounce?: number;
     skipFirstTrigger?: boolean;
@@ -118,7 +120,8 @@ export declare class SyncedTable {
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean;
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger, select, storageType, patchText, patchJSON }: SyncedTableOptions);
+    onError: SyncedTableOptions["onError"];
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError }: SyncedTableOptions);
     private updatePatches;
     static create(opts: SyncedTableOptions): Promise<SyncedTable>;
     /**

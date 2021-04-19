@@ -3,12 +3,13 @@ import { WALItem } from "prostgles-types/dist/util";
 export type POJO = { [key: string]: any };
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
-const hasWnd =  typeof window !== "undefined";
-let debug: any = () => {};
+const hasWnd = typeof window !== "undefined";
+export const debug: any = function(...args){
+    if(hasWnd && window[DEBUG_KEY]){
+        window[DEBUG_KEY](...args);
+    }
+};
 
-if(hasWnd && window[DEBUG_KEY]){
-    debug = window[DEBUG_KEY]
-}
 /* Maybe implement later. This brings issues with filter mismatch */
 // type FilterFunction = (data: POJO) => boolean;
 
@@ -23,12 +24,12 @@ export type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any) => Promise<MultiSyncHandles>;
+export type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles>;
 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any) => Promise<SingleSyncHandles>;
+export type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles>;
 
 export type SyncBatchRequest = {
     from_synced?: string | number;
@@ -101,6 +102,7 @@ export type SyncedTableOptions = {
     name: string;
     filter?: POJO;
     onChange?: MultiChangeListener;
+    onError?: (error: any) => void;
     db: any;
     pushDebounce?: number; 
     skipFirstTrigger?: boolean; 
@@ -161,12 +163,14 @@ export class SyncedTable {
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean = false;
+    onError: SyncedTableOptions["onError"];
 
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }: SyncedTableOptions){
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false, onError }: SyncedTableOptions){
         this.name = name;
         this.filter = filter;
         this.select = select;
         this.onChange = onChange;
+        this.onChange
         if(!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if(!hasWnd && storageType === STORAGE_TYPES.localStorage) {
             console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
@@ -190,6 +194,8 @@ export class SyncedTable {
 
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
+
+        this.onError = onError || function(err){ console.error("Sync internal error: ", err)}
         
         const onSyncRequest = (params) => {
                 
@@ -217,8 +223,10 @@ export class SyncedTable {
                 // console.log(`onPullRequest: total(${ data.length })`)
                 return data;
             },
-            onUpdates = ({ data, isSynced }) => {
-                if(isSynced && !this.isSynced){
+            onUpdates = ({ err, data, isSynced }) => {
+                if(err){
+                    this.onError(err)
+                } else if(isSynced && !this.isSynced){
                     this.isSynced = isSynced;
                     let items = this.getItems().map(d => ({ ...d }));
                     this.setItems([]);

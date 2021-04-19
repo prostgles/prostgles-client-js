@@ -1,20 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SyncedTable = void 0;
+exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
-let debug = () => { };
-if (hasWnd && window[DEBUG_KEY]) {
-    debug = window[DEBUG_KEY];
-}
+exports.debug = function (...args) {
+    if (hasWnd && window[DEBUG_KEY]) {
+        window[DEBUG_KEY](...args);
+    }
+};
 const STORAGE_TYPES = {
     array: "array",
     localStorage: "localStorage",
     object: "object"
 };
 class SyncedTable {
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false }) {
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false, onError }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
@@ -331,6 +332,7 @@ class SyncedTable {
         this.filter = filter;
         this.select = select;
         this.onChange = onChange;
+        this.onChange;
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
@@ -353,6 +355,7 @@ class SyncedTable {
         this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
+        this.onError = onError || function (err) { console.error("Sync internal error: ", err); };
         const onSyncRequest = (params) => {
             let res = { c_lr: null, c_fr: null, c_count: 0 };
             let batch = this.getBatch(params);
@@ -372,8 +375,11 @@ class SyncedTable {
             const data = this.getBatch(params);
             // console.log(`onPullRequest: total(${ data.length })`)
             return data;
-        }, onUpdates = ({ data, isSynced }) => {
-            if (isSynced && !this.isSynced) {
+        }, onUpdates = ({ err, data, isSynced }) => {
+            if (err) {
+                this.onError(err);
+            }
+            else if (isSynced && !this.isSynced) {
                 this.isSynced = isSynced;
                 let items = this.getItems().map(d => ({ ...d }));
                 this.setItems([]);
@@ -432,13 +438,13 @@ class SyncedTable {
         if (this.onChange && !this.skipFirstTrigger) {
             setTimeout(this.onChange, 0);
         }
-        debug(this);
+        exports.debug(this);
     }
     /**
      * add debug mode to fix sudden no data and sync listeners bug
      */
     set multiSubscriptions(mSubs) {
-        debug(mSubs, this._multiSubscriptions);
+        exports.debug(mSubs, this._multiSubscriptions);
         this._multiSubscriptions = mSubs.slice(0);
     }
     ;
@@ -447,7 +453,7 @@ class SyncedTable {
     }
     ;
     set singleSubscriptions(sSubs) {
-        debug(sSubs, this._singleSubscriptions);
+        exports.debug(sSubs, this._singleSubscriptions);
         this._singleSubscriptions = sSubs.slice(0);
     }
     ;

@@ -6,8 +6,10 @@ exports.prostgles = void 0;
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 const prostgles_types_1 = require("prostgles-types");
+const SyncedTable_1 = require("./SyncedTable");
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
+    SyncedTable_1.debug("prostgles", { initOpts });
     if (onSchemaChange) {
         let cb;
         if (typeof onSchemaChange === "function") {
@@ -25,6 +27,7 @@ function prostgles(initOpts, syncedTable) {
     let ssyncs = {};
     let connected = false;
     const destroySyncs = () => {
+        SyncedTable_1.debug("destroySyncs", { subscriptions, syncedTables });
         Object.values(subscriptions).map(s => s.destroy());
         subscriptions = {};
         ssyncs = {};
@@ -35,6 +38,7 @@ function prostgles(initOpts, syncedTable) {
         syncedTables = {};
     };
     function _unsubscribe(channelName, handler) {
+        SyncedTable_1.debug("_unsubscribe", { channelName, handler });
         if (subscriptions[channelName]) {
             subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
             if (!subscriptions[channelName].handlers.length) {
@@ -47,6 +51,7 @@ function prostgles(initOpts, syncedTable) {
         }
     }
     function _unsync(channelName, triggers) {
+        SyncedTable_1.debug("_unsync", { channelName, triggers });
         return new Promise((resolve, reject) => {
             if (ssyncs[channelName]) {
                 ssyncs[channelName].triggers = ssyncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&
@@ -210,7 +215,7 @@ function prostgles(initOpts, syncedTable) {
             return makeHandler(channelName, sync_info);
         }
     }
-    async function addSub(dbo, { tableName, command, param1, param2 }, onChange) {
+    async function addSub(dbo, { tableName, command, param1, param2 }, onChange, _onError) {
         function makeHandler(channelName) {
             let unsubscribe = function () {
                 _unsubscribe(channelName, onChange);
@@ -255,14 +260,25 @@ function prostgles(initOpts, syncedTable) {
                 /* TO DO: confirm receiving data or server will unsubscribe */
                 // if(cb) cb(true);
                 if (subscriptions[channelName]) {
-                    subscriptions[channelName].handlers.map(h => {
-                        h(data.data);
-                    });
+                    if (data.data) {
+                        subscriptions[channelName].handlers.map(h => {
+                            h(data.data);
+                        });
+                    }
+                    else if (data.err) {
+                        subscriptions[channelName].errorHandlers.map(h => {
+                            h(data.err);
+                        });
+                    }
+                    else {
+                        console.error("INTERNAL ERROR: Unexpected data format from subscription: ", data);
+                    }
                 }
                 else {
                     console.warn("Orphaned subscription: ", channelName);
                 }
             };
+            let onError = _onError || function (err) { console.error(`Uncaught error within running subscription \n ${channelName}`, err); };
             socket.on(channelName, onCall);
             subscriptions[channelName] = {
                 tableName,
@@ -271,6 +287,7 @@ function prostgles(initOpts, syncedTable) {
                 param2,
                 onCall,
                 handlers: [onChange],
+                errorHandlers: [onError],
                 destroy: () => {
                     if (subscriptions[channelName]) {
                         Object.values(subscriptions[channelName]).map((s) => {
@@ -348,9 +365,9 @@ function prostgles(initOpts, syncedTable) {
             }
             /* Building DBO object */
             const isPojo = (obj) => Object.prototype.toString.call(obj) === "[object Object]";
-            const checkArgs = (basicFilter, options, onChange) => {
-                if (!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function")) {
-                    throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> ) but got something else";
+            const checkArgs = (basicFilter, options, onChange, onError) => {
+                if (!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function") || onError && typeof onError !== "function") {
+                    throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
                 }
             };
             const sub_commands = ["subscribe", "subscribeOne"];
@@ -372,21 +389,21 @@ function prostgles(initOpts, syncedTable) {
                             dbo[tableName].getSync = (filter, params = {}) => {
                                 return syncedTable.create({ name: tableName, filter, db: dbo, ...params });
                             };
-                            const upsertSTable = async (basicFilter = {}, options = {}) => {
+                            const upsertSTable = async (basicFilter = {}, options = {}, onError) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`;
                                 if (!syncedTables[syncName]) {
-                                    syncedTables[syncName] = await syncedTable.create({ ...options, name: tableName, filter: basicFilter, db: dbo });
+                                    syncedTables[syncName] = await syncedTable.create({ ...options, name: tableName, filter: basicFilter, db: dbo, onError });
                                 }
                                 return syncedTables[syncName];
                             };
-                            dbo[tableName].sync = async (basicFilter, options, onChange) => {
-                                checkArgs(basicFilter, options, onChange);
-                                const s = await upsertSTable(basicFilter, options);
+                            dbo[tableName].sync = async (basicFilter, options, onChange, onError) => {
+                                checkArgs(basicFilter, options, onChange, onError);
+                                const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.sync(onChange, options);
                             };
-                            dbo[tableName].syncOne = async (basicFilter, options, onChange) => {
-                                checkArgs(basicFilter, options, onChange);
-                                const s = await upsertSTable(basicFilter, options);
+                            dbo[tableName].syncOne = async (basicFilter, options, onChange, onError) => {
+                                checkArgs(basicFilter, options, onChange, onError);
+                                const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
                         }
@@ -395,9 +412,9 @@ function prostgles(initOpts, syncedTable) {
                         };
                     }
                     else if (sub_commands.includes(command)) {
-                        dbo[tableName][command] = function (param1, param2, onChange) {
-                            checkArgs(param1, param2, onChange);
-                            return addSub(dbo, { tableName, command, param1, param2 }, onChange);
+                        dbo[tableName][command] = function (param1, param2, onChange, onError) {
+                            checkArgs(param1, param2, onChange, onError);
+                            return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
                     }
                     else {
