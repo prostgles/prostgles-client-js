@@ -23,14 +23,67 @@ function prostgles(initOpts, syncedTable) {
     let subscriptions = {};
     // window["subscriptions"] = subscriptions;
     let syncedTables = {};
-    // let syncs = [];
-    let ssyncs = {};
+    let syncs = {};
+    let notifSubs = {};
+    const removeNotifListener = (listener, conf) => {
+        if (notifSubs && notifSubs[conf.notifChannel]) {
+            notifSubs[conf.notifChannel].listeners = notifSubs[conf.notifChannel].listeners.filter(nl => nl !== listener);
+            if (!notifSubs[conf.notifChannel].listeners.length && notifSubs[conf.notifChannel].config && notifSubs[conf.notifChannel].config.socketUnsubChannel && socket) {
+                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel);
+                delete notifSubs[conf.notifChannel];
+            }
+        }
+    };
+    const addNotifListener = (listener, conf) => {
+        notifSubs = notifSubs || {};
+        if (!notifSubs[conf.notifChannel]) {
+            notifSubs[conf.notifChannel] = {
+                config: conf,
+                listeners: [listener]
+            };
+            socket.on(conf.socketChannel, notif => {
+                listener(notif);
+            });
+            /* Unsub from server if client did not subscribe */
+            setTimeout(() => {
+                removeNotifListener(null, conf);
+            }, 500);
+        }
+        else {
+            notifSubs[conf.notifChannel].listeners.push(listener);
+        }
+    };
+    let noticeSubs;
+    const removeNoticeListener = (listener) => {
+        if (noticeSubs) {
+            noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
+            if (!noticeSubs.listeners.length && noticeSubs.config && noticeSubs.config.socketUnsubChannel && socket) {
+                socket.emit(noticeSubs.config.socketUnsubChannel);
+            }
+        }
+    };
+    const addNoticeListener = (listener, conf) => {
+        noticeSubs = noticeSubs || {
+            config: conf,
+            listeners: []
+        };
+        if (!noticeSubs.listeners.length) {
+            socket.on(conf.socketChannel, notice => {
+                listener(notice);
+            });
+            /* Unsub from server if client did not subscribe */
+            setTimeout(() => {
+                removeNoticeListener(null);
+            }, 500);
+        }
+        noticeSubs.listeners.push(listener);
+    };
     let connected = false;
     const destroySyncs = () => {
         SyncedTable_1.debug("destroySyncs", { subscriptions, syncedTables });
         Object.values(subscriptions).map(s => s.destroy());
         subscriptions = {};
-        ssyncs = {};
+        syncs = {};
         Object.values(syncedTables).map((s) => {
             if (s && s.destroy)
                 s.destroy();
@@ -53,19 +106,19 @@ function prostgles(initOpts, syncedTable) {
     function _unsync(channelName, triggers) {
         SyncedTable_1.debug("_unsync", { channelName, triggers });
         return new Promise((resolve, reject) => {
-            if (ssyncs[channelName]) {
-                ssyncs[channelName].triggers = ssyncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&
+            if (syncs[channelName]) {
+                syncs[channelName].triggers = syncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&
                     tr.onSyncRequest !== triggers.onSyncRequest &&
                     tr.onUpdates !== triggers.onUpdates));
-                if (!ssyncs[channelName].triggers.length) {
+                if (!syncs[channelName].triggers.length) {
                     socket.emit(channelName + "unsync", {}, (err, res) => {
                         if (err)
                             reject(err);
                         else
                             resolve(res);
                     });
-                    socket.removeListener(channelName, ssyncs[channelName].onCall);
-                    delete ssyncs[channelName];
+                    socket.removeListener(channelName, syncs[channelName].onCall);
+                    delete syncs[channelName];
                 }
             }
         });
@@ -119,8 +172,8 @@ function prostgles(initOpts, syncedTable) {
             };
             return Object.freeze({ unsync, syncData });
         }
-        const existingChannel = Object.keys(ssyncs).find(ch => {
-            let s = ssyncs[ch];
+        const existingChannel = Object.keys(syncs).find(ch => {
+            let s = syncs[ch];
             return (s.tableName === tableName &&
                 s.command === command &&
                 JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
@@ -133,8 +186,8 @@ function prostgles(initOpts, syncedTable) {
             );
         });
         if (existingChannel) {
-            ssyncs[existingChannel].triggers.push(triggers);
-            return makeHandler(existingChannel, ssyncs[existingChannel].syncInfo);
+            syncs[existingChannel].triggers.push(triggers);
+            return makeHandler(existingChannel, syncs[existingChannel].syncInfo);
         }
         else {
             const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
@@ -149,9 +202,9 @@ function prostgles(initOpts, syncedTable) {
                 */
                 if (!data)
                     return;
-                if (!ssyncs[channelName])
+                if (!syncs[channelName])
                     return;
-                ssyncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
+                syncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
                     // onChange(data.data);
                     if (data.data) {
                         Promise.resolve(onUpdates(data, sync_info))
@@ -202,7 +255,7 @@ function prostgles(initOpts, syncedTable) {
                     // window.localStorage.setItem(channelName, JSON.stringify(data))
                 });
             }
-            ssyncs[channelName] = {
+            syncs[channelName] = {
                 tableName,
                 command,
                 param1,
@@ -357,8 +410,37 @@ function prostgles(initOpts, syncedTable) {
                         socket.emit(prostgles_types_1.CHANNELS.SQL, { query, params, options }, (err, res) => {
                             if (err)
                                 reject(err);
-                            else
-                                resolve(res);
+                            else {
+                                if (options && options.getNotices &&
+                                    res &&
+                                    Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
+                                    !Object.values(res).find(v => typeof v !== "string")) {
+                                    const addListener = (listener) => {
+                                        addNoticeListener(listener, res);
+                                        return {
+                                            removeListener: () => removeNoticeListener(listener)
+                                        };
+                                    };
+                                    const handle = { addListener };
+                                    resolve(handle);
+                                }
+                                else if ((!options || !options.returnType || options.returnType !== "statement") &&
+                                    res &&
+                                    Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() &&
+                                    !Object.values(res).find(v => typeof v !== "string")) {
+                                    const addListener = (listener) => {
+                                        addNotifListener(listener, res);
+                                        return {
+                                            removeListener: () => removeNotifListener(listener, res)
+                                        };
+                                    };
+                                    const handle = { addListener };
+                                    resolve(handle);
+                                }
+                                else {
+                                    resolve(res);
+                                }
+                            }
                         });
                     });
                 };
@@ -447,12 +529,12 @@ function prostgles(initOpts, syncedTable) {
                     }
                 });
             }
-            if (ssyncs && Object.keys(ssyncs).length) {
-                Object.keys(ssyncs).filter(ch => {
-                    return ssyncs[ch].triggers && ssyncs[ch].triggers.length;
+            if (syncs && Object.keys(syncs).length) {
+                Object.keys(syncs).filter(ch => {
+                    return syncs[ch].triggers && syncs[ch].triggers.length;
                 }).map(async (ch) => {
                     try {
-                        let s = ssyncs[ch];
+                        let s = syncs[ch];
                         await addServerSync(s, s.triggers[0].onSyncRequest);
                         socket.on(ch, s.onCall);
                     }

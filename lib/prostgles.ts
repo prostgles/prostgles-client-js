@@ -3,7 +3,7 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS } from "prostgles-types";
+import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, get } from "prostgles-types";
 import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne, debug } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
@@ -25,7 +25,7 @@ export type TableHandlerClientBasic = TableHandlerBasic & {
 
 export type SQLResultRows = (any | { [key: string]: any })[];
 export type SQLResult = {
-    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER";
+    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | string;
     rowCount: number;
     rows: SQLResultRows;
     fields: {
@@ -35,6 +35,8 @@ export type SQLResult = {
     }[];
     duration: number;
 }
+export type DBEventHandles = { addListener: (listener: (event: any) => void) => { removeListener: () => void; } };
+export type SQLResponse = SQLResult | SQLResultRows | string | DBEventHandles;
 
 export type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
@@ -46,7 +48,7 @@ export type DBHandlerClient = {
      * @param params <any[] | object> query arguments to be escaped. e.g.: 
      * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
      */
-    sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
+    sql?: <T = SQLResponse>(query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse | T>;
 };
 export type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;
@@ -61,9 +63,9 @@ export type DBHandlerClientBasic = {
      * 
      * @param query <string> query. e.g.: SELECT * FROM users;
      * @param params <any[] | object> query arguments to be escaped. e.g.: 
-     * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
+     * @param options <object> options:  { returnType?: "rows" | "statement"; getNotices?: boolean; }
      */
-    sql?: <T = any | SQLResult | SQLResultRows | string>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
+    sql?: <T = any | SQLResponse>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
 };
 
 export type Auth = {
@@ -130,6 +132,7 @@ type Syncs = {
 };
 export function prostgles(initOpts: InitOptions, syncedTable: any){
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
+
     debug("prostgles", { initOpts })
     if(onSchemaChange){
         let cb;
@@ -143,9 +146,76 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
     const preffix = CHANNELS._preffix;
     let subscriptions: Subscriptions = {};
     // window["subscriptions"] = subscriptions;
+
     let syncedTables = {};
-    // let syncs = [];
-    let ssyncs: Syncs = {};
+
+    let syncs: Syncs = {};
+
+    let notifSubs: { 
+        [key: string]: {
+            config: DBNotifConfig
+            listeners: ((notif: any) => void)[] 
+        } 
+    } = {};
+    const removeNotifListener = (listener: any, conf: DBNotifConfig) => {
+        if(notifSubs && notifSubs[conf.notifChannel]){
+            notifSubs[conf.notifChannel].listeners = notifSubs[conf.notifChannel].listeners.filter(nl => nl !== listener);
+            if(!notifSubs[conf.notifChannel].listeners.length && notifSubs[conf.notifChannel].config && notifSubs[conf.notifChannel].config.socketUnsubChannel && socket){
+                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel);
+                delete notifSubs[conf.notifChannel];
+            }
+        }
+    };
+    const addNotifListener = (listener: any, conf: DBNotifConfig) => {
+            notifSubs = notifSubs || {};
+
+            if(!notifSubs[conf.notifChannel]){
+                notifSubs[conf.notifChannel] = {
+                    config: conf,
+                    listeners: [listener]
+                };
+                socket.on(conf.socketChannel, notif => {
+                    listener(notif)
+                });
+                /* Unsub from server if client did not subscribe */
+                setTimeout(() => {
+                    removeNotifListener(null, conf);
+                }, 500)
+            } else {
+                notifSubs[conf.notifChannel].listeners.push(listener);
+            }            
+        };
+        
+
+    let noticeSubs: {
+        listeners: ((notice: any) => void)[];
+        config: DBNoticeConfig;
+    } ;
+    const removeNoticeListener = (listener: any) => {
+        if(noticeSubs){
+            noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
+            if(!noticeSubs.listeners.length && noticeSubs.config && noticeSubs.config.socketUnsubChannel && socket){
+                socket.emit(noticeSubs.config.socketUnsubChannel);
+            }
+        }
+    };
+    const addNoticeListener = (listener: any, conf: DBNoticeConfig) => {
+            noticeSubs = noticeSubs || {
+                config: conf,
+                listeners: []
+            };
+            
+            if(!noticeSubs.listeners.length){
+                socket.on(conf.socketChannel, notice => {
+                    listener(notice)
+                });
+                /* Unsub from server if client did not subscribe */
+                setTimeout(() => {
+                    removeNoticeListener(null);
+                }, 500)
+            }
+            noticeSubs.listeners.push(listener);
+        };
 
     let connected = false;
 
@@ -153,7 +223,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         debug("destroySyncs", { subscriptions, syncedTables })
         Object.values(subscriptions).map(s => s.destroy());
         subscriptions = {};
-        ssyncs = {};
+        syncs = {};
         Object.values(syncedTables).map((s: any)=> {
             if(s && s.destroy) s.destroy();
         });
@@ -177,20 +247,20 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
     function _unsync(channelName: string, triggers: SyncTriggers){
         debug("_unsync", { channelName, triggers })
         return new Promise((resolve, reject) => {
-            if(ssyncs[channelName]){
-                ssyncs[channelName].triggers = ssyncs[channelName].triggers.filter(tr => (
+            if(syncs[channelName]){
+                syncs[channelName].triggers = syncs[channelName].triggers.filter(tr => (
                     tr.onPullRequest !== triggers.onPullRequest &&
                     tr.onSyncRequest !== triggers.onSyncRequest &&
                     tr.onUpdates !== triggers.onUpdates
                 ));
                 
-                if(!ssyncs[channelName].triggers.length){
+                if(!syncs[channelName].triggers.length){
                     socket.emit(channelName + "unsync", {}, (err, res)=>{
                         if(err) reject(err);
                         else resolve(res);
                     });
-                    socket.removeListener(channelName, ssyncs[channelName].onCall);
-                    delete ssyncs[channelName];
+                    socket.removeListener(channelName, syncs[channelName].onCall);
+                    delete syncs[channelName];
                 }
             }
         });
@@ -250,8 +320,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             return Object.freeze({ unsync, syncData });
         }
 
-        const existingChannel = Object.keys(ssyncs).find(ch => {
-            let s = ssyncs[ch];
+        const existingChannel = Object.keys(syncs).find(ch => {
+            let s = syncs[ch];
             return (
                 s.tableName === tableName &&
                 s.command === command &&
@@ -266,8 +336,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         });
 
         if(existingChannel){
-            ssyncs[existingChannel].triggers.push(triggers);
-            return makeHandler(existingChannel, ssyncs[existingChannel].syncInfo);
+            syncs[existingChannel].triggers.push(triggers);
+            return makeHandler(existingChannel, syncs[existingChannel].syncInfo);
         } else {
             const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
             const { channelName, synced_field, id_fields } = sync_info;
@@ -281,9 +351,9 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 */
                 if(!data) return;
 
-                if(!ssyncs[channelName]) return;
+                if(!syncs[channelName]) return;
 
-                ssyncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest })=>{
+                syncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest })=>{
                     // onChange(data.data);
                     if(data.data){
                         Promise.resolve(onUpdates(data, sync_info))
@@ -331,7 +401,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
 
             }
-            ssyncs[channelName] = {
+            syncs[channelName] = {
                 tableName,
                 command,
                 param1,
@@ -492,10 +562,42 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             if(rawSQL){
                 // dbo.schema = Object.freeze([ ...dbo.sql ]);
                 dbo.sql = function(query, params, options){
-                    return new Promise((resolve, reject)=>{
-                        socket.emit(CHANNELS.SQL, { query, params, options }, (err,res)=>{
+                    return new Promise((resolve, reject) => {
+                        socket.emit(CHANNELS.SQL, { query, params, options }, (err, res)=>{
                             if(err) reject(err);
-                            else resolve(res);
+                            else {
+                                if(options && options.getNotices &&
+                                    res && 
+                                    Object.keys(res).sort().join() === [ "socketChannel", "socketUnsubChannel"].sort().join() && 
+                                    !Object.values(res).find(v => typeof v !== "string")
+                                ){
+                                    const addListener = (listener: (any) => void) => {
+                                        addNoticeListener(listener, res as DBNoticeConfig);
+                                        return {
+                                            removeListener: () => removeNoticeListener(listener)
+                                        }
+                                    };
+                                    const handle: DBEventHandles = { addListener };
+                                    resolve(handle);
+                                } else if(
+                                    (!options || !options.returnType || options.returnType !== "statement") &&
+                                    res && 
+                                    Object.keys(res).sort().join() === [ "socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() && 
+                                    !Object.values(res).find(v => typeof v !== "string")
+                                ){
+                                    const addListener = (listener: (any) => void) => {
+                                        addNotifListener(listener, res as DBNotifConfig)
+                                        return {
+                                            removeListener: () => removeNotifListener(listener, res as DBNotifConfig)
+                                        }
+                                    }
+                                    const handle: DBEventHandles = { addListener };
+                                    resolve(handle);
+                                    
+                                } else {
+                                    resolve(res);
+                                }
+                            }
                         });
                     });
                 }
@@ -587,12 +689,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                     }               
                 });
             }
-            if(ssyncs && Object.keys(ssyncs).length){
-                Object.keys(ssyncs).filter(ch => {
-                    return ssyncs[ch].triggers && ssyncs[ch].triggers.length
+            if(syncs && Object.keys(syncs).length){
+                Object.keys(syncs).filter(ch => {
+                    return syncs[ch].triggers && syncs[ch].triggers.length
                 }).map(async ch => {
                     try {
-                        let s = ssyncs[ch];
+                        let s = syncs[ch];
                         await addServerSync(s, s.triggers[0].onSyncRequest);
                         socket.on(ch, s.onCall);
                     } catch(err) {
