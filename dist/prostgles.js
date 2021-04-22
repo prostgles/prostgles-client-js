@@ -29,7 +29,7 @@ function prostgles(initOpts, syncedTable) {
         if (notifSubs && notifSubs[conf.notifChannel]) {
             notifSubs[conf.notifChannel].listeners = notifSubs[conf.notifChannel].listeners.filter(nl => nl !== listener);
             if (!notifSubs[conf.notifChannel].listeners.length && notifSubs[conf.notifChannel].config && notifSubs[conf.notifChannel].config.socketUnsubChannel && socket) {
-                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel);
+                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
                 delete notifSubs[conf.notifChannel];
             }
         }
@@ -42,12 +42,16 @@ function prostgles(initOpts, syncedTable) {
                 listeners: [listener]
             };
             socket.on(conf.socketChannel, notif => {
-                listener(notif);
+                if (notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length) {
+                    listener(notif);
+                    notifSubs[conf.notifChannel].listeners.map(l => {
+                        l(notif);
+                    });
+                }
+                else {
+                    socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
+                }
             });
-            /* Unsub from server if client did not subscribe */
-            setTimeout(() => {
-                removeNotifListener(null, conf);
-            }, 500);
         }
         else {
             notifSubs[conf.notifChannel].listeners.push(listener);
@@ -58,7 +62,7 @@ function prostgles(initOpts, syncedTable) {
         if (noticeSubs) {
             noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
             if (!noticeSubs.listeners.length && noticeSubs.config && noticeSubs.config.socketUnsubChannel && socket) {
-                socket.emit(noticeSubs.config.socketUnsubChannel);
+                socket.emit(noticeSubs.config.socketUnsubChannel, {});
             }
         }
     };
@@ -69,12 +73,15 @@ function prostgles(initOpts, syncedTable) {
         };
         if (!noticeSubs.listeners.length) {
             socket.on(conf.socketChannel, notice => {
-                listener(notice);
+                if (noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length) {
+                    noticeSubs.listeners.map(l => {
+                        l(notice);
+                    });
+                }
+                else {
+                    socket.emit(conf.socketUnsubChannel, {});
+                }
             });
-            /* Unsub from server if client did not subscribe */
-            setTimeout(() => {
-                removeNoticeListener(null);
-            }, 500);
         }
         noticeSubs.listeners.push(listener);
     };
@@ -411,7 +418,8 @@ function prostgles(initOpts, syncedTable) {
                             if (err)
                                 reject(err);
                             else {
-                                if (options && options.getNotices &&
+                                if (options &&
+                                    options.returnType === "noticeSubscription" &&
                                     res &&
                                     Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
                                     !Object.values(res).find(v => typeof v !== "string")) {

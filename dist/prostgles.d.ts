@@ -20,7 +20,7 @@ export declare type SQLResultRows = (any | {
     [key: string]: any;
 })[];
 export declare type SQLResult = {
-    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | string;
+    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | "UNLISTEN" | "INSERT" | string;
     rowCount: number;
     rows: SQLResultRows;
     fields: {
@@ -35,17 +35,18 @@ export declare type DBEventHandles = {
         removeListener: () => void;
     };
 };
-export declare type SQLResponse = SQLResult | SQLResultRows | string | DBEventHandles;
+export declare type SQLResponse = any | SQLResult | SQLResultRows | string | DBEventHandles;
+export declare type SQLHandler = (query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse>;
 export declare type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
 } & DbJoinMaker & {
     /**
      *
      * @param query <string> query. e.g.: SELECT * FROM users;
-     * @param params <any[] | object> query arguments to be escaped. e.g.:
-     * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
+     * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
+     * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
      */
-    sql?: <T = SQLResponse>(query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse | T>;
+    sql?: SQLHandler;
 };
 export declare type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;
@@ -58,10 +59,10 @@ export declare type DBHandlerClientBasic = {
     /**
      *
      * @param query <string> query. e.g.: SELECT * FROM users;
-     * @param params <any[] | object> query arguments to be escaped. e.g.:
-     * @param options <object> options:  { returnType?: "rows" | "statement"; getNotices?: boolean; }
+     * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
+     * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
      */
-    sql?: <T = any | SQLResponse>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
+    sql?: SQLHandler;
 };
 export declare type Auth = {
     register?: (params: any) => Promise<any>;

@@ -25,7 +25,7 @@ export type TableHandlerClientBasic = TableHandlerBasic & {
 
 export type SQLResultRows = (any | { [key: string]: any })[];
 export type SQLResult = {
-    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | string;
+    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | "UNLISTEN" | "INSERT" | string;
     rowCount: number;
     rows: SQLResultRows;
     fields: {
@@ -36,7 +36,10 @@ export type SQLResult = {
     duration: number;
 }
 export type DBEventHandles = { addListener: (listener: (event: any) => void) => { removeListener: () => void; } };
-export type SQLResponse = SQLResult | SQLResultRows | string | DBEventHandles;
+export type SQLResponse = any | SQLResult | SQLResultRows | string | DBEventHandles ;
+
+export type SQLHandler = (query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse>;
+
 
 export type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
@@ -45,10 +48,10 @@ export type DBHandlerClient = {
     /**
      * 
      * @param query <string> query. e.g.: SELECT * FROM users;
-     * @param params <any[] | object> query arguments to be escaped. e.g.: 
-     * @param options <object> options: justRows: true will return only the resulting rows. statement: true will return the parsed SQL query.
+     * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
+     * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
      */
-    sql?: <T = SQLResponse>(query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse | T>;
+    sql?: SQLHandler;
 };
 export type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;
@@ -62,10 +65,10 @@ export type DBHandlerClientBasic = {
     /**
      * 
      * @param query <string> query. e.g.: SELECT * FROM users;
-     * @param params <any[] | object> query arguments to be escaped. e.g.: 
-     * @param options <object> options:  { returnType?: "rows" | "statement"; getNotices?: boolean; }
+     * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
+     * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
      */
-    sql?: <T = any | SQLResponse>(query: string, args?: any | any[], options?: SQLOptions) => Promise<T>;
+    sql?: SQLHandler;
 };
 
 export type Auth = {
@@ -161,7 +164,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         if(notifSubs && notifSubs[conf.notifChannel]){
             notifSubs[conf.notifChannel].listeners = notifSubs[conf.notifChannel].listeners.filter(nl => nl !== listener);
             if(!notifSubs[conf.notifChannel].listeners.length && notifSubs[conf.notifChannel].config && notifSubs[conf.notifChannel].config.socketUnsubChannel && socket){
-                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel);
+                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
                 delete notifSubs[conf.notifChannel];
             }
         }
@@ -175,15 +178,19 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                     listeners: [listener]
                 };
                 socket.on(conf.socketChannel, notif => {
-                    listener(notif)
+                    if(notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length){
+                        listener(notif);
+                        notifSubs[conf.notifChannel].listeners.map(l => {
+                            l(notif);
+                        })
+                    } else {
+                        socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
+                    }
                 });
-                /* Unsub from server if client did not subscribe */
-                setTimeout(() => {
-                    removeNotifListener(null, conf);
-                }, 500)
+                
             } else {
                 notifSubs[conf.notifChannel].listeners.push(listener);
-            }            
+            }
         };
         
 
@@ -195,7 +202,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         if(noticeSubs){
             noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
             if(!noticeSubs.listeners.length && noticeSubs.config && noticeSubs.config.socketUnsubChannel && socket){
-                socket.emit(noticeSubs.config.socketUnsubChannel);
+                socket.emit(noticeSubs.config.socketUnsubChannel, {});
             }
         }
     };
@@ -207,12 +214,14 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             
             if(!noticeSubs.listeners.length){
                 socket.on(conf.socketChannel, notice => {
-                    listener(notice)
+                    if(noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length){
+                        noticeSubs.listeners.map(l => {
+                            l(notice);
+                        })
+                    } else {
+                        socket.emit(conf.socketUnsubChannel, {});
+                    }
                 });
-                /* Unsub from server if client did not subscribe */
-                setTimeout(() => {
-                    removeNoticeListener(null);
-                }, 500)
             }
             noticeSubs.listeners.push(listener);
         };
@@ -566,7 +575,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                         socket.emit(CHANNELS.SQL, { query, params, options }, (err, res)=>{
                             if(err) reject(err);
                             else {
-                                if(options && options.getNotices &&
+                                if( options && 
+                                    options.returnType === "noticeSubscription" &&
                                     res && 
                                     Object.keys(res).sort().join() === [ "socketChannel", "socketUnsubChannel"].sort().join() && 
                                     !Object.values(res).find(v => typeof v !== "string")
