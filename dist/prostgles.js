@@ -43,7 +43,6 @@ function prostgles(initOpts, syncedTable) {
             };
             socket.on(conf.socketChannel, notif => {
                 if (notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length) {
-                    listener(notif);
                     notifSubs[conf.notifChannel].listeners.map(l => {
                         l(notif);
                     });
