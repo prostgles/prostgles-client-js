@@ -41,6 +41,7 @@ function prostgles(initOpts, syncedTable) {
                 config: conf,
                 listeners: [listener]
             };
+            socket.removeAllListeners(conf.socketChannel);
             socket.on(conf.socketChannel, notif => {
                 if (notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length) {
                     notifSubs[conf.notifChannel].listeners.map(l => {
@@ -71,6 +72,7 @@ function prostgles(initOpts, syncedTable) {
             listeners: []
         };
         if (!noticeSubs.listeners.length) {
+            socket.removeAllListeners(conf.socketChannel);
             socket.on(conf.socketChannel, notice => {
                 if (noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length) {
                     noticeSubs.listeners.map(l => {
@@ -425,6 +427,7 @@ function prostgles(initOpts, syncedTable) {
                                     const addListener = (listener) => {
                                         addNoticeListener(listener, res);
                                         return {
+                                            ...res,
                                             removeListener: () => removeNoticeListener(listener)
                                         };
                                     };
@@ -438,6 +441,7 @@ function prostgles(initOpts, syncedTable) {
                                     const addListener = (listener) => {
                                         addNotifListener(listener, res);
                                         return {
+                                            ...res,
                                             removeListener: () => removeNotifListener(listener, res)
                                         };
                                     };

@@ -177,6 +177,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                     config: conf,
                     listeners: [listener]
                 };
+                socket.removeAllListeners(conf.socketChannel);
                 socket.on(conf.socketChannel, notif => {
                     if(notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length){
                         notifSubs[conf.notifChannel].listeners.map(l => {
@@ -212,6 +213,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             };
             
             if(!noticeSubs.listeners.length){
+                socket.removeAllListeners(conf.socketChannel);
                 socket.on(conf.socketChannel, notice => {
                     if(noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length){
                         noticeSubs.listeners.map(l => {
@@ -583,6 +585,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                     const addListener = (listener: (any) => void) => {
                                         addNoticeListener(listener, res as DBNoticeConfig);
                                         return {
+                                            ...res,
                                             removeListener: () => removeNoticeListener(listener)
                                         }
                                     };
@@ -597,6 +600,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                     const addListener = (listener: (any) => void) => {
                                         addNotifListener(listener, res as DBNotifConfig)
                                         return {
+                                            ...res,
                                             removeListener: () => removeNotifListener(listener, res as DBNotifConfig)
                                         }
                                     }
