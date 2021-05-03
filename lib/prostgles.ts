@@ -90,7 +90,7 @@ export type InitOptions = {
     onDisconnect?: (socket: any) => any;
 }
 type SubscriptionHandler = {
-    unsubscribe: Function;
+    unsubscribe: () => Promise<any>;
     update?: (object)=>Promise<any> | any;
 }
 
@@ -241,17 +241,22 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
     }
 
     function _unsubscribe(channelName: string, handler: Function){
-        debug("_unsubscribe", { channelName, handler })
-        if(subscriptions[channelName]){
-            subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
-            if(!subscriptions[channelName].handlers.length){
-                socket.emit(channelName + "unsubscribe", {}, (err, res)=>{
-                    // console.log("unsubscribed", err, res);
-                });
-                socket.removeListener(channelName, subscriptions[channelName].onCall);
-                delete subscriptions[channelName];
-            }
-        }
+        debug("_unsubscribe", { channelName, handler });
+
+        return new Promise((resolve, reject) => {
+            if(subscriptions[channelName]){
+                subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
+                if(!subscriptions[channelName].handlers.length){
+                    socket.emit(channelName + "unsubscribe", {}, (err, res)=>{
+                        // console.log("unsubscribed", err, res);
+                        if(err) reject(err);
+                        else resolve(res);
+                    });
+                    socket.removeListener(channelName, subscriptions[channelName].onCall);
+                    delete subscriptions[channelName];
+                } else resolve(true)
+            } else resolve(true)
+        });
     }
 
     function _unsync(channelName: string, triggers: SyncTriggers){
@@ -430,7 +435,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         function makeHandler(channelName: string){
 
             let unsubscribe = function(){
-                _unsubscribe(channelName, onChange);
+                return _unsubscribe(channelName, onChange);
             }
             let res: any = { unsubscribe }
             /* Some dbo sorting was done to make sure this will work */
@@ -625,7 +630,9 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
             const sub_commands = ["subscribe", "subscribeOne"];
             Object.keys(dbo).forEach(tableName => {
-                Object.keys(dbo[tableName])
+                const all_commands = Object.keys(dbo[tableName]);
+                
+                all_commands
                 .sort((a, b) => <never>sub_commands.includes(a) - <never>sub_commands.includes(b))
                 .forEach(command => {
                     if(["find", "findOne"].includes(command)){
@@ -650,12 +657,12 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                 }
                                 return syncedTables[syncName]
                             }
-                            dbo[tableName].sync = async (basicFilter, options: { handlesOnData: true, select: "*" }, onChange, onError) => {
+                            dbo[tableName].sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                                 checkArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
-                                return await s.sync(onChange, options);
+                                return await s.sync(onChange, options.handlesOnData);
                             }
-                            dbo[tableName].syncOne = async (basicFilter, options: { handlesOnData: true }, onChange, onError) => {
+                            dbo[tableName].syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
                                 checkArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
@@ -670,6 +677,16 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             checkArgs(param1, param2, onChange, onError);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
+
+                        const SUBONE = "subscribeOne";
+                        if(command === SUBONE || !sub_commands.includes(SUBONE)){
+                            dbo[tableName][SUBONE] = function(param1, param2, onChange, onError){
+                                checkArgs(param1, param2, onChange, onError);
+
+                                let onChangeOne = (rows) => { onChange(rows[0]) };
+                                return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
+                            };
+                        }
                     } else {
                         dbo[tableName][command] = function(param1, param2, param3){
                             // if(Array.isArray(param2) || Array.isArray(param3)) throw "Expecting an object";

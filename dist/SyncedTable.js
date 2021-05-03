@@ -478,9 +478,9 @@ class SyncedTable {
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >
-     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. False by default;
+     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
-    sync(onChange, handlesOnData = false) {
+    sync(onChange, handlesOnData = true) {
         const handles = {
             unsync: () => { this.unsubscribe(onChange); },
             upsert: (newData) => {
@@ -534,9 +534,9 @@ class SyncedTable {
      * Returns a sync handler to a specific record within the SyncedTable instance
      * @param idObj object containing the target id_fields properties
      * @param onChange change listener <(item: object, delta: object) => any >
-     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. False by default;
+     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
-    syncOne(idObj, onChange, handlesOnData = false) {
+    syncOne(idObj, onChange, handlesOnData = true) {
         if (!idObj || !onChange)
             throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
         // const getIdObj = () => this.getIdObj(this.findOne(idObj));
@@ -549,8 +549,14 @@ class SyncedTable {
                 return this.delete(idObj);
             },
             update: newData => {
+                /* DROPPED SYNC BUG */
+                if (!this.singleSubscriptions.length) {
+                    console.warn("No singleSubscriptions");
+                    exports.debug("nosync", this._singleSubscriptions);
+                }
                 this.upsert([{ idObj, delta: newData }]);
-            }
+            },
+            cloneSync: (onChange) => Promise.resolve(this.syncOne(idObj, onChange))
             // set: data => {
             //     const newData = { ...data, ...idObj }
             //     // this.notifySubscriptions(idObj, newData, data);
@@ -568,6 +574,7 @@ class SyncedTable {
                     newData.$update = handles.update;
                     newData.$delete = handles.delete;
                     newData.$unsync = handles.unsync;
+                    newData.$cloneSync = handles.cloneSync;
                 }
                 return onChange(newData, delta);
             }

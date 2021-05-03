@@ -13,11 +13,11 @@ export declare type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export declare type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles>;
+export declare type Sync = <T = POJO>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles<T>>;
 /**
  * Creates a local synchronized record
  */
-export declare type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles>;
+export declare type SyncOne = <T = POJO>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
 export declare type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
@@ -34,6 +34,7 @@ export declare type ItemUpdated = ItemUpdate & {
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 };
+export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
@@ -43,20 +44,22 @@ export declare type SyncDataItems = POJO & {
 };
 /**
  * CRUD handles added if initialised with handlesOnData = true
- * A single data item can also be unsynced
+ * A single data item can also be unsynced and cloned
  */
 export declare type SyncDataItem = SyncDataItems & {
     $unsync?: () => any;
+    $cloneSync?: CloneSync<POJO>;
 };
-export declare type MultiSyncHandles = {
+export declare type MultiSyncHandles<T = POJO> = {
     unsync: () => void;
-    upsert: (newData: POJO[]) => any;
+    upsert: (newData: T[]) => any;
 };
-export declare type SingleSyncHandles = {
-    get: () => POJO;
+export declare type SingleSyncHandles<T = POJO> = {
+    get: () => T;
     unsync: () => any;
     delete: () => void;
-    update: (data: POJO) => void;
+    update: (data: T) => void;
+    cloneSync: CloneSync<T>;
 };
 export declare type SubscriptionSingle = {
     _onChange: (data: POJO, delta: POJO) => POJO;
@@ -127,14 +130,14 @@ export declare class SyncedTable {
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >
-     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. False by default;
+     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
     sync(onChange: MultiChangeListener, handlesOnData?: boolean): MultiSyncHandles;
     /**
      * Returns a sync handler to a specific record within the SyncedTable instance
      * @param idObj object containing the target id_fields properties
      * @param onChange change listener <(item: object, delta: object) => any >
-     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. False by default;
+     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
     syncOne(idObj: POJO, onChange: SingleChangeListener, handlesOnData?: boolean): SingleSyncHandles;
     /**

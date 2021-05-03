@@ -24,12 +24,12 @@ export type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export type Sync = <T = any>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles>;
+export type Sync = <T = POJO>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItems & T)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles<T>>;
 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne = <T = any>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles>;
+export type SyncOne = <T = POJO>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem & T), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
 
 export type SyncBatchRequest = {
     from_synced?: string | number;
@@ -49,6 +49,11 @@ export type ItemUpdated = ItemUpdate & {
     from_server: boolean;
 }
 
+export type CloneSync<T> = (
+    onChange: SingleChangeListener,
+    onError?: (error: any) => void
+) => Promise<SingleSyncHandles<T>>;
+
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
@@ -58,21 +63,24 @@ export type SyncDataItems = POJO & {
 }
 /**
  * CRUD handles added if initialised with handlesOnData = true
- * A single data item can also be unsynced
+ * A single data item can also be unsynced and cloned
  */
 export type SyncDataItem = SyncDataItems & {
     $unsync?: () => any;
+    $cloneSync?: CloneSync<POJO>;
 }
 
-export type MultiSyncHandles = {
+export type MultiSyncHandles<T = POJO> = {
     unsync: () => void;
-    upsert: (newData: POJO[]) => any;
+    upsert: (newData: T[]) => any;
 }
-export type SingleSyncHandles = {
-    get: () => POJO;
+export type SingleSyncHandles<T = POJO> = {
+    get: () => T;
     unsync: () => any;
     delete: () => void;
-    update: (data: POJO) => void;
+    update: (data: T) => void;
+    // filter: POJO;
+    cloneSync: CloneSync<T>;
 }
 export type SubscriptionSingle = {
     _onChange: (data: POJO, delta: POJO) => POJO;
@@ -363,9 +371,9 @@ export class SyncedTable {
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >
-     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. False by default;
+     * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
-    sync(onChange: MultiChangeListener, handlesOnData = false): MultiSyncHandles {
+    sync(onChange: MultiChangeListener, handlesOnData = true): MultiSyncHandles {
         const handles: MultiSyncHandles = {
                 unsync: () => { this.unsubscribe(onChange); },
                 upsert: (newData) => {
@@ -424,9 +432,9 @@ export class SyncedTable {
      * Returns a sync handler to a specific record within the SyncedTable instance
      * @param idObj object containing the target id_fields properties
      * @param onChange change listener <(item: object, delta: object) => any >
-     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. False by default;
+     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
-    syncOne(idObj: POJO, onChange: SingleChangeListener, handlesOnData = false): SingleSyncHandles{
+    syncOne(idObj: POJO, onChange: SingleChangeListener, handlesOnData = true): SingleSyncHandles {
         if(!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
         // const getIdObj = () => this.getIdObj(this.findOne(idObj));
@@ -440,8 +448,14 @@ export class SyncedTable {
                 return this.delete(idObj);
             },
             update: newData => {
+                /* DROPPED SYNC BUG */
+                if(!this.singleSubscriptions.length){
+                    console.warn("No singleSubscriptions");
+                    debug("nosync", this._singleSubscriptions);
+                }
                 this.upsert([{ idObj, delta: newData }]);                
-            }
+            },
+            cloneSync: (onChange) => Promise.resolve(this.syncOne(idObj, onChange))
             // set: data => {
             //     const newData = { ...data, ...idObj }
             //     // this.notifySubscriptions(idObj, newData, data);
@@ -460,6 +474,7 @@ export class SyncedTable {
                     newData.$update = handles.update;
                     newData.$delete = handles.delete;
                     newData.$unsync = handles.unsync;
+                    newData.$cloneSync = handles.cloneSync;
                 }
                 return onChange(newData, delta)
             }
