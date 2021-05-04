@@ -525,8 +525,10 @@ class SyncedTable {
         };
         this.multiSubscriptions.push(sub);
         if (!this.skipFirstTrigger) {
-            let items = this.getItems();
-            onChange(items, items);
+            setTimeout(() => {
+                let items = this.getItems();
+                onChange(items, items);
+            }, 0);
         }
         return Object.freeze({ ...handles });
     }
@@ -556,7 +558,7 @@ class SyncedTable {
                 }
                 this.upsert([{ idObj, delta: newData }]);
             },
-            cloneSync: (onChange) => Promise.resolve(this.syncOne(idObj, onChange))
+            cloneSync: (onChange) => this.syncOne(idObj, onChange)
             // set: data => {
             //     const newData = { ...data, ...idObj }
             //     // this.notifySubscriptions(idObj, newData, data);
@@ -580,10 +582,12 @@ class SyncedTable {
             }
         };
         this.singleSubscriptions.push(sub);
-        let existingData = handles.get();
-        if (existingData) {
-            sub.notify(existingData, existingData);
-        }
+        setTimeout(() => {
+            let existingData = handles.get();
+            if (existingData) {
+                sub.notify(existingData, existingData);
+            }
+        }, 0);
         return Object.freeze({ ...handles });
     }
     getIdStr(d) {

@@ -34,7 +34,7 @@ export declare type ItemUpdated = ItemUpdate & {
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 };
-export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
+export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => SingleSyncHandles<T>;
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
