@@ -197,7 +197,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
     let noticeSubs: {
         listeners: ((notice: any) => void)[];
         config: DBNoticeConfig;
-    } ;
+    };
     const removeNoticeListener = (listener: any) => {
         if(noticeSubs){
             noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
@@ -249,13 +249,20 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 if(!subscriptions[channelName].handlers.length){
                     socket.emit(channelName + "unsubscribe", {}, (err, res)=>{
                         // console.log("unsubscribed", err, res);
-                        if(err) reject(err);
-                        else resolve(res);
+                        if(err) console.error(err);
+                        // else resolve(res);
                     });
                     socket.removeListener(channelName, subscriptions[channelName].onCall);
                     delete subscriptions[channelName];
-                } else resolve(true)
-            } else resolve(true)
+                    
+                    /* Not waiting for server confirmation to speed things up */
+                    resolve(true)
+                } else {
+                    resolve(true)
+                }
+            } else {
+                resolve(true)
+            }
         });
     }
 

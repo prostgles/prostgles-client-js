@@ -107,18 +107,21 @@ function prostgles(initOpts, syncedTable) {
                     socket.emit(channelName + "unsubscribe", {}, (err, res) => {
                         // console.log("unsubscribed", err, res);
                         if (err)
-                            reject(err);
-                        else
-                            resolve(res);
+                            console.error(err);
+                        // else resolve(res);
                     });
                     socket.removeListener(channelName, subscriptions[channelName].onCall);
                     delete subscriptions[channelName];
-                }
-                else
+                    /* Not waiting for server confirmation to speed things up */
                     resolve(true);
+                }
+                else {
+                    resolve(true);
+                }
             }
-            else
+            else {
                 resolve(true);
+            }
         });
     }
     function _unsync(channelName, triggers) {

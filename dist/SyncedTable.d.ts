@@ -145,7 +145,7 @@ export declare class SyncedTable {
      * @param newData -> updates. Must include id_fields + updates
      */
     private notifySubscribers;
-    unsubscribe: (onChange: any) => void;
+    unsubscribe: (onChange: any) => string;
     private getIdStr;
     private getIdObj;
     private getRowSyncObj;

@@ -375,7 +375,9 @@ export class SyncedTable {
      */
     sync(onChange: MultiChangeListener, handlesOnData = true): MultiSyncHandles {
         const handles: MultiSyncHandles = {
-                unsync: () => { this.unsubscribe(onChange); },
+                unsync: () => {
+                    return this.unsubscribe(onChange); 
+                },
                 upsert: (newData) => {
                     if(newData){
                         const prepareOne = (d) => {
@@ -444,7 +446,7 @@ export class SyncedTable {
         const handles: SingleSyncHandles = {
             get: () => this.getItem(idObj).data,
             unsync: () => {
-                this.unsubscribe(onChange)
+                return this.unsubscribe(onChange)
             },
             delete: () => {
                 return this.delete(idObj);
@@ -560,6 +562,8 @@ export class SyncedTable {
     unsubscribe = (onChange) => {
         this.singleSubscriptions = this.singleSubscriptions.filter(s => s._onChange !== onChange);
         this.multiSubscriptions = this.multiSubscriptions.filter(s => s._onChange !== onChange);
+        debug("unsubscribe", this);
+        return "ok";
     }
 
     private getIdStr(d){
@@ -690,6 +694,22 @@ export class SyncedTable {
             let idObj = { ...item.idObj };
             let delta = { ...item.delta };
 
+            /* Convert undefined to null because:
+                1) JSON.stringify drops these keys
+                2) Postgres does not have undefined
+            */
+            Object.keys(delta).map(k => {
+                if(delta[k] === undefined) delta[k] = null;
+            })
+
+            if(this.columns && this.columns.length){
+                const badCols = this.columns.filter(c => 
+                    !Object.keys({ ...item.delta, ...item.idObj }).includes(c.name) 
+                );
+                if(badCols.length){
+                    console.error(`Unexpected columns in sync item update: ` + badCols.join(", "));
+                }
+            }
 
             let oItm = this.getItem(idObj),
                 oldIdx = oItm.index,
