@@ -671,6 +671,18 @@ export class SyncedTable {
         return true
     }
 
+    private checkItemCols = (item: POJO) => {
+        if(this.columns && this.columns.length){
+            const badCols = Object.keys({ ...item })
+                .filter(k => 
+                    !this.columns.find(c => c.name === k)
+                );
+            if(badCols.length){
+                throw(`Unexpected columns in sync item update: ` + badCols.join(", "));
+            }
+        }
+    }
+
     /**
      * Upserts data locally -> notify subs -> sends to server if required
      * synced_field is populated if data is not from server
@@ -702,13 +714,8 @@ export class SyncedTable {
                 if(delta[k] === undefined) delta[k] = null;
             })
 
-            if(this.columns && this.columns.length){
-                const badCols = this.columns.filter(c => 
-                    !Object.keys({ ...item.delta, ...item.idObj }).includes(c.name) 
-                );
-                if(badCols.length){
-                    console.error(`Unexpected columns in sync item update: ` + badCols.join(", "));
-                }
+            if(!from_server){
+                this.checkItemCols({ ...item.delta, ...item.idObj });
             }
 
             let oItm = this.getItem(idObj),

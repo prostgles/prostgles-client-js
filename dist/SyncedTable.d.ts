@@ -161,6 +161,7 @@ export declare class SyncedTable {
     private getDelta;
     deleteAll(): void;
     private delete;
+    private checkItemCols;
     /**
      * Upserts data locally -> notify subs -> sends to server if required
      * synced_field is populated if data is not from server
