@@ -568,6 +568,7 @@ class SyncedTable {
         // const getIdObj = () => this.getIdObj(this.findOne(idObj));
         const handles = {
             get: () => this.getItem(idObj).data,
+            find: (idObject) => this.getItem(idObject).data,
             unsync: () => {
                 return this.unsubscribe(onChange);
             },
@@ -597,6 +598,8 @@ class SyncedTable {
             notify: (data, delta) => {
                 let newData = { ...data };
                 if (handlesOnData) {
+                    newData.$get = handles.get;
+                    newData.$find = handles.find;
                     newData.$update = handles.update;
                     newData.$delete = handles.delete;
                     newData.$unsync = handles.unsync;

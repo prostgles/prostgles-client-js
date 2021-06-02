@@ -57,17 +57,19 @@ export type CloneSync<T> = (
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export type SyncDataItems = POJO & {
-    $update?: (newData: POJO) => any;
+export type SyncDataItems<T = POJO> = T & {
+    $get?: () => T;
+    $find?: (idObj: Partial<T>) => (T | undefined);
+    $update?: (newData: Partial<T>) => any;
     $delete?: () => any;
 }
 /**
  * CRUD handles added if initialised with handlesOnData = true
  * A single data item can also be unsynced and cloned
  */
-export type SyncDataItem = SyncDataItems & {
+export type SyncDataItem<T = POJO> = SyncDataItems<T> & {
     $unsync?: () => any;
-    $cloneSync?: CloneSync<POJO>;
+    $cloneSync?: CloneSync<T>;
 }
 
 export type MultiSyncHandles<T = POJO> = {
@@ -76,25 +78,26 @@ export type MultiSyncHandles<T = POJO> = {
 }
 export type SingleSyncHandles<T = POJO> = {
     get: () => T;
+    find: (idObj: Partial<T>) => (T | undefined);
     unsync: () => any;
     delete: () => void;
     update: (data: T) => void;
     // filter: POJO;
     cloneSync: CloneSync<T>;
 }
-export type SubscriptionSingle = {
-    _onChange: (data: POJO, delta: POJO) => POJO;
-    notify: (data: POJO, delta: POJO) => POJO;
-    idObj: POJO;
+export type SubscriptionSingle<T = POJO> = {
+    _onChange: (data: T, delta?: Partial<T>) => T;
+    notify: (data: T, delta?: Partial<T>) => T;
+    idObj: Partial<T>;
     handlesOnData?: boolean;
     handles?: SingleSyncHandles;
 }
-export type SubscriptionMulti = {
-    _onChange: (data: POJO[], delta: POJO[])=> POJO[];
-    notify: (data: POJO[], delta: POJO[])=> POJO[];
-    idObj?: POJO;
+export type SubscriptionMulti<T = POJO> = {
+    _onChange: (data: T[], delta: Partial<T>[])=> T[];
+    notify: (data: T[], delta: Partial<T>[])=> T[];
+    idObj?: Partial<T>;
     handlesOnData?: boolean;
-    handles?: MultiSyncHandles;
+    handles?: MultiSyncHandles<T>;
 }
 
 const STORAGE_TYPES = {
@@ -103,8 +106,8 @@ const STORAGE_TYPES = {
     object: "object"
 };
 
-export type MultiChangeListener = (items: SyncDataItems[], delta: POJO[]) => any;
-export type SingleChangeListener = (item: SyncDataItem, delta: POJO) => any;
+export type MultiChangeListener<T = POJO> = (items: SyncDataItems<T>[], delta: Partial<T>[]) => any;
+export type SingleChangeListener<T = POJO> = (item: SyncDataItem<T>, delta: Partial<T>) => any;
 
 export type SyncedTableOptions = {
     name: string;
@@ -373,7 +376,7 @@ export class SyncedTable {
      * @param onChange change listener <(items: object[], delta: object[]) => any >
      * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
-    sync(onChange: MultiChangeListener, handlesOnData = true): MultiSyncHandles {
+    sync<T = POJO>(onChange: MultiChangeListener, handlesOnData = true): MultiSyncHandles<T> {
         const handles: MultiSyncHandles = {
                 unsync: () => {
                     return this.unsubscribe(onChange); 
@@ -438,13 +441,14 @@ export class SyncedTable {
      * @param onChange change listener <(item: object, delta: object) => any >
      * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
-    syncOne(idObj: POJO, onChange: SingleChangeListener, handlesOnData = true): SingleSyncHandles {
+    syncOne<T = POJO>(idObj: Partial<T>, onChange: SingleChangeListener, handlesOnData = true): SingleSyncHandles<T> {
         if(!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
         // const getIdObj = () => this.getIdObj(this.findOne(idObj));
 
-        const handles: SingleSyncHandles = {
-            get: () => this.getItem(idObj).data,
+        const handles: SingleSyncHandles<T> = {
+            get: () => this.getItem<T>(idObj).data,
+            find: (idObject) => this.getItem<T>(idObject).data,
             unsync: () => {
                 return this.unsubscribe(onChange)
             },
@@ -466,15 +470,17 @@ export class SyncedTable {
             //     this.upsert(newData, newData);
             // }
         };
-        const sub: SubscriptionSingle = {
+        const sub: SubscriptionSingle<T> = {
             _onChange: onChange,
             idObj,
             handlesOnData,
             handles,
             notify: (data, delta) => {
-                let newData = { ...data };
+                let newData: SyncDataItem<T> = { ...data };
 
                 if(handlesOnData){
+                    newData.$get = handles.get;
+                    newData.$find = handles.find;
                     newData.$update = handles.update;
                     newData.$delete = handles.delete;
                     newData.$unsync = handles.unsync;
@@ -832,7 +838,7 @@ export class SyncedTable {
     // }
 
     /* Returns an item by idObj from the local store */
-    getItem(idObj: POJO): { data?: POJO, index: number } {
+    getItem<T = POJO>(idObj: Partial<T>): { data?: T, index: number } {
         let index = -1, d;
         if(this.storageType === STORAGE_TYPES.localStorage){
             let items = this.getItems();
