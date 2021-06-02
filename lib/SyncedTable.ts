@@ -412,6 +412,8 @@ export class SyncedTable {
                             const idObj = this.wal.getIdObj(item);
                             return {
                                 ...item,
+                                $get: () => this.getItem<T>(idObj).data,
+                                $find: (idObject) => this.getItem<T>(idObject).data,
                                 $update: (newData: POJO): Promise<boolean> => {
                                     return this.upsert([{ idObj, delta: newData }]).then(r => true);
                                 },

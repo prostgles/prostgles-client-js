@@ -535,6 +535,8 @@ class SyncedTable {
                         const idObj = this.wal.getIdObj(item);
                         return {
                             ...item,
+                            $get: () => this.getItem(idObj).data,
+                            $find: (idObject) => this.getItem(idObject).data,
                             $update: (newData) => {
                                 return this.upsert([{ idObj, delta: newData }]).then(r => true);
                             },
