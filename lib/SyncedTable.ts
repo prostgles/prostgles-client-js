@@ -409,18 +409,20 @@ export class SyncedTable {
                         allDeltas = [ ..._allDeltas ];
                     if(handlesOnData){
                         allItems = allItems.map((item, i)=> {
-                            const idObj = this.wal.getIdObj(item);
-                            return {
-                                ...item,
-                                $get: () => this.getItem<T>(idObj).data,
-                                $find: (idObject) => this.getItem<T>(idObject).data,
+
+                            const getItem = (d, idObj) => ({
+                                ...d,
+                                $get: () => getItem(this.getItem<T>(idObj).data, idObj),
+                                $find: (idObject) => getItem(this.getItem<T>(idObject).data, idObject),
                                 $update: (newData: POJO): Promise<boolean> => {
                                     return this.upsert([{ idObj, delta: newData }]).then(r => true);
                                 },
                                 $delete: async (): Promise<boolean> => {
                                     return this.delete(idObj);
                                 }
-                            };
+                            })
+                            const idObj = this.wal.getIdObj(item);
+                            return getItem(item, idObj);
                         });
                     }
                     return onChange(allItems, allDeltas)
