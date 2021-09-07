@@ -21,6 +21,7 @@ export type SyncOptions = Partial<SyncedTableOptions> & {
 export type SyncOneOptions = Partial<SyncedTableOptions> & {
     handlesOnData?: boolean;
 }
+
 /**
  * Creates a local synchronized table
  */
