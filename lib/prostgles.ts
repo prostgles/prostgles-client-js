@@ -3,7 +3,7 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, get } from "prostgles-types";
+import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, get, AnyObject, SubscriptionHandler } from "prostgles-types";
 import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne, debug } from "./SyncedTable";
 
 export type TableHandlerClient = TableHandler & {
@@ -89,10 +89,6 @@ export type InitOptions = {
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 }
-type SubscriptionHandler = {
-    unsubscribe: () => Promise<any>;
-    update?: (object)=>Promise<any> | any;
-}
 
 type Subscription = {
     tableName: string, 
@@ -106,7 +102,7 @@ type Subscription = {
 };
 
 type Subscriptions = {
-    [ke: string]: Subscription
+    [key: string]: Subscription
 };
 
 export type onUpdatesParams = { data: object[]; isSynced: boolean }
@@ -438,13 +434,13 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         }
 
     }
-    async function addSub(dbo: any, { tableName, command, param1, param2 }, onChange: Function, _onError: Function): Promise<SubscriptionHandler> {
+    async function addSub<T>(dbo: any, { tableName, command, param1, param2 }, onChange: Function, _onError: Function): SubscriptionHandler<T> {
         function makeHandler(channelName: string){
 
             let unsubscribe = function(){
                 return _unsubscribe(channelName, onChange);
             }
-            let res: any = { unsubscribe }
+            let res: any = { unsubscribe, filter: { ...param1 } }
             /* Some dbo sorting was done to make sure this will work */
             if(dbo[tableName].update){                
                 res = {
@@ -680,18 +676,18 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             return addSync({ tableName, command, param1, param2 }, syncHandles);
                         }
                     } else if(sub_commands.includes(command)){
-                        dbo[tableName][command] = function(param1, param2, onChange, onError){
+                        dbo[tableName][command] = function<T = AnyObject>(param1, param2, onChange, onError){
                             checkArgs(param1, param2, onChange, onError);
-                            return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
+                            return addSub<T>(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
 
                         const SUBONE = "subscribeOne";
                         if(command === SUBONE || !sub_commands.includes(SUBONE)){
-                            dbo[tableName][SUBONE] = function(param1, param2, onChange, onError){
+                            dbo[tableName][SUBONE] = function<T = AnyObject>(param1, param2, onChange, onError){
                                 checkArgs(param1, param2, onChange, onError);
 
                                 let onChangeOne = (rows) => { onChange(rows[0]) };
-                                return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
+                                return addSub<T>(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
                             };
                         }
                     } else {

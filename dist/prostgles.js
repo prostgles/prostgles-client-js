@@ -294,7 +294,7 @@ function prostgles(initOpts, syncedTable) {
             let unsubscribe = function () {
                 return _unsubscribe(channelName, onChange);
             };
-            let res = { unsubscribe };
+            let res = { unsubscribe, filter: { ...param1 } };
             /* Some dbo sorting was done to make sure this will work */
             if (dbo[tableName].update) {
                 res = {
