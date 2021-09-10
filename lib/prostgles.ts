@@ -3,10 +3,10 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { DBHandler, TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, get, AnyObject, SubscriptionHandler } from "prostgles-types";
-import { MultiSyncHandles, SingleSyncHandles, SyncDataItem, SyncedTableOptions, Sync, SyncOne, debug } from "./SyncedTable";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, AnyObject, SubscriptionHandler } from "prostgles-types";
+import { Sync, SyncOne, debug } from "./SyncedTable";
 
-export type TableHandlerClient = TableHandler & {
+export type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
