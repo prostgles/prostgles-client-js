@@ -1,4 +1,4 @@
-import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, AnyObject } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler } from "prostgles-types";
 import { Sync, SyncOne } from "./SyncedTable";
 export declare type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
     getJoinedTables: () => string[];
@@ -16,36 +16,9 @@ export declare type TableHandlerClientBasic = TableHandlerBasic & {
     syncOne?: SyncOne;
     _sync?: any;
 };
-export declare type SQLResultRows = (any | {
-    [key: string]: any;
-})[];
-export declare type SQLResult = {
-    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | "UNLISTEN" | "INSERT" | string;
-    rowCount: number;
-    rows: SQLResultRows;
-    fields: {
-        name: string;
-        dataType: string;
-        tableName?: string;
-    }[];
-    duration: number;
-};
-export declare type DBEventHandles = {
-    addListener: (listener: (event: any) => void) => {
-        removeListener: () => void;
-    };
-};
-export declare type SQLResponse = any | SQLResult | SQLResultRows | string | DBEventHandles;
-export declare type SQLHandler = (query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse>;
 export declare type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
 } & DbJoinMaker & {
-    /**
-     *
-     * @param query <string> query. e.g.: SELECT * FROM users;
-     * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
-     * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
-     */
     sql?: SQLHandler;
 };
 export declare type DBHandlerClientBasic = {

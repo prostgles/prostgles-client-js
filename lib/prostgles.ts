@@ -3,7 +3,7 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, AnyObject, SubscriptionHandler } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, AnyObject, SubscriptionHandler, SQLHandler, DBEventHandles } from "prostgles-types";
 import { Sync, SyncOne, debug } from "./SyncedTable";
 
 export type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
@@ -23,34 +23,10 @@ export type TableHandlerClientBasic = TableHandlerBasic & {
     _sync?: any;
 }
 
-export type SQLResultRows = (any | { [key: string]: any })[];
-export type SQLResult = {
-    command: "SELECT" | "UPDATE" | "DELETE" | "CREATE" | "ALTER" | "LISTEN" | "UNLISTEN" | "INSERT" | string;
-    rowCount: number;
-    rows: SQLResultRows;
-    fields: {
-        name: string;
-        dataType: string;
-        tableName?: string;
-    }[];
-    duration: number;
-}
-export type DBEventHandles = { addListener: (listener: (event: any) => void) => { removeListener: () => void; } };
-export type SQLResponse = any | SQLResult | SQLResultRows | string | DBEventHandles ;
-
-export type SQLHandler = (query: string, args?: any | any[], options?: SQLOptions) => Promise<SQLResponse>;
-
-
 export type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
   } & DbJoinMaker & {
 
-    /**
-     * 
-     * @param query <string> query. e.g.: SELECT * FROM users;
-     * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
-     * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
-     */
     sql?: SQLHandler;
 };
 export type DBHandlerClientBasic = {
@@ -590,14 +566,19 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                     Object.keys(res).sort().join() === [ "socketChannel", "socketUnsubChannel"].sort().join() && 
                                     !Object.values(res).find(v => typeof v !== "string")
                                 ){
+                                    const sockInfo: DBNoticeConfig = res;
                                     const addListener = (listener: (any) => void) => {
-                                        addNoticeListener(listener, res as DBNoticeConfig);
+                                        addNoticeListener(listener, sockInfo);
                                         return {
-                                            ...res,
+                                            ...sockInfo,
                                             removeListener: () => removeNoticeListener(listener)
                                         }
                                     };
-                                    const handle: DBEventHandles = { addListener };
+                                    const handle: DBEventHandles = { 
+                                        ...sockInfo,
+                                        addListener 
+                                    };
+                                    // @ts-ignore
                                     resolve(handle);
                                 } else if(
                                     (!options || !options.returnType || options.returnType !== "statement") &&
@@ -612,7 +593,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                             removeListener: () => removeNotifListener(listener, res as DBNotifConfig)
                                         }
                                     }
-                                    const handle: DBEventHandles = { addListener };
+                                    const handle: DBEventHandles = { ...res, addListener };
+                                    // @ts-ignore
                                     resolve(handle);
                                     
                                 } else {

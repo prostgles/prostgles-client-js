@@ -437,14 +437,19 @@ function prostgles(initOpts, syncedTable) {
                                     res &&
                                     Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
                                     !Object.values(res).find(v => typeof v !== "string")) {
+                                    const sockInfo = res;
                                     const addListener = (listener) => {
-                                        addNoticeListener(listener, res);
+                                        addNoticeListener(listener, sockInfo);
                                         return {
-                                            ...res,
+                                            ...sockInfo,
                                             removeListener: () => removeNoticeListener(listener)
                                         };
                                     };
-                                    const handle = { addListener };
+                                    const handle = {
+                                        ...sockInfo,
+                                        addListener
+                                    };
+                                    // @ts-ignore
                                     resolve(handle);
                                 }
                                 else if ((!options || !options.returnType || options.returnType !== "statement") &&
@@ -458,7 +463,8 @@ function prostgles(initOpts, syncedTable) {
                                             removeListener: () => removeNotifListener(listener, res)
                                         };
                                     };
-                                    const handle = { addListener };
+                                    const handle = { ...res, addListener };
+                                    // @ts-ignore
                                     resolve(handle);
                                 }
                                 else {
