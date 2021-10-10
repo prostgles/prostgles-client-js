@@ -402,6 +402,14 @@ function prostgles(initOpts, syncedTable) {
             let dbo = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
             if (auth) {
+                if (auth.pathGuard) {
+                    socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
+                        var _a, _b;
+                        if (res.shouldReload && typeof window !== "undefined") {
+                            (_b = (_a = window === null || window === void 0 ? void 0 : window.location) === null || _a === void 0 ? void 0 : _a.reload) === null || _b === void 0 ? void 0 : _b.call(_a);
+                        }
+                    });
+                }
                 _auth = { ...auth };
                 [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
                     if (auth[funcName]) {

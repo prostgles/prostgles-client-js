@@ -3,7 +3,11 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, DBNoticeConfig, AnyObject, SubscriptionHandler, SQLHandler, DBEventHandles } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, 
+    TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, 
+    DBNoticeConfig, AnyObject, SubscriptionHandler, 
+    SQLHandler, DBEventHandles, AuthGuardLocation, AuthGuardLocationResponse,
+} from "prostgles-types";
 import { Sync, SyncOne, debug } from "./SyncedTable";
 
 export type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
@@ -532,6 +536,14 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 _auth = {};
 
             if(auth){
+                if(auth.pathGuard){
+                    socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any,res: AuthGuardLocationResponse)=>{
+                        if(res.shouldReload && typeof window !== "undefined"){
+                            window?.location?.reload?.();
+                        }
+                    })
+                }
+                
                 _auth = { ...auth };
                 [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
                     if(auth[funcName]) {
