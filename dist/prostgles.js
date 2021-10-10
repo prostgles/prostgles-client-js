@@ -328,7 +328,7 @@ function prostgles(initOpts, syncedTable) {
             //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
             // }
             setTimeout(() => {
-                if (onChange)
+                if (onChange && (subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData))
                     onChange(subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData);
             }, 10);
             return makeHandler(existing);
