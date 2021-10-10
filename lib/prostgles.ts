@@ -66,6 +66,7 @@ export type InitOptions = {
 }
 
 type Subscription = {
+    lastData: any;
     tableName: string, 
     command: string, 
     param1: object, 
@@ -448,9 +449,13 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
         if(existing){
             subscriptions[existing].handlers.push(onChange);
-            if(subscriptions[existing].handlers.includes(onChange)){
-                console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
-            }
+            /* Reuse existing sub config */
+            // if(subscriptions[existing].handlers.includes(onChange)){
+            //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
+            // }
+            setTimeout(() => {
+                if(onChange) onChange(subscriptions?.[existing].lastData)
+            }, 10)
             return makeHandler(existing);
         } else {
             const channelName = await addServerSub({ tableName, command, param1, param2 })
@@ -460,6 +465,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 // if(cb) cb(true);
                 if(subscriptions[channelName]){
                     if(data.data){
+                        subscriptions[channelName].lastData = data.data;
                         subscriptions[channelName].handlers.map(h => {
                             h(data.data);
                         });
@@ -478,6 +484,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
             socket.on(channelName, onCall);
             subscriptions[channelName] = {
+                lastData: undefined,
                 tableName,
                 command,
                 param1,

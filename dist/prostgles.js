@@ -323,9 +323,14 @@ function prostgles(initOpts, syncedTable) {
         });
         if (existing) {
             subscriptions[existing].handlers.push(onChange);
-            if (subscriptions[existing].handlers.includes(onChange)) {
-                console.warn("Duplicate subscription handler was added for:", subscriptions[existing]);
-            }
+            /* Reuse existing sub config */
+            // if(subscriptions[existing].handlers.includes(onChange)){
+            //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
+            // }
+            setTimeout(() => {
+                if (onChange)
+                    onChange(subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData);
+            }, 10);
             return makeHandler(existing);
         }
         else {
@@ -335,6 +340,7 @@ function prostgles(initOpts, syncedTable) {
                 // if(cb) cb(true);
                 if (subscriptions[channelName]) {
                     if (data.data) {
+                        subscriptions[channelName].lastData = data.data;
                         subscriptions[channelName].handlers.map(h => {
                             h(data.data);
                         });
@@ -355,6 +361,7 @@ function prostgles(initOpts, syncedTable) {
             let onError = _onError || function (err) { console.error(`Uncaught error within running subscription \n ${channelName}`, err); };
             socket.on(channelName, onCall);
             subscriptions[channelName] = {
+                lastData: undefined,
                 tableName,
                 command,
                 param1,
