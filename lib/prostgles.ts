@@ -6,9 +6,11 @@
 import { TableHandler, TableHandlerBasic, DbJoinMaker, 
     TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, 
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
-    SQLHandler, DBEventHandles, AuthGuardLocation, AuthGuardLocationResponse,
+    SQLHandler, DBEventHandles, AuthGuardLocation, AuthGuardLocationResponse, MethodHandler
 } from "prostgles-types";
 import { Sync, SyncOne, debug } from "./SyncedTable";
+
+export { MethodHandler };
 
 export type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
     getJoinedTables: () => string[];

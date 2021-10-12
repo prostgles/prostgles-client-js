@@ -1,5 +1,6 @@
-import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler, MethodHandler } from "prostgles-types";
 import { Sync, SyncOne } from "./SyncedTable";
+export { MethodHandler };
 export declare type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
