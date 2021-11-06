@@ -15,14 +15,23 @@ const STORAGE_TYPES = {
     object: "object"
 };
 class SyncedTable {
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false, onError }) {
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
         this.columns = [];
+        // multiSubscriptions: SubscriptionMulti[];
+        // singleSubscriptions:  SubscriptionSingle[];
+        this._multiSubscriptions = [];
+        this._singleSubscriptions = [];
         this.items = [];
         this.itemsObj = {};
         this.isSynced = false;
+        /**
+         * Will update text/json fields through patching method
+         * This will send less data to server
+         * @param walData
+         */
         this.updatePatches = async (walData) => {
             let remaining = walData.map(d => d.current);
             let patched = [], patchedItems = [];
@@ -57,6 +66,11 @@ class SyncedTable {
                     }));
                 }
             }
+            /**
+             * There is a decent chance the patch update will fail.
+             * As such, to prevent sync batch update failures, the patched updates are updated separately.
+             * If patch update fails then sync batch normally without patch.
+             */
             if (patched.length) {
                 try {
                     await this.db[this.name].updateBatch(patched);
@@ -197,6 +211,7 @@ class SyncedTable {
                     delta = this.getDelta(oldItem || {}, delta);
                 }
                 /* Add synced if local update */
+                /** Will need to check client clock shift */
                 if (!from_server) {
                     delta[this.synced_field] = Date.now();
                 }
@@ -256,7 +271,9 @@ class SyncedTable {
                         current: { ...delta, ...idObj }
                     });
                 }
-                results.push(changeInfo);
+                if (changeInfo.delta && !prostgles_types_1.isEmpty(changeInfo.delta)) {
+                    results.push(changeInfo);
+                }
                 /* TODO: Deletes from server */
                 // if(allow_deletes){
                 //     items = this.getItems();
@@ -344,8 +361,8 @@ class SyncedTable {
             // params = params || {};
             // const { from_synced, to_synced, offset = 0, limit = null } = params;
             let res = items.map(c => ({ ...c }))
-                .filter(c => (!from_synced || c[this.synced_field] >= from_synced) &&
-                (!to_synced || c[this.synced_field] <= to_synced));
+                .filter(c => (!Number.isFinite(from_synced) || +c[this.synced_field] >= +from_synced) &&
+                (!Number.isFinite(to_synced) || +c[this.synced_field] <= +to_synced));
             if (offset || limit)
                 res = res.splice(offset, limit || res.length);
             return res;
@@ -354,7 +371,6 @@ class SyncedTable {
         this.filter = filter;
         this.select = select;
         this.onChange = onChange;
-        this.onChange;
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
@@ -397,24 +413,34 @@ class SyncedTable {
             const data = this.getBatch(params);
             // console.log(`onPullRequest: total(${ data.length })`)
             return data;
-        }, onUpdates = ({ err, data, isSynced }) => {
-            if (err) {
-                this.onError(err);
+        }, onUpdates = async (args) => {
+            if ("err" in args && args.err) {
+                this.onError(args.err);
             }
-            else if (isSynced && !this.isSynced) {
-                this.isSynced = isSynced;
+            else if ("isSynced" in args && args.isSynced && !this.isSynced) {
+                this.isSynced = args.isSynced;
                 let items = this.getItems().map(d => ({ ...d }));
                 this.setItems([]);
-                this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d } })), true);
+                const updateItems = items.map(d => ({
+                    idObj: this.getIdObj(d),
+                    delta: { ...d }
+                }));
+                await this.upsert(updateItems, true);
+            }
+            else if ("data" in args) {
+                /* Delta left empty so we can prepare it here */
+                let updateItems = args.data.map(d => {
+                    return {
+                        idObj: this.getIdObj(d),
+                        delta: d
+                    };
+                });
+                await this.upsert(updateItems, true);
             }
             else {
-                /* Delta left empty so we can prepare it here */
-                let updateItems = data.map(d => ({
-                    idObj: this.getIdObj(d),
-                    delta: d
-                }));
-                this.upsert(updateItems, true);
+                console.error("Unexpected onUpdates");
             }
+            return true;
         };
         db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
             this.dbSync = s;

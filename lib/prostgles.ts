@@ -3,12 +3,16 @@
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
 import { TableHandler, TableHandlerBasic, DbJoinMaker, 
-    TableJoinBasic, SQLOptions, CHANNELS, DBNotifConfig, 
+    TableJoinBasic, CHANNELS, DBNotifConfig, 
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
-    SQLHandler, DBEventHandles, AuthGuardLocation, AuthGuardLocationResponse, MethodHandler
+    SQLHandler, DBEventHandles, AuthGuardLocation, 
+    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles
 } from "prostgles-types";
-import { Sync, SyncOne, debug } from "./SyncedTable";
+
+import type { Sync, SyncOne } from "./SyncedTable";
+import { debug  } from "./SyncedTable";
 
 export { MethodHandler };
 
@@ -66,7 +70,7 @@ export type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods?: MethodHandler, fullSchema?: any, auth?: Auth) => any;
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 }
@@ -89,11 +93,12 @@ type Subscriptions = {
 
 export type onUpdatesParams = { data: object[]; isSynced: boolean }
 
-export type SyncTriggers = {
-    onSyncRequest: (params, sync_info) => { c_fr: object, c_lr: object, c_count: number }, 
-    onPullRequest: ({ from_synced, offset, limit }, sync_info) => object[], 
-    onUpdates: (params: onUpdatesParams, sync_info) => any | void;
-};
+// export type SyncTriggers = {
+//     onSyncRequest: (params, sync_info) => { c_fr: object, c_lr: object, c_count: number }, 
+//     onPullRequest: ({ from_synced, offset, limit }, sync_info) => object[], 
+//     onUpdates: (params: onUpdatesParams, sync_info) => any | void;
+// };
+
 export type SyncInfo = {
     id_fields: string[], 
     synced_field: string, 
@@ -106,7 +111,7 @@ type SyncConfig = {
     param2: object,
     onCall: Function,
     syncInfo: SyncInfo;
-    triggers: SyncTriggers[]
+    triggers: ClientSyncHandles[]
 }
 type Syncs = {
     [channelName: string]: SyncConfig;
@@ -156,7 +161,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                     listeners: [listener]
                 };
                 socket.removeAllListeners(conf.socketChannel);
-                socket.on(conf.socketChannel, notif => {
+                socket.on(conf.socketChannel, (notif: any) => {
                     if(notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length){
                         notifSubs[conf.notifChannel].listeners.map(l => {
                             l(notif);
@@ -192,7 +197,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             
             if(!noticeSubs.listeners.length){
                 socket.removeAllListeners(conf.socketChannel);
-                socket.on(conf.socketChannel, notice => {
+                socket.on(conf.socketChannel, (notice: any) => {
                     if(noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length){
                         noticeSubs.listeners.map(l => {
                             l(notice);
@@ -244,7 +249,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         });
     }
 
-    function _unsync(channelName: string, triggers: SyncTriggers){
+    function _unsync(channelName: string, triggers: ClientSyncHandles){
         debug("_unsync", { channelName, triggers })
         return new Promise((resolve, reject) => {
             if(syncs[channelName]){
@@ -255,7 +260,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 ));
                 
                 if(!syncs[channelName].triggers.length){
-                    socket.emit(channelName + "unsync", {}, (err, res)=>{
+                    socket.emit(channelName + "unsync", {}, (err: any, res: any)=>{
                         if(err) reject(err);
                         else resolve(res);
                     });
@@ -265,7 +270,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
         });
     }
-    function addServerSync({ tableName, command, param1, param2 }, onSyncRequest): Promise<SyncInfo>{
+    function addServerSync({ tableName, command, param1, param2 }: any, onSyncRequest): Promise<SyncInfo>{
         return new Promise((resolve, reject) => {                           
             socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
                 if(err) {
@@ -294,7 +299,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
         });
     }
-    async function addSync({ tableName, command, param1, param2 }, triggers: SyncTriggers): Promise<any> {
+    async function addSync({ tableName, command, param1, param2 }, triggers: ClientSyncHandles): Promise<any> {
         const { onPullRequest, onSyncRequest, onUpdates } = triggers;
 
         function makeHandler(channelName: string, sync_info: SyncInfo){
@@ -306,7 +311,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 socket.emit(channelName, 
                     { 
                         onSyncRequest: {
-                            ...onSyncRequest({}, sync_info), 
+                            ...onSyncRequest({}), 
                             ...({ data } || {}),
                             ...({ deleted } || {}) 
                         },
@@ -356,7 +361,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 syncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest })=>{
                     // onChange(data.data);
                     if(data.data){
-                        Promise.resolve(onUpdates(data, sync_info))
+                        Promise.resolve(onUpdates(data))
                             .then(() =>{ 
                                 if(cb) cb({ ok: true })
                             })
@@ -369,7 +374,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             });
                     } else if(data.onSyncRequest){
                         // cb(onSyncRequest());
-                        Promise.resolve(onSyncRequest(data.onSyncRequest, sync_info))
+                        Promise.resolve(onSyncRequest(data.onSyncRequest))
                             .then(res => cb({ onSyncRequest: res }))
                             .catch(err => { 
                                 if(cb) { 
@@ -380,7 +385,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             })
 
                     } else if(data.onPullRequest){
-                        Promise.resolve(onPullRequest(data.onPullRequest, sync_info))
+                        Promise.resolve(onPullRequest(data.onPullRequest))
                             .then(arr =>{ 
                                 cb({ data: arr });
                             })

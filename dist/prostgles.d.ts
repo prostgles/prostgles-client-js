@@ -1,5 +1,5 @@
 import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler, MethodHandler } from "prostgles-types";
-import { Sync, SyncOne } from "./SyncedTable";
+import type { Sync, SyncOne } from "./SyncedTable";
 export { MethodHandler };
 export declare type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
     getJoinedTables: () => string[];
@@ -50,26 +50,13 @@ export declare type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods?: any, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods?: MethodHandler, fullSchema?: any, auth?: Auth) => any;
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 };
 export declare type onUpdatesParams = {
     data: object[];
     isSynced: boolean;
-};
-export declare type SyncTriggers = {
-    onSyncRequest: (params: any, sync_info: any) => {
-        c_fr: object;
-        c_lr: object;
-        c_count: number;
-    };
-    onPullRequest: ({ from_synced, offset, limit }: {
-        from_synced: any;
-        offset: any;
-        limit: any;
-    }, sync_info: any) => object[];
-    onUpdates: (params: onUpdatesParams, sync_info: any) => any | void;
 };
 export declare type SyncInfo = {
     id_fields: string[];

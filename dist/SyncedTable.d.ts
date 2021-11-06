@@ -1,4 +1,4 @@
-import { FieldFilter, WAL } from "prostgles-types";
+import { FieldFilter, WAL, SyncBatchParams } from "prostgles-types";
 export declare type POJO = {
     [key: string]: any;
 };
@@ -78,6 +78,11 @@ export declare type SubscriptionMulti<T = POJO> = {
     handlesOnData?: boolean;
     handles?: MultiSyncHandles<T>;
 };
+declare const STORAGE_TYPES: {
+    readonly array: "array";
+    readonly localStorage: "localStorage";
+    readonly object: "object";
+};
 export declare type MultiChangeListener<T = POJO> = (items: SyncDataItems<T>[], delta: Partial<T>[]) => any;
 export declare type SingleChangeListener<T = POJO> = (item: SyncDataItem<T>, delta: Partial<T>) => any;
 export declare type SyncedTableOptions = {
@@ -89,17 +94,18 @@ export declare type SyncedTableOptions = {
     pushDebounce?: number;
     skipFirstTrigger?: boolean;
     select?: "*" | {};
-    storageType: string;
+    storageType: keyof typeof STORAGE_TYPES;
     patchText: boolean;
     patchJSON: boolean;
     onReady: () => any;
+    skipIncomingDeltaCheck?: boolean;
 };
 export declare class SyncedTable {
     db: any;
     name: string;
     select?: "*" | {};
     filter?: POJO;
-    onChange: (data: POJO[], delta: POJO) => POJO[];
+    onChange?: MultiChangeListener;
     id_fields: string[];
     synced_field: string;
     throttle: number;
@@ -109,7 +115,7 @@ export declare class SyncedTable {
         name: string;
         data_type: string;
     }[];
-    wal: WAL;
+    wal?: WAL;
     _multiSubscriptions: SubscriptionMulti[];
     _singleSubscriptions: SubscriptionSingle[];
     /**
@@ -128,6 +134,11 @@ export declare class SyncedTable {
     isSynced: boolean;
     onError: SyncedTableOptions["onError"];
     constructor({ name, filter, onChange, onReady, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError }: SyncedTableOptions);
+    /**
+     * Will update text/json fields through patching method
+     * This will send less data to server
+     * @param walData
+     */
     private updatePatches;
     static create(opts: SyncedTableOptions): Promise<SyncedTable>;
     /**
@@ -197,8 +208,9 @@ export declare class SyncedTable {
      * Sync data request
      * @param param0: SyncBatchRequest
      */
-    getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchRequest) => {
+    getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchParams) => {
         [x: string]: any;
     }[];
 }
+export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

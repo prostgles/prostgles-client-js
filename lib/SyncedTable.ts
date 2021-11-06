@@ -1,12 +1,11 @@
-import { FieldFilter, getTextPatch, isEmpty, WAL } from "prostgles-types";
-import { WALItem } from "prostgles-types/dist/util";
+import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams } from "prostgles-types";
 export type POJO = { [key: string]: any };
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
-export const debug: any = function(...args){
-    if(hasWnd && window[DEBUG_KEY]){
-        window[DEBUG_KEY](...args);
+export const debug: any = function(...args: any[]){
+    if(hasWnd && (window as any)[DEBUG_KEY]){
+        (window as any)[DEBUG_KEY](...args);
     }
 };
 
@@ -105,7 +104,7 @@ const STORAGE_TYPES = {
     array: "array",
     localStorage: "localStorage",
     object: "object"
-};
+} as const;
 
 export type MultiChangeListener<T = POJO> = (items: SyncDataItems<T>[], delta: Partial<T>[]) => any;
 export type SingleChangeListener<T = POJO> = (item: SyncDataItem<T>, delta: Partial<T>) => any;
@@ -119,12 +118,13 @@ export type SyncedTableOptions = {
     pushDebounce?: number; 
     skipFirstTrigger?: boolean; 
     select?: "*" | {};
-    storageType: string;
+    storageType: keyof typeof STORAGE_TYPES;
 
     /* If true then only the delta of text field is sent to server */
     patchText: boolean;
     patchJSON: boolean;
     onReady: () => any;
+    skipIncomingDeltaCheck?: boolean;
 };
 
 export class SyncedTable {
@@ -133,7 +133,7 @@ export class SyncedTable {
     name:string;
     select?: "*" | {};
     filter?: POJO;
-    onChange: (data: POJO[], delta: POJO)=> POJO[];
+    onChange?: MultiChangeListener;
     id_fields: string[];
     synced_field: string;
     throttle: number = 100;
@@ -142,12 +142,12 @@ export class SyncedTable {
 
     columns: { name: string, data_type: string }[] = [];
 
-    wal: WAL;
+    wal?: WAL;
 
     // multiSubscriptions: SubscriptionMulti[];
     // singleSubscriptions:  SubscriptionSingle[];
-    _multiSubscriptions: SubscriptionMulti[];
-    _singleSubscriptions:  SubscriptionSingle[];
+    _multiSubscriptions: SubscriptionMulti[] = [];
+    _singleSubscriptions:  SubscriptionSingle[] = [];
 
     /**
      * add debug mode to fix sudden no data and sync listeners bug
@@ -177,12 +177,12 @@ export class SyncedTable {
     isSynced: boolean = false;
     onError: SyncedTableOptions["onError"];
 
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = STORAGE_TYPES.object, patchText = false, patchJSON = false, onError }: SyncedTableOptions){
+    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }: SyncedTableOptions){
         this.name = name;
         this.filter = filter;
         this.select = select;
         this.onChange = onChange;
-        this.onChange
+        
         if(!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if(!hasWnd && storageType === STORAGE_TYPES.localStorage) {
             console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
@@ -209,7 +209,7 @@ export class SyncedTable {
 
         this.onError = onError || function(err){ console.error("Sync internal error: ", err)}
         
-        const onSyncRequest = (params) => {
+        const onSyncRequest: ClientSyncHandles["onSyncRequest"] = (params) => {
                 
                 let res = { c_lr: null, c_fr: null, c_count: 0 };
 
@@ -226,7 +226,7 @@ export class SyncedTable {
                 // console.log("onSyncRequest", res);
                 return res;
             },
-            onPullRequest = async (params) => {
+            onPullRequest = async (params: SyncBatchParams) => {
                 
                 // if(this.getDeleted().length){
                 //     await this.syncDeleted();
@@ -235,23 +235,31 @@ export class SyncedTable {
                 // console.log(`onPullRequest: total(${ data.length })`)
                 return data;
             },
-            onUpdates = ({ err, data, isSynced }) => {
-                if(err){
-                    this.onError(err)
-                } else if(isSynced && !this.isSynced){
-                    this.isSynced = isSynced;
+            onUpdates: ClientSyncHandles["onUpdates"] = async (args) => {
+                if("err" in args && args.err){
+                    this.onError(args.err);
+                } else if("isSynced" in args && args.isSynced && !this.isSynced){
+                    this.isSynced = args.isSynced;
                     let items = this.getItems().map(d => ({ ...d }));
                     this.setItems([]);
-                    this.upsert(items.map(d => ({ idObj: this.getIdObj(d), delta: { ...d }})), true)
-                } else {
+                    const updateItems = items.map(d => ({ 
+                        idObj: this.getIdObj(d), 
+                        delta: { ...d }
+                    }))
+                    await this.upsert(updateItems, true)
+                } else if("data" in args) {
                     /* Delta left empty so we can prepare it here */
-                    let updateItems = data.map(d => ({
-                        idObj: this.getIdObj(d),
-                        delta: d
-                    }));
-                    this.upsert(updateItems,  true);
+                    let updateItems = args.data.map(d => {
+                        return {
+                            idObj: this.getIdObj(d),
+                            delta: d
+                        }
+                    });
+                    await this.upsert(updateItems,  true);
+                } else {
+                    console.error("Unexpected onUpdates");
                 }
-
+                return true;
             };
         
         db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
@@ -304,6 +312,11 @@ export class SyncedTable {
         debug(this);
     }
 
+    /**
+     * Will update text/json fields through patching method
+     * This will send less data to server
+     * @param walData 
+     */
     private updatePatches = async (walData: WALItem[]) => {
         let remaining: any[] = walData.map(d => d.current);
         let patched: [any, any][] = [],
@@ -319,7 +332,7 @@ export class SyncedTable {
                 await Promise.all(walData.slice(0).map(async (d, i) => {
 
                     const { current, initial } = { ...d };
-                    let patchedDelta;
+                    let patchedDelta: AnyObject;
                     if(initial){
                         txtCols.map(c => {
                             if(!id_keys.includes(c.name) && c.name in current){
@@ -346,6 +359,11 @@ export class SyncedTable {
             }
         }
 
+        /**
+         * There is a decent chance the patch update will fail. 
+         * As such, to prevent sync batch update failures, the patched updates are updated separately.
+         * If patch update fails then sync batch normally without patch.
+         */
         if(patched.length){
             try {
                 await this.db[this.name].updateBatch(patched);
@@ -739,6 +757,7 @@ export class SyncedTable {
             }
 
             /* Add synced if local update */
+            /** Will need to check client clock shift */
             if(!from_server) {
                 delta[this.synced_field] = Date.now();
             }
@@ -807,7 +826,9 @@ export class SyncedTable {
                     current: { ...delta, ...idObj }
                 });
             }
-            results.push(changeInfo);
+            if(changeInfo.delta && !isEmpty(changeInfo.delta)){
+                results.push(changeInfo);
+            }
 
             /* TODO: Deletes from server */
             // if(allow_deletes){
@@ -961,14 +982,14 @@ export class SyncedTable {
      * Sync data request
      * @param param0: SyncBatchRequest
      */
-    getBatch = ({ from_synced, to_synced, offset, limit }: SyncBatchRequest = { offset: 0, limit: null}) => {
+    getBatch = ({ from_synced, to_synced, offset, limit }: SyncBatchParams = { offset: 0, limit: null}) => {
         let items = this.getItems();
         // params = params || {};
         // const { from_synced, to_synced, offset = 0, limit = null } = params;
         let res = items.map(c => ({ ...c }))
             .filter(c =>
-                (!from_synced || c[this.synced_field] >= from_synced) &&
-                (!to_synced || c[this.synced_field] <= to_synced)
+                (!Number.isFinite(from_synced) || +c[this.synced_field] >= +from_synced) &&
+                (!Number.isFinite(to_synced) || +c[this.synced_field] <= +to_synced)
             );
 
         if(offset || limit) res = res.splice(offset, limit || res.length);

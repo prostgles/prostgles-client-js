@@ -1,10 +1,10 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = void 0;
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Stefan L. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.prostgles = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const SyncedTable_1 = require("./SyncedTable");
 function prostgles(initOpts, syncedTable) {
@@ -42,7 +42,7 @@ function prostgles(initOpts, syncedTable) {
                 listeners: [listener]
             };
             socket.removeAllListeners(conf.socketChannel);
-            socket.on(conf.socketChannel, notif => {
+            socket.on(conf.socketChannel, (notif) => {
                 if (notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length) {
                     notifSubs[conf.notifChannel].listeners.map(l => {
                         l(notif);
@@ -73,7 +73,7 @@ function prostgles(initOpts, syncedTable) {
         };
         if (!noticeSubs.listeners.length) {
             socket.removeAllListeners(conf.socketChannel);
-            socket.on(conf.socketChannel, notice => {
+            socket.on(conf.socketChannel, (notice) => {
                 if (noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length) {
                     noticeSubs.listeners.map(l => {
                         l(notice);
@@ -183,7 +183,7 @@ function prostgles(initOpts, syncedTable) {
             let syncData = function (data, deleted, cb) {
                 socket.emit(channelName, {
                     onSyncRequest: {
-                        ...onSyncRequest({}, sync_info),
+                        ...onSyncRequest({}),
                         ...({ data } || {}),
                         ...({ deleted } || {})
                     },
@@ -228,7 +228,7 @@ function prostgles(initOpts, syncedTable) {
                 syncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
                     // onChange(data.data);
                     if (data.data) {
-                        Promise.resolve(onUpdates(data, sync_info))
+                        Promise.resolve(onUpdates(data))
                             .then(() => {
                             if (cb)
                                 cb({ ok: true });
@@ -244,7 +244,7 @@ function prostgles(initOpts, syncedTable) {
                     }
                     else if (data.onSyncRequest) {
                         // cb(onSyncRequest());
-                        Promise.resolve(onSyncRequest(data.onSyncRequest, sync_info))
+                        Promise.resolve(onSyncRequest(data.onSyncRequest))
                             .then(res => cb({ onSyncRequest: res }))
                             .catch(err => {
                             if (cb) {
@@ -256,7 +256,7 @@ function prostgles(initOpts, syncedTable) {
                         });
                     }
                     else if (data.onPullRequest) {
-                        Promise.resolve(onPullRequest(data.onPullRequest, sync_info))
+                        Promise.resolve(onPullRequest(data.onPullRequest))
                             .then(arr => {
                             cb({ data: arr });
                         })
