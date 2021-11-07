@@ -57,24 +57,15 @@ export type CloneSync<T> = (
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export type SyncDataItem<T = POJO> = T & {
-    $get?: () => T;
-    $find?: (idObj: Partial<T>) => (T | undefined);
-    $update?: (newData: Partial<T>) => any;
-    $delete?: () => any;
-    $unsync?: () => any;
-    $cloneSync?: CloneSync<T>;
-}
-
 export type SingleSyncHandles<T = POJO> = {
-    get: () => T;
-    find: (idObj: Partial<T>) => (T | undefined);
-    unsync: () => any;
-    delete: () => void;
-    update: (data: T) => void;
-    // filter: POJO;
-    cloneSync: CloneSync<T>;
+    $get: () => T;
+    $find: (idObj: Partial<T>) => (T | undefined);
+    $unsync: () => any;
+    $delete: () => void;
+    $update: (newData: Partial<T>) => any;
+    $cloneSync: CloneSync<T>;
 }
+export type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
 
 export type MultiSyncHandles<T = POJO> = {
     unsync: () => void;
@@ -459,15 +450,15 @@ export class SyncedTable {
         if(!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
         const handles: SingleSyncHandles<T> = {
-            get: () => this.getItem<T>(idObj).data,
-            find: (idObject) => this.getItem<T>(idObject).data,
-            unsync: () => {
+            $get: () => this.getItem<T>(idObj).data,
+            $find: (idObject) => this.getItem<T>(idObject).data,
+            $unsync: () => {
                 return this.unsubscribe(onChange)
             },
-            delete: () => {
+            $delete: () => {
                 return this.delete(idObj);
             },
-            update: newData => {
+            $update: newData => {
                 /* DROPPED SYNC BUG */
                 if(!this.singleSubscriptions.length){
                     console.warn("No singleSubscriptions");
@@ -475,7 +466,7 @@ export class SyncedTable {
                 }
                 this.upsert([{ idObj, delta: newData }]);                
             },
-            cloneSync: (onChange) => this.syncOne(idObj, onChange)
+            $cloneSync: (onChange) => this.syncOne(idObj, onChange)
         };
 
         return handles;
@@ -499,12 +490,12 @@ export class SyncedTable {
                 let newData: SyncDataItem<T> = { ...data };
 
                 if(handlesOnData){
-                    newData.$get = handles.get;
-                    newData.$find = handles.find;
-                    newData.$update = handles.update;
-                    newData.$delete = handles.delete;
-                    newData.$unsync = handles.unsync;
-                    newData.$cloneSync = handles.cloneSync;
+                    newData.$get = handles.$get;
+                    newData.$find = handles.$find;
+                    newData.$update = handles.$update;
+                    newData.$delete = handles.$delete;
+                    newData.$unsync = handles.$unsync;
+                    newData.$cloneSync = handles.$cloneSync;
                 }
                 return onChange(newData, delta)
             }
@@ -514,7 +505,7 @@ export class SyncedTable {
         this.singleSubscriptions.push(sub);
 
         setTimeout(() => {
-            let existingData = handles.get();
+            let existingData = handles.$get();
             if(existingData){
                 sub.notify(existingData, existingData);
             }

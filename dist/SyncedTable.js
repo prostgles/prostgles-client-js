@@ -590,15 +590,15 @@ class SyncedTable {
         if (!idObj || !onChange)
             throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
         const handles = {
-            get: () => this.getItem(idObj).data,
-            find: (idObject) => this.getItem(idObject).data,
-            unsync: () => {
+            $get: () => this.getItem(idObj).data,
+            $find: (idObject) => this.getItem(idObject).data,
+            $unsync: () => {
                 return this.unsubscribe(onChange);
             },
-            delete: () => {
+            $delete: () => {
                 return this.delete(idObj);
             },
-            update: newData => {
+            $update: newData => {
                 /* DROPPED SYNC BUG */
                 if (!this.singleSubscriptions.length) {
                     console.warn("No singleSubscriptions");
@@ -606,7 +606,7 @@ class SyncedTable {
                 }
                 this.upsert([{ idObj, delta: newData }]);
             },
-            cloneSync: (onChange) => this.syncOne(idObj, onChange)
+            $cloneSync: (onChange) => this.syncOne(idObj, onChange)
         };
         return handles;
     }
@@ -626,19 +626,19 @@ class SyncedTable {
             notify: (data, delta) => {
                 let newData = { ...data };
                 if (handlesOnData) {
-                    newData.$get = handles.get;
-                    newData.$find = handles.find;
-                    newData.$update = handles.update;
-                    newData.$delete = handles.delete;
-                    newData.$unsync = handles.unsync;
-                    newData.$cloneSync = handles.cloneSync;
+                    newData.$get = handles.$get;
+                    newData.$find = handles.$find;
+                    newData.$update = handles.$update;
+                    newData.$delete = handles.$delete;
+                    newData.$unsync = handles.$unsync;
+                    newData.$cloneSync = handles.$cloneSync;
                 }
                 return onChange(newData, delta);
             }
         };
         this.singleSubscriptions.push(sub);
         setTimeout(() => {
-            let existingData = handles.get();
+            let existingData = handles.$get();
             if (existingData) {
                 sub.notify(existingData, existingData);
             }

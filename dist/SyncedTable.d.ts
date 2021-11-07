@@ -38,22 +38,15 @@ export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (e
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export declare type SyncDataItem<T = POJO> = T & {
-    $get?: () => T;
-    $find?: (idObj: Partial<T>) => (T | undefined);
-    $update?: (newData: Partial<T>) => any;
-    $delete?: () => any;
-    $unsync?: () => any;
-    $cloneSync?: CloneSync<T>;
-};
 export declare type SingleSyncHandles<T = POJO> = {
-    get: () => T;
-    find: (idObj: Partial<T>) => (T | undefined);
-    unsync: () => any;
-    delete: () => void;
-    update: (data: T) => void;
-    cloneSync: CloneSync<T>;
+    $get: () => T;
+    $find: (idObj: Partial<T>) => (T | undefined);
+    $unsync: () => any;
+    $delete: () => void;
+    $update: (newData: Partial<T>) => any;
+    $cloneSync: CloneSync<T>;
 };
+export declare type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
 export declare type MultiSyncHandles<T = POJO> = {
     unsync: () => void;
     upsert: (newData: T[]) => any;
