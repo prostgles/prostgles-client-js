@@ -530,10 +530,10 @@ class SyncedTable {
      */
     sync(onChange, handlesOnData = true) {
         const handles = {
-            unsync: () => {
+            $unsync: () => {
                 return this.unsubscribe(onChange);
             },
-            upsert: (newData) => {
+            $upsert: (newData) => {
                 if (newData) {
                     const prepareOne = (d) => {
                         return ({

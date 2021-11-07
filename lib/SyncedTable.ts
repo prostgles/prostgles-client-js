@@ -68,8 +68,8 @@ export type SingleSyncHandles<T = POJO> = {
 export type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
 
 export type MultiSyncHandles<T = POJO> = {
-    unsync: () => void;
-    upsert: (newData: T[]) => any;
+    $unsync: () => void;
+    $upsert: (newData: T[]) => any;
 }
 
 export type SubscriptionSingle<T = POJO> = {
@@ -384,10 +384,10 @@ export class SyncedTable {
      */
     sync<T = POJO>(onChange: MultiChangeListener, handlesOnData = true): MultiSyncHandles<T> {
         const handles: MultiSyncHandles = {
-                unsync: () => {
+                $unsync: () => {
                     return this.unsubscribe(onChange)
                 },
-                upsert: (newData) => {
+                $upsert: (newData) => {
                     if(newData){
                         const prepareOne = (d) => {
                             return ({

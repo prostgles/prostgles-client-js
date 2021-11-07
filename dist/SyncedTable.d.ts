@@ -48,8 +48,8 @@ export declare type SingleSyncHandles<T = POJO> = {
 };
 export declare type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
 export declare type MultiSyncHandles<T = POJO> = {
-    unsync: () => void;
-    upsert: (newData: T[]) => any;
+    $unsync: () => void;
+    $upsert: (newData: T[]) => any;
 };
 export declare type SubscriptionSingle<T = POJO> = {
     _onChange: (data: T, delta?: Partial<T>) => T;
