@@ -560,6 +560,7 @@ class SyncedTable {
                     allItems = allItems.map((item, i) => {
                         const getItem = (d, idObj) => ({
                             ...d,
+                            ...this.makeSingleSyncHandles(idObj, onChange),
                             $get: () => getItem(this.getItem(idObj).data, idObj),
                             $find: (idObject) => getItem(this.getItem(idObject).data, idObject),
                             $update: (newData) => {
@@ -585,16 +586,9 @@ class SyncedTable {
         }
         return Object.freeze({ ...handles });
     }
-    /**
-     * Returns a sync handler to a specific record within the SyncedTable instance
-     * @param idObj object containing the target id_fields properties
-     * @param onChange change listener <(item: object, delta: object) => any >
-     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
-     */
-    syncOne(idObj, onChange, handlesOnData = true) {
+    makeSingleSyncHandles(idObj, onChange) {
         if (!idObj || !onChange)
             throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
-        // const getIdObj = () => this.getIdObj(this.findOne(idObj));
         const handles = {
             get: () => this.getItem(idObj).data,
             find: (idObject) => this.getItem(idObject).data,
@@ -613,12 +607,17 @@ class SyncedTable {
                 this.upsert([{ idObj, delta: newData }]);
             },
             cloneSync: (onChange) => this.syncOne(idObj, onChange)
-            // set: data => {
-            //     const newData = { ...data, ...idObj }
-            //     // this.notifySubscriptions(idObj, newData, data);
-            //     this.upsert(newData, newData);
-            // }
         };
+        return handles;
+    }
+    /**
+     * Returns a sync handler to a specific record within the SyncedTable instance
+     * @param idObj object containing the target id_fields properties
+     * @param onChange change listener <(item: object, delta: object) => any >
+     * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
+     */
+    syncOne(idObj, onChange, handlesOnData = true) {
+        const handles = this.makeSingleSyncHandles(idObj, onChange);
         const sub = {
             _onChange: onChange,
             idObj,
@@ -710,7 +709,16 @@ class SyncedTable {
             .reduce((a, k) => {
             let delta = {};
             if (k in n && n[k] !== o[k]) {
-                delta = { [k]: n[k] };
+                let deltaProp = { [k]: n[k] };
+                /** If object then compare with stringify */
+                if (n[k] && o[k] && typeof o[k] === "object") {
+                    if (JSON.stringify(n[k]) !== JSON.stringify(o[k])) {
+                        delta = deltaProp;
+                    }
+                }
+                else {
+                    delta = deltaProp;
+                }
             }
             return { ...a, ...delta };
         }, {});

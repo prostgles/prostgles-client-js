@@ -421,7 +421,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         }
 
     }
-    async function addSub<T>(dbo: any, { tableName, command, param1, param2 }, onChange: Function, _onError: Function): SubscriptionHandler<T> {
+    async function addSub<T>(dbo: any, { tableName, command, param1, param2 }, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
         function makeHandler(channelName: string){
 
             let unsubscribe = function(){
