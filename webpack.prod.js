@@ -32,4 +32,16 @@ module.exports = {
     libraryTarget: 'umd',
     globalObject: 'this || window'
   },
+  optimization: {
+    // minimize: false,
+    sideEffects: false,
+  },
+  stats: {
+    assetsSort: '!size',
+    moduleAssets: false,
+    assetsSpace: 15,
+    modulesSpace: 15,
+    nestedModules: true,
+    nestedModulesSpace: 15,
+  },
 };

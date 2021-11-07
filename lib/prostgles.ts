@@ -11,8 +11,18 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker,
     AuthGuardLocationResponse, MethodHandler, ClientSyncHandles
 } from "prostgles-types";
 
+// import { debug } from "./SyncedTable";
 import type { Sync, SyncOne } from "./SyncedTable";
-import { debug  } from "./SyncedTable";
+// type Sync = any; 
+// type SyncOne = any;
+
+const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
+const hasWnd = typeof window !== "undefined";
+export const debug: any = function(...args: any[]){
+    if(hasWnd && (window as any)[DEBUG_KEY]){
+        (window as any)[DEBUG_KEY](...args);
+    }
+};
 
 export { MethodHandler };
 

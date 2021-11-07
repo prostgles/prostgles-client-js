@@ -4,12 +4,20 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = void 0;
+exports.prostgles = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
-const SyncedTable_1 = require("./SyncedTable");
+// type Sync = any; 
+// type SyncOne = any;
+const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
+const hasWnd = typeof window !== "undefined";
+exports.debug = function (...args) {
+    if (hasWnd && window[DEBUG_KEY]) {
+        window[DEBUG_KEY](...args);
+    }
+};
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
-    SyncedTable_1.debug("prostgles", { initOpts });
+    exports.debug("prostgles", { initOpts });
     if (onSchemaChange) {
         let cb;
         if (typeof onSchemaChange === "function") {
@@ -88,7 +96,7 @@ function prostgles(initOpts, syncedTable) {
     };
     let connected = false;
     const destroySyncs = () => {
-        SyncedTable_1.debug("destroySyncs", { subscriptions, syncedTables });
+        exports.debug("destroySyncs", { subscriptions, syncedTables });
         Object.values(subscriptions).map(s => s.destroy());
         subscriptions = {};
         syncs = {};
@@ -99,7 +107,7 @@ function prostgles(initOpts, syncedTable) {
         syncedTables = {};
     };
     function _unsubscribe(channelName, handler) {
-        SyncedTable_1.debug("_unsubscribe", { channelName, handler });
+        exports.debug("_unsubscribe", { channelName, handler });
         return new Promise((resolve, reject) => {
             if (subscriptions[channelName]) {
                 subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
@@ -125,7 +133,7 @@ function prostgles(initOpts, syncedTable) {
         });
     }
     function _unsync(channelName, triggers) {
-        SyncedTable_1.debug("_unsync", { channelName, triggers });
+        exports.debug("_unsync", { channelName, triggers });
         return new Promise((resolve, reject) => {
             if (syncs[channelName]) {
                 syncs[channelName].triggers = syncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&

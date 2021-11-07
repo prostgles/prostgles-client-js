@@ -17,7 +17,7 @@
   },
   "scripts": {
     "start": "webpack --config webpack.dev.js",
-    "build": "rm -rf ./dist/* && tsc && webpack --config webpack.prod.js",
+    "build": "rm -rf ./dist/* && tsc && webpack  --mode production --config webpack.prod.js",
     "test": "npm run build && cd tests && tsc && node index.js"
   },
   "repository": {
