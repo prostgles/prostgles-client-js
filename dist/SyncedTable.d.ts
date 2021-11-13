@@ -47,7 +47,7 @@ export declare type SingleSyncHandles<T = POJO> = {
     $find: (idObj: Partial<T>) => (T | undefined);
     $unsync: () => any;
     $delete: () => void;
-    $update: (newData: Partial<T>, opts: $UpdateOpts) => any;
+    $update: (newData: Partial<T>, opts?: $UpdateOpts) => any;
     $cloneSync: CloneSync<T>;
 };
 export declare type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
