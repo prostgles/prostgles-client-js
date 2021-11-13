@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SyncedTable = exports.debug = void 0;
+exports.mergeDeep = exports.isObject = exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -164,6 +164,9 @@ class SyncedTable {
             this.notifySubscribers();
             return true;
         };
+        /**
+         * Ensures that all object keys match valid column names
+         */
         this.checkItemCols = (item) => {
             if (this.columns && this.columns.length) {
                 const badCols = Object.keys({ ...item })
@@ -191,6 +194,7 @@ class SyncedTable {
             let status;
             let walItems = [];
             await Promise.all(items.map(async (item, i) => {
+                var _a;
                 // let d = { ...item.idObj, ...item.delta };
                 let idObj = { ...item.idObj };
                 let delta = { ...item.delta };
@@ -216,6 +220,14 @@ class SyncedTable {
                     delta[this.synced_field] = Date.now();
                 }
                 let newItem = { ...oldItem, ...delta, ...idObj };
+                if (oldItem && !from_server) {
+                    /**
+                     * Merge deep
+                     */
+                    if ((_a = item.opts) === null || _a === void 0 ? void 0 : _a.deepMerge) {
+                        newItem = mergeDeep(newItem, { ...delta });
+                    }
+                }
                 /* Update existing -> Expecting delta */
                 if (oldItem && oldItem[this.synced_field] < newItem[this.synced_field]) {
                     status = "updated";
@@ -563,8 +575,8 @@ class SyncedTable {
                             ...this.makeSingleSyncHandles(idObj, onChange),
                             $get: () => getItem(this.getItem(idObj).data, idObj),
                             $find: (idObject) => getItem(this.getItem(idObject).data, idObject),
-                            $update: (newData) => {
-                                return this.upsert([{ idObj, delta: newData }]).then(r => true);
+                            $update: (newData, opts) => {
+                                return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
                             },
                             $delete: async () => {
                                 return this.delete(idObj);
@@ -798,3 +810,36 @@ class SyncedTable {
     }
 }
 exports.SyncedTable = SyncedTable;
+/**
+ * Simple object check.
+ * @param item
+ * @returns {boolean}
+ */
+function isObject(item) {
+    return (item && typeof item === 'object' && !Array.isArray(item));
+}
+exports.isObject = isObject;
+/**
+ * Deep merge two objects.
+ * @param target
+ * @param ...sources
+ */
+function mergeDeep(target, ...sources) {
+    if (!sources.length)
+        return target;
+    const source = sources.shift();
+    if (isObject(target) && isObject(source)) {
+        for (const key in source) {
+            if (isObject(source[key])) {
+                if (!target[key])
+                    Object.assign(target, { [key]: {} });
+                mergeDeep(target[key], source[key]);
+            }
+            else {
+                Object.assign(target, { [key]: source[key] });
+            }
+        }
+    }
+    return mergeDeep(target, ...sources);
+}
+exports.mergeDeep = mergeDeep;

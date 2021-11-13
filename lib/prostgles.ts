@@ -45,7 +45,7 @@ export type TableHandlerClientBasic = TableHandlerBasic & {
 
 export type DBHandlerClient = {
     [key: string]: Partial<TableHandlerClient>;
-  } & DbJoinMaker & {
+} & DbJoinMaker & {
     sql?: SQLHandler;
 };
 export type DBHandlerClientBasic = {

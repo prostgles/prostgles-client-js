@@ -1,4 +1,4 @@
-import { FieldFilter, WAL, SyncBatchParams } from "prostgles-types";
+import { FieldFilter, WAL, AnyObject, SyncBatchParams } from "prostgles-types";
 export declare type POJO = {
     [key: string]: any;
 };
@@ -25,8 +25,9 @@ export declare type SyncBatchRequest = {
     limit: number;
 };
 export declare type ItemUpdate = {
-    idObj: any;
-    delta: any;
+    idObj: AnyObject;
+    delta: AnyObject;
+    opts?: $UpdateOpts;
 };
 export declare type ItemUpdated = ItemUpdate & {
     oldItem: any;
@@ -35,6 +36,9 @@ export declare type ItemUpdated = ItemUpdate & {
     from_server: boolean;
 };
 export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => SingleSyncHandles<T>;
+declare type $UpdateOpts = {
+    deepMerge: boolean;
+};
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
@@ -43,7 +47,7 @@ export declare type SingleSyncHandles<T = POJO> = {
     $find: (idObj: Partial<T>) => (T | undefined);
     $unsync: () => any;
     $delete: () => void;
-    $update: (newData: Partial<T>) => any;
+    $update: (newData: Partial<T>, opts: $UpdateOpts) => any;
     $cloneSync: CloneSync<T>;
 };
 export declare type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
@@ -163,6 +167,9 @@ export declare class SyncedTable {
     private getDelta;
     deleteAll(): void;
     private delete;
+    /**
+     * Ensures that all object keys match valid column names
+     */
     private checkItemCols;
     /**
      * Upserts data locally -> notify subs -> sends to server if required
@@ -200,5 +207,17 @@ export declare class SyncedTable {
         [x: string]: any;
     }[];
 }
+/**
+ * Simple object check.
+ * @param item
+ * @returns {boolean}
+ */
+export declare function isObject(item: AnyObject): boolean;
+/**
+ * Deep merge two objects.
+ * @param target
+ * @param ...sources
+ */
+export declare function mergeDeep(target: AnyObject, ...sources: AnyObject[]): AnyObject;
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

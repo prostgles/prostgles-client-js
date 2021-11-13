@@ -39,8 +39,9 @@ export type SyncBatchRequest = {
 }
 
 export type ItemUpdate = {
-    idObj: any;
-    delta: any;
+    idObj: AnyObject;
+    delta: AnyObject;
+    opts?: $UpdateOpts;
 }
 export type ItemUpdated = ItemUpdate & {
     oldItem: any;
@@ -54,6 +55,9 @@ export type CloneSync<T> = (
     onError?: (error: any) => void
 ) => SingleSyncHandles<T>;
 
+type $UpdateOpts = {
+  deepMerge: boolean
+}
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
@@ -62,7 +66,7 @@ export type SingleSyncHandles<T = POJO> = {
     $find: (idObj: Partial<T>) => (T | undefined);
     $unsync: () => any;
     $delete: () => void;
-    $update: (newData: Partial<T>) => any;
+    $update: (newData: Partial<T>, opts: $UpdateOpts) => any;
     $cloneSync: CloneSync<T>;
 }
 export type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
@@ -421,11 +425,11 @@ export class SyncedTable {
                                 ...this.makeSingleSyncHandles(idObj, onChange),
                                 $get: () => getItem(this.getItem<T>(idObj).data, idObj),
                                 $find: (idObject) => getItem(this.getItem<T>(idObject).data, idObject),
-                                $update: (newData: POJO): Promise<boolean> => {
-                                    return this.upsert([{ idObj, delta: newData }]).then(r => true);
+                                $update: (newData: POJO, opts: $UpdateOpts): Promise<boolean> => {
+                                  return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
                                 },
                                 $delete: async (): Promise<boolean> => {
-                                    return this.delete(idObj);
+                                  return this.delete(idObj);
                                 }
                             })
                             const idObj = this.wal.getIdObj(item);
@@ -697,16 +701,19 @@ export class SyncedTable {
         return true
     }
 
+    /** 
+     * Ensures that all object keys match valid column names 
+     */
     private checkItemCols = (item: POJO) => {
-        if(this.columns && this.columns.length){
-            const badCols = Object.keys({ ...item })
-                .filter(k => 
-                    !this.columns.find(c => c.name === k)
-                );
-            if(badCols.length){
-                throw(`Unexpected columns in sync item update: ` + badCols.join(", "));
-            }
+      if(this.columns && this.columns.length){
+        const badCols = Object.keys({ ...item })
+          .filter(k => 
+            !this.columns.find(c => c.name === k)
+          );
+        if(badCols.length){
+          throw(`Unexpected columns in sync item update: ` + badCols.join(", "));
         }
+      }
     }
 
     /**
@@ -737,7 +744,7 @@ export class SyncedTable {
                 2) Postgres does not have undefined
             */
             Object.keys(delta).map(k => {
-                if(delta[k] === undefined) delta[k] = null;
+              if(delta[k] === undefined) delta[k] = null;
             })
 
             if(!from_server){
@@ -750,24 +757,33 @@ export class SyncedTable {
             
             /* Calc delta if missing or if from server */
             if((from_server || isEmpty(delta)) && !isEmpty(oldItem)){
-                delta = this.getDelta(oldItem || {}, delta)
+              delta = this.getDelta(oldItem || {}, delta)
             }
 
             /* Add synced if local update */
             /** Will need to check client clock shift */
             if(!from_server) {
-                delta[this.synced_field] = Date.now();
+              delta[this.synced_field] = Date.now();
             }
             
             let newItem = { ...oldItem, ...delta, ...idObj };
+            if(oldItem && !from_server){
+
+              /**
+               * Merge deep
+               */
+              if(item.opts?.deepMerge){
+                newItem = mergeDeep(newItem, { ...delta });
+              }
+            }
 
             /* Update existing -> Expecting delta */
             if(oldItem && oldItem[this.synced_field] < newItem[this.synced_field]){
-                status = "updated";
+              status = "updated";
                
             /* Insert new item */
             } else if(!oldItem) {
-                status = "inserted";
+              status = "inserted";
             }
             
             this.setItem(newItem, oldIdx);
@@ -819,12 +835,12 @@ export class SyncedTable {
                     // }
                 // }
                 walItems.push({
-                    initial: oldItem,
-                    current: { ...delta, ...idObj }
+                  initial: oldItem,
+                  current: { ...delta, ...idObj }
                 });
             }
             if(changeInfo.delta && !isEmpty(changeInfo.delta)){
-                results.push(changeInfo);
+              results.push(changeInfo);
             }
 
             /* TODO: Deletes from server */
@@ -994,3 +1010,36 @@ export class SyncedTable {
         return res;
     }
 }
+
+/**
+ * Simple object check.
+ * @param item
+ * @returns {boolean}
+ */
+export function isObject(item: AnyObject) {
+  return (item && typeof item === 'object' && !Array.isArray(item));
+}
+  
+/**
+ * Deep merge two objects.
+ * @param target
+ * @param ...sources
+ */
+export function mergeDeep(target: AnyObject, ...sources: AnyObject[]): AnyObject {
+  if (!sources.length) return target;
+  const source = sources.shift();
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!target[key]) Object.assign(target, { [key]: {} });
+        mergeDeep(target[key], source[key]);
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return mergeDeep(target, ...sources);
+}
+  
