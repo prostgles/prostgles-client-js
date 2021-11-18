@@ -554,11 +554,19 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
             if(auth){
                 if(auth.pathGuard){
-                    socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any,res: AuthGuardLocationResponse)=>{
-                        if(res.shouldReload && typeof window !== "undefined"){
+                    const doReload = (res?: AuthGuardLocationResponse) => {
+                        if(res?.shouldReload && typeof window !== "undefined"){
                             window?.location?.reload?.();
                         }
-                    })
+                    }
+                    socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any,res: AuthGuardLocationResponse)=>{
+                        doReload(res)
+                    });
+
+                    socket.removeAllListeners(CHANNELS.AUTHGUARD);
+                    socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse)=>{
+                        doReload(res);
+                    });
                 }
                 
                 _auth = { ...auth };
