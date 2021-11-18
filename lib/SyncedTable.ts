@@ -58,6 +58,10 @@ export type CloneSync<T> = (
 type $UpdateOpts = {
   deepMerge: boolean
 }
+type DeepPartial<T> = {
+    [P in keyof T]?: DeepPartial<T[P]>;
+};
+
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
@@ -66,9 +70,10 @@ export type SingleSyncHandles<T = POJO> = {
     $find: (idObj: Partial<T>) => (T | undefined);
     $unsync: () => any;
     $delete: () => void;
-    $update: (newData: Partial<T>, opts?: $UpdateOpts) => any;
+    $update: <OPTS extends $UpdateOpts>(newData: OPTS extends { deepMerge: true }? DeepPartial<T> : Partial<T>, opts?: OPTS) => any;
     $cloneSync: CloneSync<T>;
 }
+
 export type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
 
 export type MultiSyncHandles<T = POJO> = {
