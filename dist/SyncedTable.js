@@ -610,13 +610,13 @@ class SyncedTable {
             $delete: () => {
                 return this.delete(idObj);
             },
-            $update: newData => {
+            $update: (newData, opts) => {
                 /* DROPPED SYNC BUG */
                 if (!this.singleSubscriptions.length) {
                     console.warn("No singleSubscriptions");
                     exports.debug("nosync", this._singleSubscriptions);
                 }
-                this.upsert([{ idObj, delta: newData }]);
+                this.upsert([{ idObj, delta: newData, opts }]);
             },
             $cloneSync: (onChange) => this.syncOne(idObj, onChange)
         };
