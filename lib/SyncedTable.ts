@@ -778,7 +778,7 @@ export class SyncedTable {
                * Merge deep
                */
               if(item.opts?.deepMerge){
-                newItem = mergeDeep(newItem, { ...delta });
+                newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
               }
             }
 
