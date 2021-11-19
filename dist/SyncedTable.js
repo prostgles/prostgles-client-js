@@ -225,7 +225,7 @@ class SyncedTable {
                      * Merge deep
                      */
                     if ((_a = item.opts) === null || _a === void 0 ? void 0 : _a.deepMerge) {
-                        newItem = mergeDeep(newItem, { ...delta });
+                        newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
                     }
                 }
                 /* Update existing -> Expecting delta */
