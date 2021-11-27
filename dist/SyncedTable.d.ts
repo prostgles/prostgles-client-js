@@ -36,6 +36,7 @@ export declare type ItemUpdated = ItemUpdate & {
     from_server: boolean;
 };
 export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => SingleSyncHandles<T>;
+export declare type CloneMultiSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => MultiSyncHandles<T>;
 declare type $UpdateOpts = {
     deepMerge: boolean;
 };
@@ -54,6 +55,7 @@ export declare type SingleSyncHandles<T = POJO> = {
         deepMerge: true;
     } ? DeepPartial<T> : Partial<T>, opts?: OPTS) => any;
     $cloneSync: CloneSync<T>;
+    $cloneMultiSync: CloneMultiSync<T>;
 };
 export declare type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
 export declare type MultiSyncHandles<T = POJO> = {

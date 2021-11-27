@@ -55,6 +55,11 @@ export type CloneSync<T> = (
     onError?: (error: any) => void
 ) => SingleSyncHandles<T>;
 
+export type CloneMultiSync<T> = (
+    onChange: SingleChangeListener,
+    onError?: (error: any) => void
+) => MultiSyncHandles<T>;
+
 type $UpdateOpts = {
   deepMerge: boolean
 }
@@ -72,6 +77,7 @@ export type SingleSyncHandles<T = POJO> = {
     $delete: () => void;
     $update: <OPTS extends $UpdateOpts>(newData: OPTS extends { deepMerge: true }? DeepPartial<T> : Partial<T>, opts?: OPTS) => any;
     $cloneSync: CloneSync<T>;
+    $cloneMultiSync: CloneMultiSync<T>;
 }
 
 export type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
@@ -435,7 +441,8 @@ export class SyncedTable {
                                 },
                                 $delete: async (): Promise<boolean> => {
                                   return this.delete(idObj);
-                                }
+                                },
+                                $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData)
                             })
                             const idObj = this.wal.getIdObj(item);
                             return getItem(item, idObj);
@@ -475,7 +482,8 @@ export class SyncedTable {
                 }
                 this.upsert([{ idObj, delta: newData, opts }]);                
             },
-            $cloneSync: (onChange) => this.syncOne(idObj, onChange)
+            $cloneSync: (onChange) => this.syncOne(idObj, onChange),
+            $cloneMultiSync: (onChange) => this.sync(onChange, true),
         };
 
         return handles;

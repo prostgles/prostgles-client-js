@@ -580,7 +580,8 @@ class SyncedTable {
                             },
                             $delete: async () => {
                                 return this.delete(idObj);
-                            }
+                            },
+                            $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData)
                         });
                         const idObj = this.wal.getIdObj(item);
                         return getItem(item, idObj);
@@ -618,7 +619,8 @@ class SyncedTable {
                 }
                 this.upsert([{ idObj, delta: newData, opts }]);
             },
-            $cloneSync: (onChange) => this.syncOne(idObj, onChange)
+            $cloneSync: (onChange) => this.syncOne(idObj, onChange),
+            $cloneMultiSync: (onChange) => this.sync(onChange, true),
         };
         return handles;
     }
