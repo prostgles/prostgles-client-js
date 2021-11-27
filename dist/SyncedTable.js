@@ -593,7 +593,7 @@ class SyncedTable {
         if (!this.skipFirstTrigger) {
             setTimeout(() => {
                 let items = this.getItems();
-                onChange(items, items);
+                sub.notify(items, items);
             }, 0);
         }
         return Object.freeze({ ...handles });
