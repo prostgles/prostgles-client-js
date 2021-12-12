@@ -56,7 +56,7 @@ export type CloneSync<T> = (
 ) => SingleSyncHandles<T>;
 
 export type CloneMultiSync<T> = (
-    onChange: SingleChangeListener,
+    onChange: MultiChangeListener,
     onError?: (error: any) => void
 ) => MultiSyncHandles<T>;
 
@@ -108,8 +108,8 @@ const STORAGE_TYPES = {
     object: "object"
 } as const;
 
-export type MultiChangeListener<T = POJO> = (items: SyncDataItem<T>[], delta: Partial<T>[]) => any;
-export type SingleChangeListener<T = POJO> = (item: SyncDataItem<T>, delta: Partial<T>) => any;
+export type MultiChangeListener<T = POJO> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
+export type SingleChangeListener<T = POJO> = (item: SyncDataItem<T>, delta: DeepPartial<T>) => any;
 
 export type SyncedTableOptions = {
     name: string;
