@@ -476,9 +476,9 @@ export class SyncedTable {
             },
             $update: (newData, opts) => {
                 /* DROPPED SYNC BUG */
-                if(!this.singleSubscriptions.length){
-                    console.warn("No singleSubscriptions");
-                    debug("nosync", this._singleSubscriptions);
+                if(!this.singleSubscriptions.length && !this.multiSubscriptions.length){
+                    console.warn("No sync listeners");
+                    debug("nosync", this._singleSubscriptions, this._multiSubscriptions);
                 }
                 this.upsert([{ idObj, delta: newData, opts }]);                
             },
