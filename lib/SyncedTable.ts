@@ -787,6 +787,7 @@ export class SyncedTable {
                */
               if(item.opts?.deepMerge){
                 newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
+                // delta = Object.keys({ ...delta }).reduce((a, k) => ({ ...a, [k]: ({ ...newItem })[k] }), {})
               }
             }
 
@@ -849,7 +850,8 @@ export class SyncedTable {
                 // }
                 walItems.push({
                   initial: oldItem,
-                  current: { ...delta, ...idObj }
+                //   current: { ...delta, ...idObj }
+                  current: { ...newItem }
                 });
             }
             if(changeInfo.delta && !isEmpty(changeInfo.delta)){

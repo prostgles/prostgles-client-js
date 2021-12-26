@@ -226,6 +226,7 @@ class SyncedTable {
                      */
                     if ((_a = item.opts) === null || _a === void 0 ? void 0 : _a.deepMerge) {
                         newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
+                        // delta = Object.keys({ ...delta }).reduce((a, k) => ({ ...a, [k]: ({ ...newItem })[k] }), {})
                     }
                 }
                 /* Update existing -> Expecting delta */
@@ -280,7 +281,8 @@ class SyncedTable {
                     // }
                     walItems.push({
                         initial: oldItem,
-                        current: { ...delta, ...idObj }
+                        //   current: { ...delta, ...idObj }
+                        current: { ...newItem }
                     });
                 }
                 if (changeInfo.delta && !prostgles_types_1.isEmpty(changeInfo.delta)) {
