@@ -57,7 +57,7 @@ export declare type SingleSyncHandles<T = POJO> = {
     $cloneSync: CloneSync<T>;
     $cloneMultiSync: CloneMultiSync<T>;
 };
-export declare type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
+export declare type SyncDataItem<T = POJO, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T> : Partial<SingleSyncHandles<T>>);
 export declare type MultiSyncHandles<T = POJO> = {
     $unsync: () => void;
     $upsert: (newData: T[]) => any;

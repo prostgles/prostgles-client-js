@@ -80,7 +80,7 @@ export type SingleSyncHandles<T = POJO> = {
     $cloneMultiSync: CloneMultiSync<T>;
 }
 
-export type SyncDataItem<T = POJO> = T & Partial<SingleSyncHandles<T>>;
+export type SyncDataItem<T = POJO, Full extends boolean = false> = T & (Full extends true? SingleSyncHandles<T> : Partial<SingleSyncHandles<T>>);
 
 export type MultiSyncHandles<T = POJO> = {
     $unsync: () => void;
