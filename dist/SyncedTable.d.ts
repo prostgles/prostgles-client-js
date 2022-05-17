@@ -35,7 +35,7 @@ export declare type ItemUpdated = ItemUpdate & {
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 };
-export declare type CloneSync<T> = (onChange: SingleChangeListener, onError?: (error: any) => void) => SingleSyncHandles<T>;
+export declare type CloneSync<T, Full extends boolean> = (onChange: SingleChangeListener, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;
 export declare type CloneMultiSync<T> = (onChange: MultiChangeListener, onError?: (error: any) => void) => MultiSyncHandles<T>;
 declare type $UpdateOpts = {
     deepMerge: boolean;
@@ -46,7 +46,7 @@ declare type DeepPartial<T> = {
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export declare type SingleSyncHandles<T = POJO> = {
+export declare type SingleSyncHandles<T = POJO, Full extends boolean = false> = {
     $get: () => T;
     $find: (idObj: Partial<T>) => (T | undefined);
     $unsync: () => any;
@@ -54,10 +54,10 @@ export declare type SingleSyncHandles<T = POJO> = {
     $update: <OPTS extends $UpdateOpts>(newData: OPTS extends {
         deepMerge: true;
     } ? DeepPartial<T> : Partial<T>, opts?: OPTS) => any;
-    $cloneSync: CloneSync<T>;
+    $cloneSync: CloneSync<T, Full>;
     $cloneMultiSync: CloneMultiSync<T>;
 };
-export declare type SyncDataItem<T = POJO, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T> : Partial<SingleSyncHandles<T>>);
+export declare type SyncDataItem<T = POJO, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, true> : Partial<SingleSyncHandles<T>>);
 export declare type MultiSyncHandles<T = POJO> = {
     $unsync: () => void;
     $upsert: (newData: T[]) => any;
