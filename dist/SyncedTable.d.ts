@@ -35,7 +35,7 @@ export declare type ItemUpdated = ItemUpdate & {
     status: "inserted" | "updated" | "deleted";
     from_server: boolean;
 };
-export declare type CloneSync<T, Full extends boolean> = (onChange: SingleChangeListener, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;
+export declare type CloneSync<T, Full extends boolean> = (onChange: SingleChangeListener<T>, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;
 export declare type CloneMultiSync<T> = (onChange: MultiChangeListener, onError?: (error: any) => void) => MultiSyncHandles<T>;
 declare type $UpdateOpts = {
     deepMerge: boolean;
@@ -82,7 +82,7 @@ declare const STORAGE_TYPES: {
     readonly object: "object";
 };
 export declare type MultiChangeListener<T = POJO> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
-export declare type SingleChangeListener<T = POJO> = (item: SyncDataItem<T>, delta: DeepPartial<T>) => any;
+export declare type SingleChangeListener<T = POJO, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta: DeepPartial<T>) => any;
 export declare type SyncedTableOptions = {
     name: string;
     filter?: POJO;
