@@ -40,9 +40,9 @@ export declare type CloneMultiSync<T> = (onChange: MultiChangeListener, onError?
 declare type $UpdateOpts = {
     deepMerge: boolean;
 };
-declare type DeepPartial<T> = {
+declare type DeepPartial<T> = T extends Array<any> ? T : T extends object ? {
     [P in keyof T]?: DeepPartial<T[P]>;
-};
+} : T;
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
