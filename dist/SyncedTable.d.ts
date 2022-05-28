@@ -32,7 +32,7 @@ export declare type ItemUpdate = {
 export declare type ItemUpdated = ItemUpdate & {
     oldItem: any;
     newItem: any;
-    status: "inserted" | "updated" | "deleted";
+    status: "inserted" | "updated" | "deleted" | "unchanged";
     from_server: boolean;
 };
 export declare type CloneSync<T, Full extends boolean> = (onChange: SingleChangeListener<T>, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;

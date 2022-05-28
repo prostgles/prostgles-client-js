@@ -46,7 +46,7 @@ export type ItemUpdate = {
 export type ItemUpdated = ItemUpdate & {
     oldItem: any;
     newItem: any;
-    status: "inserted" | "updated" | "deleted";
+    status: "inserted" | "updated" | "deleted" | "unchanged";
     from_server: boolean;
 }
 
@@ -766,7 +766,7 @@ export class SyncedTable {
 
         let updates = [], inserts = [], deltas = [];
         let results: ItemUpdated[] = [];
-        let status: "updated" | "inserted" | "deleted" | undefined;
+        let status: ItemUpdated["status"];
         let walItems: WALItem[] = [];
         await Promise.all(items.map(async (item, i) => {
             // let d = { ...item.idObj, ...item.delta };
@@ -813,18 +813,18 @@ export class SyncedTable {
             }
 
             /* Update existing -> Expecting delta */
-            if(oldItem && oldItem[this.synced_field] < newItem[this.synced_field]){
-              status = "updated";
+            if(oldItem){
+              status = oldItem[this.synced_field] < newItem[this.synced_field]? "updated" : "unchanged";
                
             /* Insert new item */
-            } else if(!oldItem) {
+            } else {
               status = "inserted";
             }
             
             this.setItem(newItem, oldIdx);
 
-            if(!status) throw "changeInfo status missing"
-            let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
+            // if(!status) throw "changeInfo status missing"
+            let changeInfo: ItemUpdated = { idObj, delta, oldItem, newItem, status, from_server };
 
             // const idStr = this.getIdStr(idObj);
             /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */

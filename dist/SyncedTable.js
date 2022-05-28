@@ -230,16 +230,15 @@ class SyncedTable {
                     }
                 }
                 /* Update existing -> Expecting delta */
-                if (oldItem && oldItem[this.synced_field] < newItem[this.synced_field]) {
-                    status = "updated";
+                if (oldItem) {
+                    status = oldItem[this.synced_field] < newItem[this.synced_field] ? "updated" : "unchanged";
                     /* Insert new item */
                 }
-                else if (!oldItem) {
+                else {
                     status = "inserted";
                 }
                 this.setItem(newItem, oldIdx);
-                if (!status)
-                    throw "changeInfo status missing";
+                // if(!status) throw "changeInfo status missing"
                 let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
                 // const idStr = this.getIdStr(idObj);
                 /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
