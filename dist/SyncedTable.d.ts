@@ -118,6 +118,7 @@ export declare class SyncedTable {
         data_type: string;
     }[];
     wal?: WAL;
+    notifyWal?: WAL;
     _multiSubscriptions: SubscriptionMulti[];
     _singleSubscriptions: SubscriptionSingle[];
     /**
@@ -161,7 +162,7 @@ export declare class SyncedTable {
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
      */
-    private notifySubscribers;
+    private _notifySubscribers;
     unsubscribe: (onChange: Function) => string;
     private getIdStr;
     private getIdObj;

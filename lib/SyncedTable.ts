@@ -151,6 +151,8 @@ export class SyncedTable {
 
     wal?: WAL;
 
+    notifyWal?: WAL;
+
     // multiSubscriptions: SubscriptionMulti[];
     // singleSubscriptions:  SubscriptionSingle[];
     _multiSubscriptions: SubscriptionMulti[] = [];
@@ -273,10 +275,13 @@ export class SyncedTable {
             this.dbSync = s;
 
             function confirmExit() {  return "Data may be lost. Are you sure?"; }
-            this.wal = new WAL({
+            const opts = {
                 id_fields, 
                 synced_field, 
                 throttle, 
+            }
+            this.wal = new WAL({
+                ...opts,
                 batch_size,
                 onSendStart: () => {
                     if(hasWnd) window.onbeforeunload = confirmExit;
@@ -301,6 +306,18 @@ export class SyncedTable {
                 },//, deletedData);,
                 onSendEnd: () => {
                     if(hasWnd) window.onbeforeunload = null;
+                }
+            });
+            this.notifyWal = new WAL({
+                ...opts,
+                batch_size: Infinity,
+                throttle: 5,
+                onSend: async (items, fullItems) => {
+                    this._notifySubscribers(fullItems.map(d => ({
+                        delta: this.getDelta(d.initial ?? {}, d.current),
+                        idObj: this.getIdObj(d.current),
+                        newItem: d.current,
+                    })))
                 }
             });
 
@@ -540,22 +557,18 @@ export class SyncedTable {
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
      */
-    private notifySubscribers = (changes: ItemUpdated[] = []) => {
+    private _notifySubscribers = (changes: Pick<ItemUpdated, "idObj" | "newItem" | "delta">[] = []) => {
         if(!this.isSynced) return;
 
-        let _changes = changes;
-        // if(!changes) _changes
-
+        /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
         let items: AnyObject[] = [], deltas: AnyObject[] = [], ids: AnyObject[] = [];
-        _changes.map(({ idObj, newItem, delta }) => {
+        changes.map(({ idObj, newItem, delta }) => {
 
             /* Single subs do not care about the filter */
             this.singleSubscriptions.filter(s => 
             
                 this.matchesIdObj(s.idObj, idObj)
     
-                /* What's the point here? That left filter includes the right one?? */
-                // && Object.keys(s.idObj).length <= Object.keys(idObj).length
             ).map(async s => {
                 try {
                     await s.notify(newItem, delta);
@@ -572,30 +585,33 @@ export class SyncedTable {
             }
         });
 
-        let allItems: AnyObject[] = [], allDeltas: AnyObject[] = [];
-        this.getItems().map(d => {
-            allItems.push({ ...d });
-            const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
-            allDeltas.push(deltas[dIdx]);
-        })
 
-        /* Notify main subscription */
-        if(this.onChange){
-            try {
-                this.onChange(allItems, allDeltas);
-            } catch(e){
-                console.error("SyncedTable failed to notify onChange: ", e)
+        if(this.onChange || this.multiSubscriptions.length){
+            let allItems: AnyObject[] = [], allDeltas: AnyObject[] = [];
+            this.getItems().map(d => {
+                allItems.push({ ...d });
+                const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
+                allDeltas.push(deltas[dIdx]);
+            });
+            
+            /* Notify main subscription */
+            if(this.onChange){
+                try {
+                    this.onChange(allItems, allDeltas);
+                } catch(e){
+                    console.error("SyncedTable failed to notify onChange: ", e)
+                }
             }
+    
+            /* Multisubs must not forget about the original filter */
+            this.multiSubscriptions.map(async s => {
+                try {
+                    await s.notify(allItems, allDeltas);
+                } catch(e){
+                    console.error("SyncedTable failed to notify: ", e)
+                }
+            });
         }
-
-        /* Multisubs must not forget about the original filter */
-        this.multiSubscriptions.map(async s => {
-            try {
-                await s.notify(allItems, allDeltas);
-            } catch(e){
-                console.error("SyncedTable failed to notify: ", e)
-            }
-        });
     }
 
     unsubscribe = (onChange: Function) => {
@@ -715,7 +731,7 @@ export class SyncedTable {
         if(!from_server){
             await this.db[this.name].delete(idObj);
         }
-        this.notifySubscribers();
+        this._notifySubscribers();
         return true
     }
 
@@ -875,7 +891,8 @@ export class SyncedTable {
         });
         // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
         
-        this.notifySubscribers(results);
+        // this.notifySubscribers(results);
+        this.notifyWal?.addData(results.map(d => ({ initial: d.oldItem, current: d.newItem })))
         
         /* Push to server */
         if(!from_server && walItems.length){

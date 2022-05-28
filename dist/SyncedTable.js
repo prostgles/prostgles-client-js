@@ -87,18 +87,14 @@ class SyncedTable {
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
          */
-        this.notifySubscribers = (changes = []) => {
+        this._notifySubscribers = (changes = []) => {
             if (!this.isSynced)
                 return;
-            let _changes = changes;
-            // if(!changes) _changes
+            /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
             let items = [], deltas = [], ids = [];
-            _changes.map(({ idObj, newItem, delta }) => {
+            changes.map(({ idObj, newItem, delta }) => {
                 /* Single subs do not care about the filter */
-                this.singleSubscriptions.filter(s => this.matchesIdObj(s.idObj, idObj)
-                /* What's the point here? That left filter includes the right one?? */
-                // && Object.keys(s.idObj).length <= Object.keys(idObj).length
-                ).map(async (s) => {
+                this.singleSubscriptions.filter(s => this.matchesIdObj(s.idObj, idObj)).map(async (s) => {
                     try {
                         await s.notify(newItem, delta);
                     }
@@ -113,30 +109,32 @@ class SyncedTable {
                     ids.push(idObj);
                 }
             });
-            let allItems = [], allDeltas = [];
-            this.getItems().map(d => {
-                allItems.push({ ...d });
-                const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
-                allDeltas.push(deltas[dIdx]);
-            });
-            /* Notify main subscription */
-            if (this.onChange) {
-                try {
-                    this.onChange(allItems, allDeltas);
+            if (this.onChange || this.multiSubscriptions.length) {
+                let allItems = [], allDeltas = [];
+                this.getItems().map(d => {
+                    allItems.push({ ...d });
+                    const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
+                    allDeltas.push(deltas[dIdx]);
+                });
+                /* Notify main subscription */
+                if (this.onChange) {
+                    try {
+                        this.onChange(allItems, allDeltas);
+                    }
+                    catch (e) {
+                        console.error("SyncedTable failed to notify onChange: ", e);
+                    }
                 }
-                catch (e) {
-                    console.error("SyncedTable failed to notify onChange: ", e);
-                }
+                /* Multisubs must not forget about the original filter */
+                this.multiSubscriptions.map(async (s) => {
+                    try {
+                        await s.notify(allItems, allDeltas);
+                    }
+                    catch (e) {
+                        console.error("SyncedTable failed to notify: ", e);
+                    }
+                });
             }
-            /* Multisubs must not forget about the original filter */
-            this.multiSubscriptions.map(async (s) => {
-                try {
-                    await s.notify(allItems, allDeltas);
-                }
-                catch (e) {
-                    console.error("SyncedTable failed to notify: ", e);
-                }
-            });
         };
         this.unsubscribe = (onChange) => {
             this.singleSubscriptions = this.singleSubscriptions.filter(s => s._onChange !== onChange);
@@ -162,7 +160,7 @@ class SyncedTable {
             if (!from_server) {
                 await this.db[this.name].delete(idObj);
             }
-            this.notifySubscribers();
+            this._notifySubscribers();
             return true;
         };
         /**
@@ -184,7 +182,7 @@ class SyncedTable {
          * @param from_server : <boolean> If false then updates will be sent to server
          */
         this.upsert = async (items, from_server = false) => {
-            var _a;
+            var _a, _b;
             if ((!items || !items.length) && !from_server)
                 throw "No data provided for upsert";
             /* If data has been deleted then wait for it to sync with server before continuing */
@@ -301,11 +299,12 @@ class SyncedTable {
                 console.error("SyncedTable failed upsert: ", err);
             });
             // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
-            this.notifySubscribers(results);
+            // this.notifySubscribers(results);
+            (_a = this.notifyWal) === null || _a === void 0 ? void 0 : _a.addData(results.map(d => ({ initial: d.oldItem, current: d.newItem })));
             /* Push to server */
             if (!from_server && walItems.length) {
                 // this.addWALItems(walItems);
-                (_a = this.wal) === null || _a === void 0 ? void 0 : _a.addData(walItems);
+                (_b = this.wal) === null || _b === void 0 ? void 0 : _b.addData(walItems);
             }
         };
         /**
@@ -464,10 +463,13 @@ class SyncedTable {
         db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then((s) => {
             this.dbSync = s;
             function confirmExit() { return "Data may be lost. Are you sure?"; }
-            this.wal = new prostgles_types_1.WAL({
+            const opts = {
                 id_fields,
                 synced_field,
                 throttle,
+            };
+            this.wal = new prostgles_types_1.WAL({
+                ...opts,
                 batch_size,
                 onSendStart: () => {
                     if (hasWnd)
@@ -493,6 +495,21 @@ class SyncedTable {
                 onSendEnd: () => {
                     if (hasWnd)
                         window.onbeforeunload = null;
+                }
+            });
+            this.notifyWal = new prostgles_types_1.WAL({
+                ...opts,
+                batch_size: Infinity,
+                throttle: 5,
+                onSend: async (items, fullItems) => {
+                    this._notifySubscribers(fullItems.map(d => {
+                        var _a;
+                        return ({
+                            delta: this.getDelta((_a = d.initial) !== null && _a !== void 0 ? _a : {}, d.current),
+                            idObj: this.getIdObj(d.current),
+                            newItem: d.current,
+                        });
+                    }));
                 }
             });
             onReady();
