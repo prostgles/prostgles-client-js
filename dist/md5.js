@@ -124,6 +124,7 @@ function md51(s) {
 function md5blk(s) {
     var md5blks = [], i; /* Andy King said do it this way. */
     for (i = 0; i < 64; i += 4) {
+        // @ts-ignore
         md5blks[i >> 2] = s.charCodeAt(i)
             + (s.charCodeAt(i + 1) << 8)
             + (s.charCodeAt(i + 2) << 16)

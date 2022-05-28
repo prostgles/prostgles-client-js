@@ -1,4 +1,4 @@
-import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams } from "prostgles-types";
+import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo } from "prostgles-types";
 export type POJO = { [key: string]: any };
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -87,15 +87,15 @@ export type MultiSyncHandles<T = POJO> = {
     $upsert: (newData: T[]) => any;
 }
 
-export type SubscriptionSingle<T = POJO> = {
-    _onChange: (data: T, delta?: Partial<T>) => T;
-    notify: (data: T, delta?: Partial<T>) => T;
+export type SubscriptionSingle<T = POJO, Full extends boolean = false> = {
+    _onChange: SingleChangeListener<T, Full>
+    notify: (data: T, delta?: DeepPartial<T>) => T;
     idObj: Partial<T>;
     handlesOnData?: boolean;
-    handles?: SingleSyncHandles;
+    handles?: SingleSyncHandles<T, Full>;
 }
 export type SubscriptionMulti<T = POJO> = {
-    _onChange: (data: T[], delta: Partial<T>[])=> T[];
+    _onChange: MultiChangeListener<T>;
     notify: (data: T[], delta: Partial<T>[])=> T[];
     idObj?: Partial<T>;
     handlesOnData?: boolean;
@@ -109,7 +109,7 @@ const STORAGE_TYPES = {
 } as const;
 
 export type MultiChangeListener<T = POJO> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
-export type SingleChangeListener<T = POJO, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta: DeepPartial<T>) => any;
+export type SingleChangeListener<T = POJO, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
 
 export type SyncedTableOptions = {
     name: string;
@@ -127,6 +127,11 @@ export type SyncedTableOptions = {
     patchJSON: boolean;
     onReady: () => any;
     skipIncomingDeltaCheck?: boolean;
+};
+
+export type DbTableSync = {
+    unsync: () => void;
+    syncData: (data?: AnyObject[], deleted?: AnyObject[], cb?: (err?: any)=>void)=>void;
 };
 
 export class SyncedTable {
@@ -170,7 +175,7 @@ export class SyncedTable {
         return this._singleSubscriptions 
     };
 
-    dbSync: any;
+    dbSync?: DbTableSync;
     items: POJO[] = [];
     storageType: string;
     itemsObj: POJO = {};
@@ -213,14 +218,14 @@ export class SyncedTable {
         
         const onSyncRequest: ClientSyncHandles["onSyncRequest"] = (params) => {
                 
-                let res = { c_lr: null, c_fr: null, c_count: 0 };
+                let res: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
 
                 let batch = this.getBatch(params);
                 if(batch.length){
 
                     res = {
-                        c_fr: this.getRowSyncObj(batch[0]) || null,
-                        c_lr: this.getRowSyncObj(batch[batch.length - 1]) || null, 
+                        c_fr: this.getRowSyncObj(batch[0]),
+                        c_lr: this.getRowSyncObj(batch[batch.length - 1]), 
                         c_count: batch.length
                     };
                 }
@@ -239,7 +244,7 @@ export class SyncedTable {
             },
             onUpdates: ClientSyncHandles["onUpdates"] = async (args) => {
                 if("err" in args && args.err){
-                    this.onError(args.err);
+                    this.onError?.(args.err);
                 } else if("isSynced" in args && args.isSynced && !this.isSynced){
                     this.isSynced = args.isSynced;
                     let items = this.getItems().map(d => ({ ...d }));
@@ -264,7 +269,7 @@ export class SyncedTable {
                 return true;
             };
         
-        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(s => {
+        db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then((s: DbTableSync) => {
             this.dbSync = s;
 
             function confirmExit() {  return "Data may be lost. Are you sure?"; }
@@ -292,7 +297,7 @@ export class SyncedTable {
 
                     let _data = await this.updatePatches(walData);
                     if(!_data.length) return [];
-                    return this.dbSync.syncData(data);
+                    return this.dbSync!.syncData(data);
                 },//, deletedData);,
                 onSendEnd: () => {
                     if(hasWnd) window.onbeforeunload = null;
@@ -334,17 +339,17 @@ export class SyncedTable {
                 await Promise.all(walData.slice(0).map(async (d, i) => {
 
                     const { current, initial } = { ...d };
-                    let patchedDelta: AnyObject;
+                    let patchedDelta: AnyObject | undefined;
                     if(initial){
                         txtCols.map(c => {
                             if(!id_keys.includes(c.name) && c.name in current){
-                                patchedDelta = patchedDelta || { ...current }
+                                patchedDelta ??= { ...current }
                                 
-                                patchedDelta[c.name] = getTextPatch(initial[c.name], current[c.name]);
+                                patchedDelta![c.name] = getTextPatch(initial[c.name], current[c.name]);
                             }
                         });
 
-                        if(patchedDelta){
+                        if(patchedDelta && this.wal){
                             patchedItems.push(patchedDelta)
                             patched.push([
                                 this.wal.getIdObj(patchedDelta), 
@@ -404,7 +409,7 @@ export class SyncedTable {
                 },
                 $upsert: (newData) => {
                     if(newData){
-                        const prepareOne = (d) => {
+                        const prepareOne = (d: AnyObject) => {
                             return ({
                                 idObj: this.getIdObj(d),
                                 delta: d
@@ -431,20 +436,20 @@ export class SyncedTable {
                     if(handlesOnData){
                         allItems = allItems.map((item, i)=> {
 
-                            const getItem = (d, idObj) => ({
+                            const getItem = (d: AnyObject, idObj: Partial<T>) => ({
                                 ...d,
                                 ...this.makeSingleSyncHandles(idObj, onChange),
-                                $get: () => getItem(this.getItem<T>(idObj).data, idObj),
-                                $find: (idObject) => getItem(this.getItem<T>(idObject).data, idObject),
+                                $get: () => getItem(this.getItem(idObj).data!, idObj),
+                                $find: (idObject: Partial<T>) => getItem(this.getItem(idObject).data!, idObject),
                                 $update: (newData: POJO, opts: $UpdateOpts): Promise<boolean> => {
                                   return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
                                 },
                                 $delete: async (): Promise<boolean> => {
                                   return this.delete(idObj);
                                 },
-                                $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData)
+                                $cloneMultiSync: (onChange: MultiChangeListener) => this.sync(onChange, handlesOnData)
                             })
-                            const idObj = this.wal.getIdObj(item);
+                            const idObj = this.wal!.getIdObj(item) as Partial<T>;
                             return getItem(item, idObj);
                         });
                     }
@@ -462,11 +467,11 @@ export class SyncedTable {
         return Object.freeze({ ...handles });
     }
 
-    private makeSingleSyncHandles<T = POJO>(idObj: Partial<T>, onChange: SingleChangeListener | MultiChangeListener): SingleSyncHandles<T>{
+    private makeSingleSyncHandles<T = POJO, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
         if(!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
         const handles: SingleSyncHandles<T> = {
-            $get: () => this.getItem<T>(idObj).data,
+            $get: () => this.getItem<T>(idObj).data!,
             $find: (idObject) => this.getItem<T>(idObject).data,
             $unsync: () => {
                 return this.unsubscribe(onChange)
@@ -495,16 +500,16 @@ export class SyncedTable {
      * @param onChange change listener <(item: object, delta: object) => any >
      * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
-    syncOne<T = POJO>(idObj: Partial<T>, onChange: SingleChangeListener, handlesOnData = true): SingleSyncHandles<T> {
+    syncOne<T = POJO, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData = true): SingleSyncHandles<T, Full> {
 
         const handles = this.makeSingleSyncHandles(idObj, onChange);
-        const sub: SubscriptionSingle<T> = {
+        const sub: SubscriptionSingle<T, Full> = {
             _onChange: onChange,
             idObj,
             handlesOnData,
             handles,
             notify: (data, delta) => {
-                let newData: SyncDataItem<T> = { ...data };
+                let newData: SyncDataItem<T, Full> = { ...data } as any;
 
                 if(handlesOnData){
                     newData.$get = handles.$get;
@@ -519,12 +524,12 @@ export class SyncedTable {
         };
         
 
-        this.singleSubscriptions.push(sub);
+        this.singleSubscriptions.push(sub as any);
 
         setTimeout(() => {
             let existingData = handles.$get();
             if(existingData){
-                sub.notify(existingData, existingData);
+                sub.notify(existingData, existingData as any);
             }
         }, 0);
 
@@ -541,7 +546,7 @@ export class SyncedTable {
         let _changes = changes;
         // if(!changes) _changes
 
-        let items = [], deltas = [], ids = [];
+        let items: AnyObject[] = [], deltas: AnyObject[] = [], ids: AnyObject[] = [];
         _changes.map(({ idObj, newItem, delta }) => {
 
             /* Single subs do not care about the filter */
@@ -567,7 +572,7 @@ export class SyncedTable {
             }
         });
 
-        let allItems = [], allDeltas = [];
+        let allItems: AnyObject[] = [], allDeltas: AnyObject[] = [];
         this.getItems().map(d => {
             allItems.push({ ...d });
             const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
@@ -593,25 +598,25 @@ export class SyncedTable {
         });
     }
 
-    unsubscribe = (onChange) => {
+    unsubscribe = (onChange: Function) => {
         this.singleSubscriptions = this.singleSubscriptions.filter(s => s._onChange !== onChange);
         this.multiSubscriptions = this.multiSubscriptions.filter(s => s._onChange !== onChange);
         debug("unsubscribe", this);
         return "ok";
     }
 
-    private getIdStr(d){
+    private getIdStr(d: AnyObject){
         return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
     }
-    private getIdObj(d){
-        let res = {};
+    private getIdObj(d: AnyObject){
+        let res: AnyObject = {};
         this.id_fields.sort().map(key => {
             res[key] = d[key];
         });
         return res;
     }
-    private getRowSyncObj(d){
-        let res = {};
+    private getRowSyncObj(d: AnyObject): AnyObject {
+        let res: AnyObject = {};
         [this.synced_field, ...this.id_fields].sort().map(key => {
             res[key] = d[key];
         });
@@ -628,20 +633,20 @@ export class SyncedTable {
         this.singleSubscriptions = [];
         this.itemsObj = {};
         this.items = [];
-        this.onChange = null;
+        this.onChange = undefined;
     }
 
-    private matchesFilter(item){
+    private matchesFilter(item: AnyObject){
         return Boolean(
             item &&
             (
                 !this.filter ||
                 isEmpty(this.filter) ||
-                !Object.keys(this.filter).find(k => this.filter[k] !== item[k])
+                this.filter && !Object.keys(this.filter).find(k => this.filter![k] !== item[k])
             ) 
         );
     }
-    private matchesIdObj(a, b){
+    private matchesIdObj(a: AnyObject, b: AnyObject){
         return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
     }
 
@@ -703,10 +708,10 @@ export class SyncedTable {
         this.getItems().map(d => this.delete(d));
     }
 
-    private delete = async (item, from_server = false) => {
+    private delete = async (item: AnyObject, from_server = false) => {
 
         const idObj = this.getIdObj(item);
-        this.setItem(idObj, null, true, true);
+        this.setItem(idObj, undefined, true, true);
         if(!from_server){
             await this.db[this.name].delete(idObj);
         }
@@ -745,7 +750,7 @@ export class SyncedTable {
 
         let updates = [], inserts = [], deltas = [];
         let results: ItemUpdated[] = [];
-        let status;
+        let status: "updated" | "inserted" | "deleted" | undefined;
         let walItems: WALItem[] = [];
         await Promise.all(items.map(async (item, i) => {
             // let d = { ...item.idObj, ...item.delta };
@@ -802,6 +807,7 @@ export class SyncedTable {
             
             this.setItem(newItem, oldIdx);
 
+            if(!status) throw "changeInfo status missing"
             let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
 
             // const idStr = this.getIdStr(idObj);
@@ -855,7 +861,7 @@ export class SyncedTable {
                 });
             }
             if(changeInfo.delta && !isEmpty(changeInfo.delta)){
-              results.push(changeInfo);
+                results.push(changeInfo);
             }
 
             /* TODO: Deletes from server */
@@ -874,7 +880,7 @@ export class SyncedTable {
         /* Push to server */
         if(!from_server && walItems.length){
             // this.addWALItems(walItems);
-            this.wal.addData(walItems);
+            this.wal?.addData(walItems);
         }
     }
 
@@ -892,7 +898,7 @@ export class SyncedTable {
     // }
 
     /* Returns an item by idObj from the local store */
-    getItem<T = POJO>(idObj: Partial<T>): { data?: T, index: number } {
+    getItem<T = AnyObject>(idObj: Partial<T>): { data?: T, index: number } {
         let index = -1, d;
         if(this.storageType === STORAGE_TYPES.localStorage){
             let items = this.getItems();
@@ -914,21 +920,19 @@ export class SyncedTable {
      * @param isFullData 
      * @param deleteItem 
      */
-    setItem(item: POJO, index: number, isFullData: boolean = false, deleteItem: boolean = false){
-        const getExIdx = (arr: POJO[]): number => index;// arr.findIndex(d => this.matchesIdObj(d, item));
+    setItem(item: POJO, index: number | undefined, isFullData: boolean = false, deleteItem: boolean = false){
         if(this.storageType === STORAGE_TYPES.localStorage){
             let items = this.getItems();
             if(!deleteItem){
-                let existing_idx = getExIdx(items);
-                if(items[existing_idx]) items[existing_idx] = isFullData? { ...item } : { ...items[existing_idx], ...item };
+                if(index !== undefined && items[index]) items[index] = isFullData? { ...item } : { ...items[index], ...item };
                 else items.push(item);
             } else items = items.filter(d => !this.matchesIdObj(d, item));
             if(hasWnd) window.localStorage.setItem(this.name, JSON.stringify(items));
         } else if(this.storageType === STORAGE_TYPES.array){
             if(!deleteItem){
-                if(!this.items[index]){
+                if(index !== undefined && !this.items[index]){
                     this.items.push(item);
-                } else {
+                } else if(index !== undefined) {
                     this.items[index] = isFullData? { ...item } : { ...this.items[index], ...item };
                 }
             } else this.items = this.items.filter(d => !this.matchesIdObj(d, item));
@@ -964,9 +968,9 @@ export class SyncedTable {
     /**
      * Returns the current data ordered by synced_field ASC and matching the main filter;
      */
-    getItems = (): POJO[] => {
+    getItems = (): AnyObject[] => {
 
-        let items = [];
+        let items: AnyObject[] = [];
 
         if(this.storageType === STORAGE_TYPES.localStorage){
             if(!hasWnd) throw "Cannot access window object. Choose another storage method (array OR object)";
@@ -988,17 +992,17 @@ export class SyncedTable {
             const s_fields = [this.synced_field, ...this.id_fields.sort()];
             items = items
                 .filter(d => {
-                    return !this.filter || !Object.keys(this.filter)
+                    return !this.filter || !getKeys(this.filter)
                         .find(key => 
-                            d[key] !== this.filter[key]
+                            d[key] !== this.filter![key]
                             // typeof d[key] === typeof this.filter[key] && 
                             // d[key].toString && this.filter[key].toString &&
                             // d[key].toString() !== this.filter[key].toString()
                         );
                 })
-                .sort((a, b) => 
+                .sort((a , b ) => 
                     s_fields.map(key => 
-                        a[key] < b[key]? -1 : a[key] > b[key]? 1 : 0
+                        (a[key] < b[key]? -1 : a[key] > b[key]? 1 : 0) as any
                     ).find(v => v) 
                 );
         } else throw "id_fields AND/OR synced_field missing"
@@ -1010,17 +1014,17 @@ export class SyncedTable {
      * Sync data request
      * @param param0: SyncBatchRequest
      */
-    getBatch = ({ from_synced, to_synced, offset, limit }: SyncBatchParams = { offset: 0, limit: null}) => {
+    getBatch = ({ from_synced, to_synced, offset, limit }: SyncBatchParams = { offset: 0, limit: undefined }) => {
         let items = this.getItems();
         // params = params || {};
         // const { from_synced, to_synced, offset = 0, limit = null } = params;
         let res = items.map(c => ({ ...c }))
             .filter(c =>
-                (!Number.isFinite(from_synced) || +c[this.synced_field] >= +from_synced) &&
-                (!Number.isFinite(to_synced) || +c[this.synced_field] <= +to_synced)
+                (!Number.isFinite(from_synced) || +c[this.synced_field] >= +from_synced!) &&
+                (!Number.isFinite(to_synced) || +c[this.synced_field] <= +to_synced!)
             );
 
-        if(offset || limit) res = res.splice(offset, limit || res.length);
+        if(offset || limit) res = res.splice(offset ?? 0, limit || res.length);
 
         return res;
     }
@@ -1031,7 +1035,7 @@ export class SyncedTable {
  * @param item
  * @returns {boolean}
  */
-export function isObject(item: AnyObject) {
+export function isObject(item: any): item is AnyObject {
   return (item && typeof item === 'object' && !Array.isArray(item));
 }
   
@@ -1058,3 +1062,8 @@ export function mergeDeep(target: AnyObject, ...sources: AnyObject[]): AnyObject
   return mergeDeep(target, ...sources);
 }
   
+export const isDefined = <T>(v: T | undefined | void): v is T => v !== undefined && v !== null
+
+export function getKeys<T>(o: T): Array<keyof T>{
+    return Object.keys(o) as any
+}

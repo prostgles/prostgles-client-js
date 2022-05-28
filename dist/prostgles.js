@@ -10,14 +10,15 @@ const prostgles_types_1 = require("prostgles-types");
 // type SyncOne = any;
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
-exports.debug = function (...args) {
+const debug = function (...args) {
     if (hasWnd && window[DEBUG_KEY]) {
         window[DEBUG_KEY](...args);
     }
 };
+exports.debug = debug;
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
-    exports.debug("prostgles", { initOpts });
+    (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
         let cb;
         if (typeof onSchemaChange === "function") {
@@ -96,7 +97,7 @@ function prostgles(initOpts, syncedTable) {
     };
     let connected = false;
     const destroySyncs = () => {
-        exports.debug("destroySyncs", { subscriptions, syncedTables });
+        (0, exports.debug)("destroySyncs", { subscriptions, syncedTables });
         Object.values(subscriptions).map(s => s.destroy());
         subscriptions = {};
         syncs = {};
@@ -107,12 +108,12 @@ function prostgles(initOpts, syncedTable) {
         syncedTables = {};
     };
     function _unsubscribe(channelName, handler) {
-        exports.debug("_unsubscribe", { channelName, handler });
+        (0, exports.debug)("_unsubscribe", { channelName, handler });
         return new Promise((resolve, reject) => {
             if (subscriptions[channelName]) {
                 subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
                 if (!subscriptions[channelName].handlers.length) {
-                    socket.emit(channelName + "unsubscribe", {}, (err, res) => {
+                    socket.emit(channelName + "unsubscribe", {}, (err, _res) => {
                         // console.log("unsubscribed", err, res);
                         if (err)
                             console.error(err);
@@ -133,7 +134,7 @@ function prostgles(initOpts, syncedTable) {
         });
     }
     function _unsync(channelName, triggers) {
-        exports.debug("_unsync", { channelName, triggers });
+        (0, exports.debug)("_unsync", { channelName, triggers });
         return new Promise((resolve, reject) => {
             if (syncs[channelName]) {
                 syncs[channelName].triggers = syncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&
@@ -161,7 +162,7 @@ function prostgles(initOpts, syncedTable) {
                 }
                 else if (res) {
                     const { id_fields, synced_field, channelName } = res;
-                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}, res) }, (response) => {
+                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}) }, (response) => {
                         console.log(response);
                     });
                     resolve({ id_fields, synced_field, channelName });
@@ -184,7 +185,7 @@ function prostgles(initOpts, syncedTable) {
     }
     async function addSync({ tableName, command, param1, param2 }, triggers) {
         const { onPullRequest, onSyncRequest, onUpdates } = triggers;
-        function makeHandler(channelName, sync_info) {
+        function makeHandler(channelName) {
             let unsync = function () {
                 _unsync(channelName, triggers);
             };
@@ -216,7 +217,7 @@ function prostgles(initOpts, syncedTable) {
         });
         if (existingChannel) {
             syncs[existingChannel].triggers.push(triggers);
-            return makeHandler(existingChannel, syncs[existingChannel].syncInfo);
+            return makeHandler(existingChannel);
         }
         else {
             const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
@@ -294,7 +295,7 @@ function prostgles(initOpts, syncedTable) {
                 onCall
             };
             socket.on(channelName, onCall);
-            return makeHandler(channelName, sync_info);
+            return makeHandler(channelName);
         }
     }
     async function addSub(dbo, { tableName, command, param1, param2 }, onChange, _onError) {

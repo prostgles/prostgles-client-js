@@ -2,7 +2,7 @@
   "files": ["lib/index.ts"],
   "compilerOptions": {
     "baseUrl": ".",
-    "target": "es6",
+    "target": "es2020",
     "lib": [
       "es2019"
     ],

@@ -24,8 +24,8 @@ const vals = [
     { o: "ab123", n: "ab123" },
 ];
 vals.map(({ o, n }, i) => {
-    const patch = util_1.getTextPatch(o, n);
-    const unpatched = util_1.unpatchText(o, patch);
+    const patch = (0, util_1.getTextPatch)(o, n);
+    const unpatched = (0, util_1.unpatchText)(o, patch);
     if (unpatched !== n) {
         failed = i;
     }

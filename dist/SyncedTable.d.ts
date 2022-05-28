@@ -62,15 +62,15 @@ export declare type MultiSyncHandles<T = POJO> = {
     $unsync: () => void;
     $upsert: (newData: T[]) => any;
 };
-export declare type SubscriptionSingle<T = POJO> = {
-    _onChange: (data: T, delta?: Partial<T>) => T;
-    notify: (data: T, delta?: Partial<T>) => T;
+export declare type SubscriptionSingle<T = POJO, Full extends boolean = false> = {
+    _onChange: SingleChangeListener<T, Full>;
+    notify: (data: T, delta?: DeepPartial<T>) => T;
     idObj: Partial<T>;
     handlesOnData?: boolean;
-    handles?: SingleSyncHandles;
+    handles?: SingleSyncHandles<T, Full>;
 };
 export declare type SubscriptionMulti<T = POJO> = {
-    _onChange: (data: T[], delta: Partial<T>[]) => T[];
+    _onChange: MultiChangeListener<T>;
     notify: (data: T[], delta: Partial<T>[]) => T[];
     idObj?: Partial<T>;
     handlesOnData?: boolean;
@@ -82,7 +82,7 @@ declare const STORAGE_TYPES: {
     readonly object: "object";
 };
 export declare type MultiChangeListener<T = POJO> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
-export declare type SingleChangeListener<T = POJO, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta: DeepPartial<T>) => any;
+export declare type SingleChangeListener<T = POJO, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
 export declare type SyncedTableOptions = {
     name: string;
     filter?: POJO;
@@ -97,6 +97,10 @@ export declare type SyncedTableOptions = {
     patchJSON: boolean;
     onReady: () => any;
     skipIncomingDeltaCheck?: boolean;
+};
+export declare type DbTableSync = {
+    unsync: () => void;
+    syncData: (data?: AnyObject[], deleted?: AnyObject[], cb?: (err?: any) => void) => void;
 };
 export declare class SyncedTable {
     db: any;
@@ -123,7 +127,7 @@ export declare class SyncedTable {
     get multiSubscriptions(): SubscriptionMulti[];
     set singleSubscriptions(sSubs: SubscriptionSingle[]);
     get singleSubscriptions(): SubscriptionSingle[];
-    dbSync: any;
+    dbSync?: DbTableSync;
     items: POJO[];
     storageType: string;
     itemsObj: POJO;
@@ -152,13 +156,13 @@ export declare class SyncedTable {
      * @param onChange change listener <(item: object, delta: object) => any >
      * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
-    syncOne<T = POJO>(idObj: Partial<T>, onChange: SingleChangeListener, handlesOnData?: boolean): SingleSyncHandles<T>;
+    syncOne<T = POJO, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData?: boolean): SingleSyncHandles<T, Full>;
     /**
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
      */
     private notifySubscribers;
-    unsubscribe: (onChange: any) => string;
+    unsubscribe: (onChange: Function) => string;
     private getIdStr;
     private getIdObj;
     private getRowSyncObj;
@@ -185,7 +189,7 @@ export declare class SyncedTable {
      * @param from_server : <boolean> If false then updates will be sent to server
      */
     upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<any>;
-    getItem<T = POJO>(idObj: Partial<T>): {
+    getItem<T = AnyObject>(idObj: Partial<T>): {
         data?: T;
         index: number;
     };
@@ -196,7 +200,7 @@ export declare class SyncedTable {
      * @param isFullData
      * @param deleteItem
      */
-    setItem(item: POJO, index: number, isFullData?: boolean, deleteItem?: boolean): void;
+    setItem(item: POJO, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
     /**
      * Sets the current data
      * @param items data
@@ -205,7 +209,7 @@ export declare class SyncedTable {
     /**
      * Returns the current data ordered by synced_field ASC and matching the main filter;
      */
-    getItems: () => POJO[];
+    getItems: () => AnyObject[];
     /**
      * Sync data request
      * @param param0: SyncBatchRequest
@@ -219,12 +223,14 @@ export declare class SyncedTable {
  * @param item
  * @returns {boolean}
  */
-export declare function isObject(item: AnyObject): boolean;
+export declare function isObject(item: any): item is AnyObject;
 /**
  * Deep merge two objects.
  * @param target
  * @param ...sources
  */
 export declare function mergeDeep(target: AnyObject, ...sources: AnyObject[]): AnyObject;
+export declare const isDefined: <T>(v: void | T | undefined) => v is T;
+export declare function getKeys<T>(o: T): Array<keyof T>;
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

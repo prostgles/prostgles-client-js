@@ -8,11 +8,11 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker,
     TableJoinBasic, CHANNELS, DBNotifConfig, 
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
     SQLHandler, DBEventHandles, AuthGuardLocation, 
-    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles
+    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema
 } from "prostgles-types";
 
 // import { debug } from "./SyncedTable";
-import type { Sync, SyncOne } from "./SyncedTable";
+import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
 // type Sync = any; 
 // type SyncOne = any;
 
@@ -85,12 +85,16 @@ export type InitOptions = {
     onDisconnect?: (socket: any) => any;
 }
 
-type Subscription = {
+
+type CoreParams = { 
+    tableName: string;
+    command: string;
+    param1?: AnyObject;
+    param2?: AnyObject;
+};
+
+type Subscription = CoreParams & {
     lastData: any;
-    tableName: string, 
-    command: string, 
-    param1: object, 
-    param2: object,
     onCall: Function, 
     handlers: Function[];
     errorHandlers: Function[];
@@ -114,11 +118,7 @@ export type SyncInfo = {
     synced_field: string, 
     channelName: string
 }
-type SyncConfig = {
-    tableName: string,
-    command: string,
-    param1: object, 
-    param2: object,
+type SyncConfig = CoreParams & {
     onCall: Function,
     syncInfo: SyncInfo;
     triggers: ClientSyncHandles[]
@@ -143,7 +143,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
     let subscriptions: Subscriptions = {};
     // window["subscriptions"] = subscriptions;
 
-    let syncedTables = {};
+    let syncedTables: Record<string, any> = {};
 
     let syncs: Syncs = {};
 
@@ -240,7 +240,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             if(subscriptions[channelName]){
                 subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
                 if(!subscriptions[channelName].handlers.length){
-                    socket.emit(channelName + "unsubscribe", {}, (err, res)=>{
+                    socket.emit(channelName + "unsubscribe", {}, (err: any, _res: any)=>{
                         // console.log("unsubscribed", err, res);
                         if(err) console.error(err);
                         // else resolve(res);
@@ -280,16 +280,16 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
         });
     }
-    function addServerSync({ tableName, command, param1, param2 }: any, onSyncRequest): Promise<SyncInfo>{
+    function addServerSync({ tableName, command, param1, param2 }: CoreParams, onSyncRequest: ClientSyncHandles["onSyncRequest"]): Promise<SyncInfo>{
         return new Promise((resolve, reject) => {                           
-            socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
+            socket.emit(preffix, { tableName, command, param1, param2 }, (err: any, res: SyncInfo) => {
                 if(err) {
                     console.error(err);
                     reject(err);
                 } else if(res) {
                     const { id_fields, synced_field, channelName } = res;
 
-                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}, res) }, (response) => {
+                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}) }, (response: any) => {
                         console.log(response);
                     });
                     resolve({ id_fields, synced_field, channelName });                     
@@ -297,9 +297,9 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
         });
     }
-    function addServerSub({ tableName, command, param1, param2 }): Promise<string>{
+    function addServerSub({ tableName, command, param1, param2 }: CoreParams): Promise<string>{
         return new Promise((resolve, reject) => { 
-            socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
+            socket.emit(preffix, { tableName, command, param1, param2 }, (err?: any, res?: any) => {
                 if(err) {
                     console.error(err);
                     reject(err);
@@ -309,15 +309,15 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
         });
     }
-    async function addSync({ tableName, command, param1, param2 }, triggers: ClientSyncHandles): Promise<any> {
+    async function addSync({ tableName, command, param1, param2 }: CoreParams, triggers: ClientSyncHandles): Promise<any> {
         const { onPullRequest, onSyncRequest, onUpdates } = triggers;
 
-        function makeHandler(channelName: string, sync_info: SyncInfo){
+        function makeHandler(channelName: string){
             let unsync = function(){
                 _unsync(channelName, triggers);
             }
 
-            let syncData = function(data, deleted, cb){
+            let syncData: DbTableSync["syncData"] = function(data, deleted, cb){
                 socket.emit(channelName, 
                     { 
                         onSyncRequest: {
@@ -326,7 +326,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             ...({ deleted } || {}) 
                         },
                     },
-                    !cb? null : (response) => {
+                    !cb? null : (response?: any) => {
                         cb(response)
                     }
                 );
@@ -352,11 +352,11 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
         if(existingChannel){
             syncs[existingChannel].triggers.push(triggers);
-            return makeHandler(existingChannel, syncs[existingChannel].syncInfo);
+            return makeHandler(existingChannel);
         } else {
             const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
             const { channelName, synced_field, id_fields } = sync_info;
-            function onCall(data, cb){
+            function onCall(data: any | undefined, cb: Function){
                 /*               
                     Client will:
                     1. Send last_synced     on(onSyncRequest)
@@ -427,11 +427,11 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
 
             socket.on(channelName, onCall);
-            return makeHandler(channelName, sync_info);
+            return makeHandler(channelName);
         }
 
     }
-    async function addSub<T>(dbo: any, { tableName, command, param1, param2 }, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+    async function addSub<T>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
         function makeHandler(channelName: string){
 
             let unsubscribe = function(){
@@ -442,7 +442,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             if(dbo[tableName].update){                
                 res = {
                     ...res,
-                    update: function(newData, updateParams){
+                    update: function(newData: AnyObject, updateParams: UpdateParams){
                         return dbo[tableName].update(param1, newData, updateParams);
                     }
                 }
@@ -450,7 +450,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             if(dbo[tableName].delete){                
                 res = {
                     ...res,
-                    delete: function(deleteParams){
+                    delete: function(deleteParams: DeleteParams){
                         return dbo[tableName].delete(param1, deleteParams);
                     }
                 }
@@ -481,7 +481,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         } else {
             const channelName = await addServerSub({ tableName, command, param1, param2 })
 
-            let onCall = function(data, cb){
+            let onCall = function(data: any, cb: Function){
                 /* TO DO: confirm receiving data or server will unsubscribe */
                 // if(cb) cb(true);
                 if(subscriptions[channelName]){
@@ -501,7 +501,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                     console.warn("Orphaned subscription: ", channelName)
                 }
             }
-            let onError = _onError || function(err){ console.error(`Uncaught error within running subscription \n ${channelName}`, err) }
+            let onError = _onError || function(err: any){ console.error(`Uncaught error within running subscription \n ${channelName}`, err) }
 
             socket.on(channelName, onCall);
             subscriptions[channelName] = {
@@ -535,7 +535,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
-        socket.on(CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
+        socket.on(CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
             if(err){
                 reject(err)
                 throw err;
@@ -548,8 +548,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             connected = true;
 
             let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
-            let _methods = JSON.parse(JSON.stringify(methods)),
-                methodsObj = {},
+            let _methods: string[] = JSON.parse(JSON.stringify(methods)),
+                methodsObj: MethodHandler = {},
                 _auth = {};
 
             if(auth){
@@ -610,7 +610,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                     !Object.values(res).find(v => typeof v !== "string")
                                 ){
                                     const sockInfo: DBNoticeConfig = res;
-                                    const addListener = (listener: (any) => void) => {
+                                    const addListener = (listener: (arg: any) => void) => {
                                         addNoticeListener(listener, sockInfo);
                                         return {
                                             ...sockInfo,
@@ -629,7 +629,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                                     Object.keys(res).sort().join() === [ "socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() && 
                                     !Object.values(res).find(v => typeof v !== "string")
                                 ){
-                                    const addListener = (listener: (any) => void) => {
+                                    const addListener = (listener: (arg: any) => void) => {
                                         addNotifListener(listener, res as DBNotifConfig)
                                         return {
                                             ...res,
@@ -650,8 +650,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
 
             /* Building DBO object */
-            const isPojo = (obj) => Object.prototype.toString.call(obj) === "[object Object]";
-            const checkArgs = (basicFilter, options, onChange, onError) => {
+            const isPojo = (obj: any) => Object.prototype.toString.call(obj) === "[object Object]";
+            const checkArgs = (basicFilter: AnyObject, options: AnyObject, onChange: Function, onError?: Function) => {
                 if(!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function") || onError && typeof onError !== "function"){
                     throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
                 }

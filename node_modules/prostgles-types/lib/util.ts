@@ -424,4 +424,11 @@ export function get(obj: any, propertyPath: string | string[]): any{
             return undefined; 
         } 
     }, o);
-  }
+}
+
+
+
+export function isObject(obj: any): obj is Record<string, any> {
+    return Boolean(obj && typeof obj === "object" && !Array.isArray(obj) );
+}
+export function isDefined<T>(v: T | undefined | void): v is T { return  v !== undefined && v !== null }
