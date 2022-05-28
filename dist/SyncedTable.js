@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getKeys = exports.isDefined = exports.mergeDeep = exports.isObject = exports.SyncedTable = exports.debug = void 0;
+exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -354,7 +354,7 @@ class SyncedTable {
                 const s_fields = [this.synced_field, ...this.id_fields.sort()];
                 items = items
                     .filter(d => {
-                    return !this.filter || !getKeys(this.filter)
+                    return !this.filter || !(0, prostgles_types_1.getKeys)(this.filter)
                         .find(key => d[key] !== this.filter[key]
                     // typeof d[key] === typeof this.filter[key] && 
                     // d[key].toString && this.filter[key].toString &&
@@ -547,11 +547,13 @@ class SyncedTable {
     static create(opts) {
         return new Promise((resolve, reject) => {
             try {
-                const res = new SyncedTable({ ...opts, onReady: () => {
+                const res = new SyncedTable({
+                    ...opts, onReady: () => {
                         setTimeout(() => {
                             resolve(res);
                         }, 0);
-                    } });
+                    }
+                });
             }
             catch (err) {
                 reject(err);
@@ -703,7 +705,7 @@ class SyncedTable {
         return Boolean(item &&
             (!this.filter ||
                 (0, prostgles_types_1.isEmpty)(this.filter) ||
-                this.filter && !Object.keys(this.filter).find(k => this.filter[k] !== item[k])));
+                !Object.keys(this.filter).find(k => this.filter[k] !== item[k])));
     }
     matchesIdObj(a, b) {
         return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
@@ -834,41 +836,25 @@ class SyncedTable {
 }
 exports.SyncedTable = SyncedTable;
 /**
- * Simple object check.
- * @param item
- * @returns {boolean}
+ * immutable args
  */
-function isObject(item) {
-    return (item && typeof item === 'object' && !Array.isArray(item));
-}
-exports.isObject = isObject;
-/**
- * Deep merge two objects.
- * @param target
- * @param ...sources
- */
-function mergeDeep(target, ...sources) {
-    if (!sources.length)
-        return target;
-    const source = sources.shift();
-    if (isObject(target) && isObject(source)) {
-        for (const key in source) {
-            if (isObject(source[key])) {
-                if (!target[key])
-                    Object.assign(target, { [key]: {} });
-                mergeDeep(target[key], source[key]);
+function mergeDeep(target, source) {
+    let output = Object.assign({}, target);
+    if ((0, prostgles_types_1.isObject)(target) && (0, prostgles_types_1.isObject)(source)) {
+        Object.keys(source).forEach(key => {
+            if ((0, prostgles_types_1.isObject)(source[key])) {
+                if (!(key in target)) {
+                    Object.assign(output, { [key]: source[key] });
+                }
+                else {
+                    output[key] = mergeDeep(target[key], source[key]);
+                }
             }
             else {
-                Object.assign(target, { [key]: source[key] });
+                Object.assign(output, { [key]: source[key] });
             }
-        }
+        });
     }
-    return mergeDeep(target, ...sources);
+    return output;
 }
-exports.mergeDeep = mergeDeep;
-const isDefined = (v) => v !== undefined && v !== null;
-exports.isDefined = isDefined;
-function getKeys(o) {
-    return Object.keys(o);
-}
-exports.getKeys = getKeys;
+exports.default = mergeDeep;

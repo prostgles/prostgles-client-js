@@ -220,18 +220,8 @@ export declare class SyncedTable {
     }[];
 }
 /**
- * Simple object check.
- * @param item
- * @returns {boolean}
+ * immutable args
  */
-export declare function isObject(item: any): item is AnyObject;
-/**
- * Deep merge two objects.
- * @param target
- * @param ...sources
- */
-export declare function mergeDeep(target: AnyObject, ...sources: AnyObject[]): AnyObject;
-export declare const isDefined: <T>(v: void | T | undefined) => v is T;
-export declare function getKeys<T>(o: T): Array<keyof T>;
+export default function mergeDeep(target: any, source: any): any;
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

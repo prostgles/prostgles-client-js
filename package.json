@@ -5,7 +5,7 @@
   "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
   "dependencies": {
-    "prostgles-types": "^1.5.127"
+    "prostgles-types": "^1.5.129"
   },
   "devDependencies": {
     "@types/node": "^14.14.14",
@@ -18,7 +18,7 @@
   "scripts": {
     "start": "webpack --config webpack.dev.js",
     "build": "rm -rf ./dist/* && tsc && NODE_OPTIONS=--openssl-legacy-provider && webpack  --mode production --config webpack.prod.js",
-    "test": "npm run build && cd tests && tsc && node index.js"
+    "test": "npm run build"
   },
   "repository": {
     "type": "git",
