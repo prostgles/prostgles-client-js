@@ -8,7 +8,7 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker,
     TableJoinBasic, CHANNELS, DBNotifConfig, 
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
     SQLHandler, DBEventHandles, AuthGuardLocation, 
-    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema
+    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult
 } from "prostgles-types";
 
 // import { debug } from "./SyncedTable";
@@ -24,7 +24,7 @@ export const debug: any = function(...args: any[]){
     }
 };
 
-export { MethodHandler };
+export { MethodHandler, SQLResult };
 
 export type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
     getJoinedTables: () => string[];
