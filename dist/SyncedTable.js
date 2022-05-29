@@ -570,6 +570,7 @@ class SyncedTable {
             $unsync: () => {
                 return this.unsubscribe(onChange);
             },
+            getItems: () => { return this.getItems(); },
             $upsert: (newData) => {
                 if (newData) {
                     const prepareOne = (d) => {

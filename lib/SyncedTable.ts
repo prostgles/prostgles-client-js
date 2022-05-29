@@ -85,6 +85,7 @@ export type SyncDataItem<T = POJO, Full extends boolean = false> = T & (Full ext
 export type MultiSyncHandles<T = POJO> = {
   $unsync: () => void;
   $upsert: (newData: T[]) => any;
+  getItems: () => AnyObject[];
 }
 
 export type SubscriptionSingle<T = POJO, Full extends boolean = false> = {
@@ -426,6 +427,7 @@ export class SyncedTable {
       $unsync: () => {
         return this.unsubscribe(onChange)
       },
+      getItems: () => { return this.getItems(); },
       $upsert: (newData) => {
         if (newData) {
           const prepareOne = (d: AnyObject) => {

@@ -61,6 +61,7 @@ export declare type SyncDataItem<T = POJO, Full extends boolean = false> = T & (
 export declare type MultiSyncHandles<T = POJO> = {
     $unsync: () => void;
     $upsert: (newData: T[]) => any;
+    getItems: () => AnyObject[];
 };
 export declare type SubscriptionSingle<T = POJO, Full extends boolean = false> = {
     _onChange: SingleChangeListener<T, Full>;
