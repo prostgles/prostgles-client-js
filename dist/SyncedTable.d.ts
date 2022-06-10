@@ -1,4 +1,5 @@
 import { FieldFilter, WAL, AnyObject, SyncBatchParams } from "prostgles-types";
+import { DBHandlerClient } from "./prostgles";
 export declare type POJO = {
     [key: string]: any;
 };
@@ -104,7 +105,7 @@ export declare type DbTableSync = {
     syncData: (data?: AnyObject[], deleted?: AnyObject[], cb?: (err?: any) => void) => void;
 };
 export declare class SyncedTable {
-    db: any;
+    db: DBHandlerClient;
     name: string;
     select?: "*" | {};
     filter?: POJO;
@@ -179,6 +180,7 @@ export declare class SyncedTable {
      */
     private getDelta;
     deleteAll(): void;
+    private get tableHandler();
     private delete;
     /**
      * Ensures that all object keys match valid column names

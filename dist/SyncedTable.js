@@ -34,9 +34,10 @@ class SyncedTable {
          * @param walData
          */
         this.updatePatches = async (walData) => {
+            var _a, _b;
             let remaining = walData.map(d => d.current);
             let patched = [], patchedItems = [];
-            if (this.columns && this.columns.length && this.db[this.name].updateBatch && (this.patchText || this.patchJSON)) {
+            if (this.columns && this.columns.length && ((_a = this.tableHandler) === null || _a === void 0 ? void 0 : _a.updateBatch) && (this.patchText || this.patchJSON)) {
                 // const jCols = this.columns.filter(c => c.data_type === "json")
                 const txtCols = this.columns.filter(c => c.data_type === "text");
                 if (this.patchText && txtCols.length) {
@@ -74,7 +75,7 @@ class SyncedTable {
              */
             if (patched.length) {
                 try {
-                    await this.db[this.name].updateBatch(patched);
+                    await ((_b = this.tableHandler) === null || _b === void 0 ? void 0 : _b.updateBatch(patched));
                 }
                 catch (e) {
                     console.log("failed to patch update", e);
@@ -155,10 +156,11 @@ class SyncedTable {
             this.onChange = undefined;
         };
         this.delete = async (item, from_server = false) => {
+            var _a;
             const idObj = this.getIdObj(item);
             this.setItem(idObj, undefined, true, true);
-            if (!from_server) {
-                await this.db[this.name].delete(idObj);
+            if (!from_server && ((_a = this.tableHandler) === null || _a === void 0 ? void 0 : _a.delete)) {
+                await this.tableHandler.delete(idObj);
             }
             this._notifySubscribers();
             return true;
@@ -459,14 +461,17 @@ class SyncedTable {
             }
             return true;
         };
+        const opts = {
+            id_fields,
+            synced_field,
+            throttle,
+        };
         db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then((s) => {
             this.dbSync = s;
             function confirmExit() { return "Data may be lost. Are you sure?"; }
-            const opts = {
-                id_fields,
-                synced_field,
-                throttle,
-            };
+            /**
+             * Some syncs can be read only. Any changes are local
+             */
             this.wal = new prostgles_types_1.WAL({
                 ...opts,
                 batch_size,
@@ -609,7 +614,7 @@ class SyncedTable {
                             },
                             $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData)
                         });
-                        const idObj = this.wal.getIdObj(item);
+                        const idObj = this.getIdObj(item);
                         return getItem(item, idObj);
                     });
                 }
@@ -765,6 +770,13 @@ class SyncedTable {
     }
     deleteAll() {
         this.getItems().map(d => this.delete(d));
+    }
+    get tableHandler() {
+        const tblHandler = this.db[this.name];
+        if (tblHandler.update && tblHandler.updateBatch) {
+            return tblHandler;
+        }
+        return undefined;
     }
     // /* Returns an item by idObj from the local store */
     // getItem(idObj?: object, byFilter = false): { data?: object, index: number } {

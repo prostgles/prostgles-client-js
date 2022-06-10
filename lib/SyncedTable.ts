@@ -1,4 +1,5 @@
-import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject } from "prostgles-types";
+import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject, TableHandler } from "prostgles-types";
+import { DBHandlerClient } from "./prostgles";
 export type POJO = { [key: string]: any };
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -137,7 +138,7 @@ export type DbTableSync = {
 
 export class SyncedTable {
 
-  db: any;
+  db: DBHandlerClient;
   name: string;
   select?: "*" | {};
   filter?: POJO;
@@ -272,15 +273,20 @@ export class SyncedTable {
         return true;
       };
 
+    const opts = {
+      id_fields,
+      synced_field,
+      throttle,
+    }
+    
     db[this.name]._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then((s: DbTableSync) => {
       this.dbSync = s;
 
       function confirmExit() { return "Data may be lost. Are you sure?"; }
-      const opts = {
-        id_fields,
-        synced_field,
-        throttle,
-      }
+
+      /**
+       * Some syncs can be read only. Any changes are local
+       */
       this.wal = new WAL({
         ...opts,
         batch_size,
@@ -309,6 +315,7 @@ export class SyncedTable {
           if (hasWnd) window.onbeforeunload = null;
         }
       });
+
       this.notifyWal = new WAL({
         ...opts,
         batch_size: Infinity,
@@ -346,7 +353,7 @@ export class SyncedTable {
     let remaining: any[] = walData.map(d => d.current);
     let patched: [any, any][] = [],
       patchedItems: any[] = [];
-    if (this.columns && this.columns.length && this.db[this.name].updateBatch && (this.patchText || this.patchJSON)) {
+    if (this.columns && this.columns.length && this.tableHandler?.updateBatch && (this.patchText || this.patchJSON)) {
 
       // const jCols = this.columns.filter(c => c.data_type === "json")
       const txtCols = this.columns.filter(c => c.data_type === "text");
@@ -391,7 +398,7 @@ export class SyncedTable {
      */
     if (patched.length) {
       try {
-        await this.db[this.name].updateBatch(patched);
+        await this.tableHandler?.updateBatch!(patched);
       } catch (e) {
         console.log("failed to patch update", e);
         remaining = remaining.concat(patchedItems);
@@ -470,7 +477,7 @@ export class SyncedTable {
                 },
                 $cloneMultiSync: (onChange: MultiChangeListener) => this.sync(onChange, handlesOnData)
               })
-              const idObj = this.wal!.getIdObj(item) as Partial<T>;
+              const idObj = this.getIdObj(item) as Partial<T>;
               return getItem(item, idObj);
             });
           }
@@ -728,12 +735,21 @@ export class SyncedTable {
     this.getItems().map(d => this.delete(d));
   }
 
+  private get tableHandler(): Pick<TableHandler, "update" | "updateBatch" | "delete"> | undefined {
+    const tblHandler = this.db[this.name];
+    if(tblHandler.update && tblHandler.updateBatch){
+      return tblHandler as any;
+    }
+
+    return undefined;
+  }
+
   private delete = async (item: AnyObject, from_server = false) => {
 
     const idObj = this.getIdObj(item);
     this.setItem(idObj, undefined, true, true);
-    if (!from_server) {
-      await this.db[this.name].delete(idObj);
+    if (!from_server && this.tableHandler?.delete) {
+      await this.tableHandler.delete(idObj);
     }
     this._notifySubscribers();
     return true
