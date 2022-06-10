@@ -7,7 +7,7 @@
 import { TableHandler, TableHandlerBasic, DbJoinMaker, 
     TableJoinBasic, CHANNELS, DBNotifConfig, 
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
-    SQLHandler, DBEventHandles, AuthGuardLocation, 
+    SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
     AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult
 } from "prostgles-types";
 
@@ -43,11 +43,20 @@ export type TableHandlerClientBasic = TableHandlerBasic & {
     _sync?: any;
 }
 
-export type DBHandlerClient = {
-    [key: string]: Partial<TableHandlerClient>;
+export type DBHandlerClient<Tables extends Record<string, Record<string, any>> = Record<string, any>> = {
+    [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
 } & DbJoinMaker & {
     sql?: SQLHandler;
 };
+
+/** Type inference check */
+const db: DBHandlerClient<{ tbl1: { col1: string; col2: number }}> = 1 as any;
+(async () => {
+    const res = await db.tbl1.findOne!()
+    res.col1;
+    res.col2;
+});
+
 export type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;
   } & {
@@ -80,7 +89,7 @@ export type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods?: MethodHandler, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth?: Auth) => any;
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 }
@@ -535,7 +544,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
-        socket.on(CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
+        socket.on(CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
             if(err){
                 reject(err)
                 throw err;
@@ -791,7 +800,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
             (async () => {
                 try {
-                    await onReady(dbo, methodsObj, fullSchema, _auth);
+                    await onReady(dbo, methodsObj, tableSchema, _auth);
                 } catch(err){
                     console.error("Prostgles: Error within onReady: \n", err);
                     reject(err);

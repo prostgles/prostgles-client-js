@@ -1,4 +1,4 @@
-import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler, MethodHandler, SQLResult } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler, DBSchemaTable, MethodHandler, SQLResult } from "prostgles-types";
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult };
@@ -18,8 +18,8 @@ export declare type TableHandlerClientBasic = TableHandlerBasic & {
     syncOne?: SyncOne;
     _sync?: any;
 };
-export declare type DBHandlerClient = {
-    [key: string]: Partial<TableHandlerClient>;
+export declare type DBHandlerClient<Tables extends Record<string, Record<string, any>> = Record<string, any>> = {
+    [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
 } & DbJoinMaker & {
     sql?: SQLHandler;
 };
@@ -51,7 +51,7 @@ export declare type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods?: MethodHandler, fullSchema?: any, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth?: Auth) => any;
     onReconnect?: (socket: any) => any;
     onDisconnect?: (socket: any) => any;
 };

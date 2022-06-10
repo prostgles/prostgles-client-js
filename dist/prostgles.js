@@ -16,6 +16,13 @@ const debug = function (...args) {
     }
 };
 exports.debug = debug;
+/** Type inference check */
+const db = 1;
+(async () => {
+    const res = await db.tbl1.findOne();
+    res.col1;
+    res.col2;
+});
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
     (0, exports.debug)("prostgles", { initOpts });
@@ -398,7 +405,7 @@ function prostgles(initOpts, syncedTable) {
         }
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
-        socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, fullSchema, auth, rawSQL, joinTables = [], err }) => {
+        socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
             if (err) {
                 reject(err);
                 throw err;
@@ -641,7 +648,7 @@ function prostgles(initOpts, syncedTable) {
             });
             (async () => {
                 try {
-                    await onReady(dbo, methodsObj, fullSchema, _auth);
+                    await onReady(dbo, methodsObj, tableSchema, _auth);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);
