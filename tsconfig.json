@@ -23,7 +23,8 @@
     "outDir": "dist",
     // "moduleResolution": "node"
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "keyofStringsOnly": true
   },
   "include": ["lib"],
   "exclude": [
