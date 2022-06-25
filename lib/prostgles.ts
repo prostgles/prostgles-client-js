@@ -331,7 +331,11 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         });
     }
     
-    async function addSync({ tableName, command, param1, param2 }: CoreParams, triggers: ClientSyncHandles): Promise<any> {
+    const addSyncQueuer = new FunctionQueuer(_addSync);
+    async function addSync(params: CoreParams, triggers: ClientSyncHandles): Promise<any> {
+        return addSyncQueuer.run([params, triggers])
+    }
+    async function _addSync({ tableName, command, param1, param2 }: CoreParams, triggers: ClientSyncHandles): Promise<any> {
         const { onPullRequest, onSyncRequest, onUpdates } = triggers;
 
         function makeHandler(channelName: string){
@@ -458,7 +462,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
      * Can be used concurrently
      */
     const addSubQueuer = new FunctionQueuer(_addSub);
-    // const addSub = addSubQueuer.run;
+    
     async function addSub<T>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
         return addSubQueuer.run([dbo, params, onChange, _onError]);
         const result = new Promise<SubscriptionHandler<T>>((resolve, reject) => {

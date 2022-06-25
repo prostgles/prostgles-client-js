@@ -195,7 +195,11 @@ function prostgles(initOpts, syncedTable) {
             });
         });
     }
-    async function addSync({ tableName, command, param1, param2 }, triggers) {
+    const addSyncQueuer = new FunctionQueuer(_addSync);
+    async function addSync(params, triggers) {
+        return addSyncQueuer.run([params, triggers]);
+    }
+    async function _addSync({ tableName, command, param1, param2 }, triggers) {
         const { onPullRequest, onSyncRequest, onUpdates } = triggers;
         function makeHandler(channelName) {
             let unsync = function () {
@@ -314,7 +318,6 @@ function prostgles(initOpts, syncedTable) {
      * Can be used concurrently
      */
     const addSubQueuer = new FunctionQueuer(_addSub);
-    // const addSub = addSubQueuer.run;
     async function addSub(dbo, params, onChange, _onError) {
         return addSubQueuer.run([dbo, params, onChange, _onError]);
         const result = new Promise((resolve, reject) => {
