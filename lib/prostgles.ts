@@ -462,33 +462,8 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
      * Can be used concurrently
      */
     const addSubQueuer = new FunctionQueuer(_addSub);
-    
     async function addSub<T>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
         return addSubQueuer.run([dbo, params, onChange, _onError]);
-        const result = new Promise<SubscriptionHandler<T>>((resolve, reject) => {
-            const item = { dbo, params, onChange, _onError, returnHandlers: (subHandlers: SubscriptionHandler<T>) => {
-                resolve(subHandlers)
-            }}
-            addSubQueue.push(item);
-        });
-
-        const startQueueJob = async () => {
-            if(isAddingSub) {
-                return;
-            }
-            const addingSub = addSubQueue.shift();
-            if(addingSub){
-                const handlers = await _addSub(addingSub.dbo, addingSub.params, addingSub.onChange, addingSub._onError);
-                addingSub.returnHandlers(handlers);
-            }
-            if(addSubQueue.length){
-                startQueueJob();
-            }
-        }
-
-        startQueueJob();
-
-        return result;
     }
     
     /**
