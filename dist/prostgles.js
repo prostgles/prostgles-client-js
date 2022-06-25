@@ -313,7 +313,10 @@ function prostgles(initOpts, syncedTable) {
     /**
      * Can be used concurrently
      */
+    const addSubQueuer = new FunctionQueuer(_addSub);
+    // const addSub = addSubQueuer.run;
     async function addSub(dbo, params, onChange, _onError) {
+        return addSubQueuer.run([dbo, params, onChange, _onError]);
         const result = new Promise((resolve, reject) => {
             const item = { dbo, params, onChange, _onError, returnHandlers: (subHandlers) => {
                     resolve(subHandlers);
@@ -696,3 +699,33 @@ function prostgles(initOpts, syncedTable) {
 }
 exports.prostgles = prostgles;
 ;
+class FunctionQueuer {
+    constructor(func) {
+        this.queue = [];
+        this.isRunning = false;
+        this.func = func;
+    }
+    async run(args) {
+        const result = new Promise((resolve, reject) => {
+            const item = { arguments: args, onResult: resolve };
+            this.queue.push(item);
+        });
+        const startQueueJob = async () => {
+            if (this.isRunning) {
+                return;
+            }
+            this.isRunning = true;
+            const item = this.queue.shift();
+            if (item) {
+                const result = await this.func(...item.arguments);
+                item.onResult(result);
+            }
+            this.isRunning = false;
+            if (this.queue.length) {
+                startQueueJob();
+            }
+        };
+        startQueueJob();
+        return result;
+    }
+}

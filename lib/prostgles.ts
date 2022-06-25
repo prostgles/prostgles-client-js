@@ -453,10 +453,14 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         }
 
     }
+
     /**
      * Can be used concurrently
      */
+    const addSubQueuer = new FunctionQueuer(_addSub);
+    // const addSub = addSubQueuer.run;
     async function addSub<T>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+        return addSubQueuer.run([dbo, params, onChange, _onError]);
         const result = new Promise<SubscriptionHandler<T>>((resolve, reject) => {
             const item = { dbo, params, onChange, _onError, returnHandlers: (subHandlers: SubscriptionHandler<T>) => {
                 resolve(subHandlers)
@@ -482,6 +486,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
         return result;
     }
+    
     /**
      * Do NOT use concurrently
      */
@@ -864,3 +869,41 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
     })
 };
+
+type Func = (...args: any[]) => any;
+class FunctionQueuer<F extends Func> {
+    private queue: { arguments: Parameters<F>; onResult: (result: ReturnType<F>) => void }[] = [];
+    private func: F;
+    constructor(func: F){
+        this.func = func;
+    }
+    private isRunning = false;
+    async run(args: Parameters<F>): Promise<ReturnType<F>> {
+        
+        const result = new Promise<ReturnType<F>>((resolve, reject) => {
+            const item = { arguments: args, onResult: resolve }
+            this.queue.push(item);
+        });
+
+        const startQueueJob = async () => {
+            if(this.isRunning) {
+                return;
+            }
+            this.isRunning = true;
+            const item = this.queue.shift();
+            if(item){
+                const result = await this.func(...item.arguments);
+                item.onResult(result);
+            }
+            this.isRunning = false;
+            if(this.queue.length){
+                startQueueJob();
+            }
+        }
+
+        startQueueJob();
+
+        return result;
+        
+    }
+}
