@@ -465,7 +465,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         });
 
         const startQueueJob = async () => {
-            if(!isAddingSub) {
+            if(isAddingSub) {
                 return;
             }
             const addingSub = addSubQueue.shift();

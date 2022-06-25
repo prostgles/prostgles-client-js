@@ -321,7 +321,7 @@ function prostgles(initOpts, syncedTable) {
             addSubQueue.push(item);
         });
         const startQueueJob = async () => {
-            if (!isAddingSub) {
+            if (isAddingSub) {
                 return;
             }
             const addingSub = addSubQueue.shift();
