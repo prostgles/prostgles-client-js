@@ -156,6 +156,15 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
     let syncs: Syncs = {};
 
+    const addSubQueue: {
+        dbo: any;
+        params: CoreParams;
+        onChange: Function;
+        _onError: Function;
+        returnHandlers: (subHandlers: SubscriptionHandler) => void;
+    }[] = [];
+    let isAddingSub = false;
+
     let notifSubs: { 
         [key: string]: {
             config: DBNotifConfig
@@ -306,6 +315,9 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
         });
     }
+    /**
+     * Obtaines subscribe channel from server
+     */
     function addServerSub({ tableName, command, param1, param2 }: CoreParams): Promise<string>{
         return new Promise((resolve, reject) => { 
             socket.emit(preffix, { tableName, command, param1, param2 }, (err?: any, res?: any) => {
@@ -318,6 +330,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             });
         });
     }
+    
     async function addSync({ tableName, command, param1, param2 }: CoreParams, triggers: ClientSyncHandles): Promise<any> {
         const { onPullRequest, onSyncRequest, onUpdates } = triggers;
 
@@ -440,7 +453,41 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         }
 
     }
-    async function addSub<T>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+    /**
+     * Can be used concurrently
+     */
+    async function addSub<T>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+        const result = new Promise<SubscriptionHandler<T>>((resolve, reject) => {
+            const item = { dbo, params, onChange, _onError, returnHandlers: (subHandlers: SubscriptionHandler<T>) => {
+                resolve(subHandlers)
+            }}
+            addSubQueue.push(item);
+        });
+
+        const startQueueJob = async () => {
+            if(!isAddingSub) {
+                return;
+            }
+            const addingSub = addSubQueue.shift();
+            if(addingSub){
+                const handlers = await _addSub(addingSub.dbo, addingSub.params, addingSub.onChange, addingSub._onError);
+                addingSub.returnHandlers(handlers);
+            }
+            if(addSubQueue.length){
+                startQueueJob();
+            }
+        }
+
+        startQueueJob();
+
+        return result;
+    }
+    /**
+     * Do NOT use concurrently
+     */
+    async function _addSub<T>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+
+        isAddingSub = true;
         function makeHandler(channelName: string){
 
             let unsubscribe = function(){
@@ -486,53 +533,57 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             setTimeout(() => {
                 if(onChange && subscriptions?.[existing].lastData) onChange(subscriptions?.[existing].lastData)
             }, 10)
+            isAddingSub = false;    
             return makeHandler(existing);
-        } else {
-            const channelName = await addServerSub({ tableName, command, param1, param2 })
+        } 
 
-            let onCall = function(data: any, cb: Function){
-                /* TO DO: confirm receiving data or server will unsubscribe */
-                // if(cb) cb(true);
-                if(subscriptions[channelName]){
-                    if(data.data){
-                        subscriptions[channelName].lastData = data.data;
-                        subscriptions[channelName].handlers.map(h => {
-                            h(data.data);
-                        });
-                    } else if(data.err){
-                        subscriptions[channelName].errorHandlers.map(h => {
-                            h(data.err);
-                        });
-                    } else {
-                        console.error("INTERNAL ERROR: Unexpected data format from subscription: ", data)
-                    }
+        const channelName = await addServerSub({ tableName, command, param1, param2 })
+
+        let onCall = function(data: any, cb: Function){
+            /* TO DO: confirm receiving data or server will unsubscribe */
+            // if(cb) cb(true);
+            if(subscriptions[channelName]){
+                if(data.data){
+                    subscriptions[channelName].lastData = data.data;
+                    subscriptions[channelName].handlers.map(h => {
+                        h(data.data);
+                    });
+                } else if(data.err){
+                    subscriptions[channelName].errorHandlers.map(h => {
+                        h(data.err);
+                    });
                 } else {
-                    console.warn("Orphaned subscription: ", channelName)
+                    console.error("INTERNAL ERROR: Unexpected data format from subscription: ", data)
+                }
+            } else {
+                console.warn("Orphaned subscription: ", channelName)
+            }
+        }
+        let onError = _onError || function(err: any){ console.error(`Uncaught error within running subscription \n ${channelName}`, err) }
+
+        socket.on(channelName, onCall);
+        subscriptions[channelName] = {
+            lastData: undefined,
+            tableName,
+            command,
+            param1,
+            param2,
+            onCall,
+            handlers: [onChange],
+            errorHandlers: [onError],
+            destroy: () => {
+                if(subscriptions[channelName]){
+                    Object.values(subscriptions[channelName]).map((s: Subscription)=> {
+                        if(s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, h))
+                    });
+                    delete subscriptions[channelName];
                 }
             }
-            let onError = _onError || function(err: any){ console.error(`Uncaught error within running subscription \n ${channelName}`, err) }
-
-            socket.on(channelName, onCall);
-            subscriptions[channelName] = {
-                lastData: undefined,
-                tableName,
-                command,
-                param1,
-                param2,
-                onCall,
-                handlers: [onChange],
-                errorHandlers: [onError],
-                destroy: () => {
-                    if(subscriptions[channelName]){
-                        Object.values(subscriptions[channelName]).map((s: Subscription)=> {
-                            if(s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, h))
-                        });
-                        delete subscriptions[channelName];
-                    }
-                }
-            }                        
-            return makeHandler(channelName);   
-        }
+        }  
+        
+        isAddingSub = false;                      
+        return makeHandler(channelName);  
+            
     }
 
     return new Promise((resolve, reject)=>{
