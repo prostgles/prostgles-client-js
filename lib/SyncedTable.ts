@@ -933,7 +933,8 @@ export class SyncedTable {
    * @param isFullData 
    * @param deleteItem 
    */
-  setItem(item: POJO, index: number | undefined, isFullData: boolean = false, deleteItem: boolean = false) {
+  setItem(_item: POJO, index: number | undefined, isFullData: boolean = false, deleteItem: boolean = false) {
+    const item = quickClone(_item);
     if (this.storageType === STORAGE_TYPES.localStorage) {
       let items = this.getItems();
       if (!deleteItem) {
@@ -964,7 +965,8 @@ export class SyncedTable {
    * Sets the current data
    * @param items data
    */
-  setItems = (items: POJO[]): void => {
+  setItems = (_items: POJO[]): void => {
+    const items = quickClone(_items);
     if (this.storageType === STORAGE_TYPES.localStorage) {
       if (!hasWnd) throw "Cannot access window object. Choose another storage method (array OR object)";
       window.localStorage.setItem(this.name, JSON.stringify(items));

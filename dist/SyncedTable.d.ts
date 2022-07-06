@@ -204,12 +204,12 @@ export declare class SyncedTable {
      * @param isFullData
      * @param deleteItem
      */
-    setItem(item: POJO, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
+    setItem(_item: POJO, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
     /**
      * Sets the current data
      * @param items data
      */
-    setItems: (items: POJO[]) => void;
+    setItems: (_items: POJO[]) => void;
     /**
      * Returns the current data ordered by synced_field ASC and matching the main filter;
      */

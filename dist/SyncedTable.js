@@ -300,7 +300,8 @@ class SyncedTable {
          * Sets the current data
          * @param items data
          */
-        this.setItems = (items) => {
+        this.setItems = (_items) => {
+            const items = quickClone(_items);
             if (this.storageType === STORAGE_TYPES.localStorage) {
                 if (!hasWnd)
                     throw "Cannot access window object. Choose another storage method (array OR object)";
@@ -789,7 +790,8 @@ class SyncedTable {
      * @param isFullData
      * @param deleteItem
      */
-    setItem(item, index, isFullData = false, deleteItem = false) {
+    setItem(_item, index, isFullData = false, deleteItem = false) {
+        const item = quickClone(_item);
         if (this.storageType === STORAGE_TYPES.localStorage) {
             let items = this.getItems();
             if (!deleteItem) {
