@@ -225,6 +225,6 @@ export declare class SyncedTable {
 /**
  * immutable args
  */
-export default function mergeDeep(target: any, source: any): any;
+export default function mergeDeep(_target: any, _source: any): any;
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

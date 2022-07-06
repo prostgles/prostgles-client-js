@@ -191,7 +191,6 @@ class SyncedTable {
             // if(from_server && this.getDeleted().length){
             //     await this.syncDeleted();
             // }
-            let updates = [], inserts = [], deltas = [];
             let results = [];
             let status;
             let walItems = [];
@@ -228,7 +227,6 @@ class SyncedTable {
                      */
                     if ((_a = item.opts) === null || _a === void 0 ? void 0 : _a.deepMerge) {
                         newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
-                        // delta = Object.keys({ ...delta }).reduce((a, k) => ({ ...a, [k]: ({ ...newItem })[k] }), {})
                     }
                 }
                 /* Update existing -> Expecting delta */
@@ -273,18 +271,8 @@ class SyncedTable {
                     // }
                     // if(!updatedWithPatch){
                     // walItems.push({ ...delta, ...idObj });
-                    // if(this.wal.changed[idStr]){
-                    //     this.wal.changed[idStr] = {
-                    //         ...changeInfo,
-                    //         oldItem: this.wal.changed[idStr].oldItem
-                    //     }
-                    // } else {
-                    //     this.wal.changed[idStr] = changeInfo;
-                    // }
-                    // }
                     walItems.push({
                         initial: oldItem,
-                        //   current: { ...delta, ...idObj }
                         current: { ...newItem }
                     });
                 }
@@ -368,7 +356,7 @@ class SyncedTable {
             else
                 throw "id_fields AND/OR synced_field missing";
             // this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
-            return items.map(d => ({ ...d }));
+            return quickClone(items);
         };
         /**
          * Sync data request
@@ -778,14 +766,6 @@ class SyncedTable {
         }
         return undefined;
     }
-    // /* Returns an item by idObj from the local store */
-    // getItem(idObj?: object, byFilter = false): { data?: object, index: number } {
-    //     let items = this.getItems();
-    //     const ff = (item) => !byFilter? this.matchesIdObj(item, idObj) : this.matchesFilter(item);
-    //     let d = items.find(ff),
-    //         index = this.items.findIndex(ff);
-    //     return { data: d? { ...d } : d, index };
-    // }
     /* Returns an item by idObj from the local store */
     getItem(idObj) {
         let index = -1, d;
@@ -800,7 +780,7 @@ class SyncedTable {
             this.itemsObj = this.itemsObj || {};
             d = ({ ...this.itemsObj })[this.getIdStr(idObj)];
         }
-        return { data: d ? { ...d } : d, index };
+        return { data: quickClone(d), index };
     }
     /**
      *
@@ -851,7 +831,9 @@ exports.SyncedTable = SyncedTable;
 /**
  * immutable args
  */
-function mergeDeep(target, source) {
+function mergeDeep(_target, _source) {
+    const target = _target ? quickClone(_target) : _target;
+    const source = _source ? quickClone(_source) : _source;
     let output = Object.assign({}, target);
     if ((0, prostgles_types_1.isObject)(target) && (0, prostgles_types_1.isObject)(source)) {
         Object.keys(source).forEach(key => {
@@ -871,3 +853,19 @@ function mergeDeep(target, source) {
     return output;
 }
 exports.default = mergeDeep;
+function quickClone(obj) {
+    if ("structuredClone" in window && typeof window.structuredClone === "function") {
+        return window.structuredClone(obj);
+    }
+    if ((0, prostgles_types_1.isObject)(obj)) {
+        let result = {};
+        (0, prostgles_types_1.getKeys)(obj).map(k => {
+            result[k] = quickClone(obj[k]);
+        });
+        return result;
+    }
+    else if (Array.isArray(obj)) {
+        return obj.slice(0).map(v => quickClone(v));
+    }
+    return obj;
+}

@@ -784,7 +784,7 @@ export class SyncedTable {
     //     await this.syncDeleted();
     // }
 
-    let updates = [], inserts = [], deltas = [];
+    
     let results: ItemUpdated[] = [];
     let status: ItemUpdated["status"];
     let walItems: WALItem[] = [];
@@ -828,7 +828,6 @@ export class SyncedTable {
          */
         if (item.opts?.deepMerge) {
           newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
-          // delta = Object.keys({ ...delta }).reduce((a, k) => ({ ...a, [k]: ({ ...newItem })[k] }), {})
         }
       }
 
@@ -881,18 +880,8 @@ export class SyncedTable {
         // if(!updatedWithPatch){
         // walItems.push({ ...delta, ...idObj });
 
-        // if(this.wal.changed[idStr]){
-        //     this.wal.changed[idStr] = {
-        //         ...changeInfo,
-        //         oldItem: this.wal.changed[idStr].oldItem
-        //     }
-        // } else {
-        //     this.wal.changed[idStr] = changeInfo;
-        // }
-        // }
         walItems.push({
           initial: oldItem,
-          //   current: { ...delta, ...idObj }
           current: { ...newItem }
         });
       }
@@ -921,19 +910,6 @@ export class SyncedTable {
     }
   }
 
-
-  // /* Returns an item by idObj from the local store */
-  // getItem(idObj?: object, byFilter = false): { data?: object, index: number } {
-
-  //     let items = this.getItems();
-  //     const ff = (item) => !byFilter? this.matchesIdObj(item, idObj) : this.matchesFilter(item);
-
-  //     let d = items.find(ff),
-  //         index = this.items.findIndex(ff);
-
-  //     return { data: d? { ...d } : d, index };
-  // }
-
   /* Returns an item by idObj from the local store */
   getItem<T = AnyObject>(idObj: Partial<T>): { data?: T, index: number } {
     let index = -1, d;
@@ -947,7 +923,7 @@ export class SyncedTable {
       d = ({ ...this.itemsObj })[this.getIdStr(idObj)];
     }
 
-    return { data: d ? { ...d } : d, index };
+    return { data: quickClone(d), index };
   }
 
   /**
@@ -1044,7 +1020,7 @@ export class SyncedTable {
         );
     } else throw "id_fields AND/OR synced_field missing"
     // this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
-    return items.map(d => ({ ...d }));
+    return quickClone(items);
   }
 
   /**
@@ -1070,7 +1046,9 @@ export class SyncedTable {
 /**
  * immutable args
  */
-export default function mergeDeep(target, source) {
+export default function mergeDeep(_target, _source) {
+  const target = _target? quickClone(_target) : _target;
+  const source = _source? quickClone(_source) : _source;
   let output = Object.assign({}, target);
   if (isObject(target) && isObject(source)) {
     Object.keys(source).forEach(key => {
@@ -1086,4 +1064,20 @@ export default function mergeDeep(target, source) {
     });
   }
   return output;
+}
+
+function quickClone(obj: any){
+  if("structuredClone" in window && typeof window.structuredClone === "function"){
+    return window.structuredClone(obj);
+  }
+  if(isObject(obj)){
+    let result = {};
+    getKeys(obj).map(k => {
+      result[k] = quickClone(obj[k]);
+    })
+    return result;
+  } else if(Array.isArray(obj)){
+    return obj.slice(0).map(v => quickClone(v))
+  }
+  return obj;
 }
