@@ -1067,7 +1067,7 @@ export default function mergeDeep(_target, _source) {
 }
 
 function quickClone(obj: any){
-  if("structuredClone" in window && typeof window.structuredClone === "function"){
+  if(hasWnd && "structuredClone" in window && typeof window.structuredClone === "function"){
     return window.structuredClone(obj);
   }
   if(isObject(obj)){
