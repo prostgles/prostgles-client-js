@@ -53,7 +53,8 @@ export type DBHandlerClient<Tables extends Record<string, Record<string, any>> =
 const db: DBHandlerClient<{ tbl1: { col1: string; col2: number }}> = 1 as any;
 (async () => {
     const res = await db.tbl1.findOne!()
-    res.col1;
+    res?.col1;
+    // @ts-expect-error
     res.col2;
 });
 

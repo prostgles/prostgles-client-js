@@ -20,7 +20,8 @@ exports.debug = debug;
 const db = 1;
 (async () => {
     const res = await db.tbl1.findOne();
-    res.col1;
+    res === null || res === void 0 ? void 0 : res.col1;
+    // @ts-expect-error
     res.col2;
 });
 function prostgles(initOpts, syncedTable) {
