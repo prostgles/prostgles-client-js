@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SyncedTable = exports.debug = void 0;
+exports.quickClone = exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -871,3 +871,4 @@ function quickClone(obj) {
     }
     return obj;
 }
+exports.quickClone = quickClone;

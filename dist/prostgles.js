@@ -25,7 +25,7 @@ const db = 1;
     res.col2;
 });
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload } = initOpts;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
         let cb;
@@ -442,8 +442,12 @@ function prostgles(initOpts, syncedTable) {
                 if (auth.pathGuard) {
                     const doReload = (res) => {
                         var _a, _b;
-                        if ((res === null || res === void 0 ? void 0 : res.shouldReload) && typeof window !== "undefined") {
-                            (_b = (_a = window === null || window === void 0 ? void 0 : window.location) === null || _a === void 0 ? void 0 : _a.reload) === null || _b === void 0 ? void 0 : _b.call(_a);
+                        if (res === null || res === void 0 ? void 0 : res.shouldReload) {
+                            if (onReload)
+                                onReload();
+                            else if (typeof window !== "undefined") {
+                                (_b = (_a = window === null || window === void 0 ? void 0 : window.location) === null || _a === void 0 ? void 0 : _a.reload) === null || _b === void 0 ? void 0 : _b.call(_a);
+                            }
                         }
                     };
                     socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {

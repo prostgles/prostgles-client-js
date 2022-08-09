@@ -87,6 +87,12 @@ export type InitOptions = {
     socket: any;
 
     /**
+     * Execute this when requesting user reload (due to session expiring authGuard)
+     * Otherwise window will reload
+     */
+    onReload?: () => void;
+
+    /**
      * true by default
      */
     onSchemaChange?: false | (() => void);
@@ -137,7 +143,7 @@ type Syncs = {
     [channelName: string]: SyncConfig;
 };
 export function prostgles(initOpts: InitOptions, syncedTable: any){
-    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload } = initOpts;
 
     debug("prostgles", { initOpts })
     if(onSchemaChange){
@@ -600,8 +606,11 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             if(auth){
                 if(auth.pathGuard){
                     const doReload = (res?: AuthGuardLocationResponse) => {
-                        if(res?.shouldReload && typeof window !== "undefined"){
-                            window?.location?.reload?.();
+                        if(res?.shouldReload){
+                            if(onReload) onReload();
+                            else if(typeof window !== "undefined"){
+                                window?.location?.reload?.();
+                            }
                         }
                     }
                     socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any,res: AuthGuardLocationResponse)=>{

@@ -48,6 +48,11 @@ export declare type Auth = {
 export declare type InitOptions = {
     socket: any;
     /**
+     * Execute this when requesting user reload (due to session expiring authGuard)
+     * Otherwise window will reload
+     */
+    onReload?: () => void;
+    /**
      * true by default
      */
     onSchemaChange?: false | (() => void);
