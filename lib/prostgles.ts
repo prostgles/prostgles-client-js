@@ -8,7 +8,7 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker,
     TableJoinBasic, CHANNELS, DBNotifConfig, 
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
     SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
-    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult
+    AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler
 } from "prostgles-types";
 
 // import { debug } from "./SyncedTable";
@@ -48,6 +48,16 @@ export type DBHandlerClient<Tables extends Record<string, Record<string, any>> =
 } & DbJoinMaker & {
     sql?: SQLHandler;
 };
+
+
+
+  
+export type DBOFullyTyped<Schema = void> = Schema extends DBSchema?  { 
+    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true? 
+        ViewHandler<Schema[tov_name]["columns"], Schema> : 
+        TableHandler<Schema[tov_name]["columns"], Schema>
+    } : 
+    DBHandlerClient;
 
 /** Type inference check */
 const db: DBHandlerClient<{ tbl1: { col1: string; col2: number }}> = 1 as any;

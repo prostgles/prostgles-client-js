@@ -1,4 +1,4 @@
-import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler, DBSchemaTable, MethodHandler, SQLResult } from "prostgles-types";
+import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject, SQLHandler, DBSchemaTable, MethodHandler, SQLResult, DBSchema, ViewHandler } from "prostgles-types";
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult };
@@ -23,6 +23,9 @@ export declare type DBHandlerClient<Tables extends Record<string, Record<string,
 } & DbJoinMaker & {
     sql?: SQLHandler;
 };
+export declare type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
+    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandler<Schema[tov_name]["columns"], Schema> : TableHandler<Schema[tov_name]["columns"], Schema>;
+} : DBHandlerClient;
 export declare type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;
 } & {
