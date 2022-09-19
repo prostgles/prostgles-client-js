@@ -26,12 +26,12 @@ export const debug: any = function(...args: any[]){
 
 export { MethodHandler, SQLResult };
 
-export type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
+export type TableHandlerClient<T = AnyObject, S = void> = TableHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
-    sync?: Sync;
-    syncOne?: SyncOne;
+    sync?: Sync<T>;
+    syncOne?: SyncOne<T>;
     _sync?: any;
 }
 export type TableHandlerClientBasic = TableHandlerBasic & {
@@ -55,7 +55,7 @@ export type DBHandlerClient<Tables extends Record<string, Record<string, any>> =
 export type DBOFullyTyped<Schema = void> = Schema extends DBSchema?  { 
     [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true? 
         ViewHandler<Schema[tov_name]["columns"], Schema> : 
-        TableHandler<Schema[tov_name]["columns"], Schema>
+        TableHandlerClient<Schema[tov_name]["columns"], Schema>
     } : 
     DBHandlerClient;
 

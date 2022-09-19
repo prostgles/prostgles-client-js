@@ -2,12 +2,12 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult };
-export declare type TableHandlerClient<T = AnyObject> = TableHandler<T> & {
+export declare type TableHandlerClient<T = AnyObject, S = void> = TableHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
-    sync?: Sync;
-    syncOne?: SyncOne;
+    sync?: Sync<T>;
+    syncOne?: SyncOne<T>;
     _sync?: any;
 };
 export declare type TableHandlerClientBasic = TableHandlerBasic & {
@@ -24,7 +24,7 @@ export declare type DBHandlerClient<Tables extends Record<string, Record<string,
     sql?: SQLHandler;
 };
 export declare type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
-    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandler<Schema[tov_name]["columns"], Schema> : TableHandler<Schema[tov_name]["columns"], Schema>;
+    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandler<Schema[tov_name]["columns"], Schema> : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
 } : DBHandlerClient;
 export declare type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;

@@ -14,11 +14,11 @@ export declare type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export declare type Sync = <T = POJO>(basicFilter: any, options: SyncOptions, onChange: (data: (SyncDataItem<T>)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles<T>>;
+export declare type Sync<Model = POJO> = <T = Model | POJO>(basicFilter: T, options: SyncOptions, onChange: (data: (SyncDataItem<T>)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles<T>>;
 /**
  * Creates a local synchronized record
  */
-export declare type SyncOne = <T = POJO>(basicFilter: any, options: SyncOneOptions, onChange: (data: (SyncDataItem<T>), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
+export declare type SyncOne<Model = POJO> = <T = Model | POJO>(basicFilter: T, options: SyncOneOptions, onChange: (data: (SyncDataItem<T>), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
 export declare type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
