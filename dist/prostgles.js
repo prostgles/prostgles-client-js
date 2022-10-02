@@ -427,13 +427,17 @@ function prostgles(initOpts, syncedTable) {
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
+            destroySyncs();
+            if (connected && onReconnect) {
+                onReconnect(socket, err);
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+            }
             if (err) {
                 reject(err);
                 throw err;
-            }
-            destroySyncs();
-            if (connected && onReconnect) {
-                onReconnect(socket);
             }
             connected = true;
             let dbo = JSON.parse(JSON.stringify(schema));

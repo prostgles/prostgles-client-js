@@ -60,7 +60,7 @@ export declare type InitOptions = {
      */
     onSchemaChange?: false | (() => void);
     onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth?: Auth) => any;
-    onReconnect?: (socket: any) => any;
+    onReconnect?: (socket: any, error?: any) => any;
     onDisconnect?: (socket: any) => any;
 };
 export declare type onUpdatesParams = {

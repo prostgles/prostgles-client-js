@@ -107,7 +107,7 @@ export type InitOptions = {
      */
     onSchemaChange?: false | (() => void);
     onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth?: Auth) => any;
-    onReconnect?: (socket: any) => any;
+    onReconnect?: (socket: any, error?: any) => any;
     onDisconnect?: (socket: any) => any;
 }
 
@@ -597,15 +597,21 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
         socket.on(CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
+
+            destroySyncs();
+            if(connected && onReconnect){
+                onReconnect(socket, err);
+                if(err) {
+                    console.error(err)
+                    return;
+                }
+            }
+
             if(err){
                 reject(err)
                 throw err;
             }
 
-            destroySyncs();
-            if(connected && onReconnect){
-                onReconnect(socket);
-            }
             connected = true;
 
             let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
