@@ -2,7 +2,7 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker, TableJoinBasic, AnyObject
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult };
-export declare type TableHandlerClient<T = AnyObject, S = void> = TableHandler<T, S> & {
+export declare type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = TableHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;

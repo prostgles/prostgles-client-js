@@ -98,7 +98,7 @@ export type SubscriptionSingle<T = POJO, Full extends boolean = false> = {
 }
 export type SubscriptionMulti<T = POJO> = {
   _onChange: MultiChangeListener<T>;
-  notify: (data: T[], delta: Partial<T>[]) => T[];
+  notify: (data: T[], delta: DeepPartial<T>[]) => T[];
   idObj?: Partial<T>;
   handlesOnData?: boolean;
   handles?: MultiSyncHandles<T>;
@@ -429,7 +429,7 @@ export class SyncedTable {
    * @param onChange change listener <(items: object[], delta: object[]) => any >
    * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
    */
-  sync<T = POJO>(onChange: MultiChangeListener, handlesOnData = true): MultiSyncHandles<T> {
+  sync<T extends AnyObject = AnyObject>(onChange: MultiChangeListener<T>, handlesOnData = true): MultiSyncHandles<T> {
     const handles: MultiSyncHandles = {
       $unsync: () => {
         return this.unsubscribe(onChange)
@@ -454,7 +454,7 @@ export class SyncedTable {
         // this.upsert(newData, newData)
       }
     },
-      sub: SubscriptionMulti = {
+      sub: SubscriptionMulti<T> = {
         _onChange: onChange,
         handlesOnData,
         handles,
@@ -479,23 +479,23 @@ export class SyncedTable {
               })
               const idObj = this.getIdObj(item) as Partial<T>;
               return getItem(item, idObj);
-            });
+            }) as any;
           }
           return onChange(allItems, allDeltas)
         }
       };
 
-    this.multiSubscriptions.push(sub);
+    this.multiSubscriptions.push(sub as any);
     if (!this.skipFirstTrigger) {
       setTimeout(() => {
-        let items = this.getItems();
-        sub.notify(items, items);
+        let items = this.getItems<T>();
+        sub.notify(items, items as any);
       }, 0);
     }
     return Object.freeze({ ...handles });
   }
 
-  private makeSingleSyncHandles<T = POJO, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
+  private makeSingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
     if (!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
     const handles: SingleSyncHandles<T> = {
@@ -515,7 +515,7 @@ export class SyncedTable {
         }
         this.upsert([{ idObj, delta: newData, opts }]);
       },
-      $cloneSync: (onChange) => this.syncOne(idObj, onChange),
+      $cloneSync: (onChange) => this.syncOne<T>(idObj, onChange) as any,
       $cloneMultiSync: (onChange) => this.sync(onChange, true),
     };
 
@@ -528,7 +528,7 @@ export class SyncedTable {
    * @param onChange change listener <(item: object, delta: object) => any >
    * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
    */
-  syncOne<T = POJO, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData = true): SingleSyncHandles<T, Full> {
+  syncOne<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData = true): SingleSyncHandles<T, Full> {
 
     const handles = this.makeSingleSyncHandles(idObj, onChange);
     const sub: SubscriptionSingle<T, Full> = {
@@ -983,7 +983,7 @@ export class SyncedTable {
   /**
    * Returns the current data ordered by synced_field ASC and matching the main filter;
    */
-  getItems = (): AnyObject[] => {
+  getItems = <T extends AnyObject = AnyObject>(): T[] => {
 
     let items: AnyObject[] = [];
 

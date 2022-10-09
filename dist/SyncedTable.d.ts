@@ -73,7 +73,7 @@ export declare type SubscriptionSingle<T = POJO, Full extends boolean = false> =
 };
 export declare type SubscriptionMulti<T = POJO> = {
     _onChange: MultiChangeListener<T>;
-    notify: (data: T[], delta: Partial<T>[]) => T[];
+    notify: (data: T[], delta: DeepPartial<T>[]) => T[];
     idObj?: Partial<T>;
     handlesOnData?: boolean;
     handles?: MultiSyncHandles<T>;
@@ -151,7 +151,7 @@ export declare class SyncedTable {
      * @param onChange change listener <(items: object[], delta: object[]) => any >
      * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
-    sync<T = POJO>(onChange: MultiChangeListener, handlesOnData?: boolean): MultiSyncHandles<T>;
+    sync<T extends AnyObject = AnyObject>(onChange: MultiChangeListener<T>, handlesOnData?: boolean): MultiSyncHandles<T>;
     private makeSingleSyncHandles;
     /**
      * Returns a sync handler to a specific record within the SyncedTable instance
@@ -159,7 +159,7 @@ export declare class SyncedTable {
      * @param onChange change listener <(item: object, delta: object) => any >
      * @param handlesOnData If true then $update, $delete and $unsync handles will be added on the data item. True by default;
      */
-    syncOne<T = POJO, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData?: boolean): SingleSyncHandles<T, Full>;
+    syncOne<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData?: boolean): SingleSyncHandles<T, Full>;
     /**
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
@@ -213,7 +213,7 @@ export declare class SyncedTable {
     /**
      * Returns the current data ordered by synced_field ASC and matching the main filter;
      */
-    getItems: () => AnyObject[];
+    getItems: <T extends AnyObject = AnyObject>() => T[];
     /**
      * Sync data request
      * @param param0: SyncBatchRequest

@@ -26,7 +26,7 @@ export const debug: any = function(...args: any[]){
 
 export { MethodHandler, SQLResult };
 
-export type TableHandlerClient<T = AnyObject, S = void> = TableHandler<T, S> & {
+export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = TableHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
@@ -479,14 +479,14 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
      * Can be used concurrently
      */
     const addSubQueuer = new FunctionQueuer(_addSub);
-    async function addSub<T>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+    async function addSub<T extends AnyObject>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
         return addSubQueuer.run([dbo, params, onChange, _onError]);
     }
     
     /**
      * Do NOT use concurrently
      */
-    async function _addSub<T>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+    async function _addSub<T extends AnyObject>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
 
         isAddingSub = true;
         function makeHandler(channelName: string){
@@ -771,14 +771,14 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                             return addSync({ tableName, command, param1, param2 }, syncHandles);
                         }
                     } else if(sub_commands.includes(command)){
-                        dbo[tableName][command] = function<T = AnyObject>(param1, param2, onChange, onError){
+                        dbo[tableName][command] = function<T extends AnyObject = AnyObject>(param1, param2, onChange, onError){
                             checkArgs(param1, param2, onChange, onError);
                             return addSub<T>(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
 
                         const SUBONE = "subscribeOne";
                         if(command === SUBONE || !sub_commands.includes(SUBONE)){
-                            dbo[tableName][SUBONE] = function<T = AnyObject>(param1, param2, onChange, onError){
+                            dbo[tableName][SUBONE] = function<T extends AnyObject = AnyObject>(param1, param2, onChange, onError){
                                 checkArgs(param1, param2, onChange, onError);
 
                                 let onChangeOne = (rows) => { onChange(rows[0]) };
