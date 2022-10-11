@@ -41,8 +41,6 @@ function prostgles(initOpts, syncedTable) {
     // window["subscriptions"] = subscriptions;
     let syncedTables = {};
     let syncs = {};
-    const addSubQueue = [];
-    let isAddingSub = false;
     let notifSubs = {};
     const removeNotifListener = (listener, conf) => {
         if (notifSubs && notifSubs[conf.notifChannel]) {
@@ -326,7 +324,6 @@ function prostgles(initOpts, syncedTable) {
      * Do NOT use concurrently
      */
     async function _addSub(dbo, { tableName, command, param1, param2 }, onChange, _onError) {
-        isAddingSub = true;
         function makeHandler(channelName) {
             let unsubscribe = function () {
                 return _unsubscribe(channelName, onChange);
@@ -368,7 +365,6 @@ function prostgles(initOpts, syncedTable) {
                 if (onChange && (subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData))
                     onChange(subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData);
             }, 10);
-            isAddingSub = false;
             return makeHandler(existing);
         }
         const channelName = await addServerSub({ tableName, command, param1, param2 });
@@ -416,10 +412,14 @@ function prostgles(initOpts, syncedTable) {
                 }
             }
         };
-        isAddingSub = false;
         return makeHandler(channelName);
     }
     return new Promise((resolve, reject) => {
+        socket.removeAllListeners(prostgles_types_1.CHANNELS.CONNECTION);
+        socket.on(prostgles_types_1.CHANNELS.CONNECTION, error => {
+            reject(error);
+            return "ok";
+        });
         if (onDisconnect) {
             // socket.removeAllListeners("disconnect", onDisconnect)
             socket.on("disconnect", onDisconnect);

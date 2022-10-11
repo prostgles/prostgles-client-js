@@ -173,15 +173,6 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
     let syncs: Syncs = {};
 
-    const addSubQueue: {
-        dbo: any;
-        params: CoreParams;
-        onChange: Function;
-        _onError: Function;
-        returnHandlers: (subHandlers: SubscriptionHandler) => void;
-    }[] = [];
-    let isAddingSub = false;
-
     let notifSubs: { 
         [key: string]: {
             config: DBNotifConfig
@@ -488,7 +479,6 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
      */
     async function _addSub<T extends AnyObject>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
 
-        isAddingSub = true;
         function makeHandler(channelName: string){
 
             let unsubscribe = function(){
@@ -533,8 +523,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             // }
             setTimeout(() => {
                 if(onChange && subscriptions?.[existing].lastData) onChange(subscriptions?.[existing].lastData)
-            }, 10)
-            isAddingSub = false;    
+            }, 10)   
             return makeHandler(existing);
         } 
 
@@ -581,13 +570,19 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 }
             }
         }  
-        
-        isAddingSub = false;                      
+                           
         return makeHandler(channelName);  
             
     }
 
     return new Promise((resolve, reject)=>{
+
+
+        socket.removeAllListeners(CHANNELS.CONNECTION)
+        socket.on(CHANNELS.CONNECTION, error => {
+            reject(error);
+            return "ok"
+        })
 
         if(onDisconnect){
             // socket.removeAllListeners("disconnect", onDisconnect)
