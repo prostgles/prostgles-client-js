@@ -226,6 +226,6 @@ export declare class SyncedTable {
  * immutable args
  */
 export default function mergeDeep(_target: any, _source: any): any;
-export declare function quickClone(obj: any): any;
+export declare function quickClone<T>(obj: T): T;
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

@@ -1022,7 +1022,7 @@ export class SyncedTable {
         );
     } else throw "id_fields AND/OR synced_field missing"
     // this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
-    return quickClone(items);
+    return quickClone(items) as any;
   }
 
   /**
@@ -1068,18 +1068,19 @@ export default function mergeDeep(_target, _source) {
   return output;
 }
 
-export function quickClone(obj: any){
+export function quickClone<T>(obj: T): T {
   if(hasWnd && "structuredClone" in window && typeof window.structuredClone === "function"){
     return window.structuredClone(obj);
   }
-  if(isObject(obj)){
-    let result = {};
+  if(Array.isArray(obj)){
+    return obj.slice(0).map(v => quickClone(v)) as any
+  } else if(isObject(obj)){
+    let result = {}  as any;
     getKeys(obj).map(k => {
-      result[k] = quickClone(obj[k]);
+      result[k] = quickClone(obj[k]) as any;
     })
     return result;
-  } else if(Array.isArray(obj)){
-    return obj.slice(0).map(v => quickClone(v))
-  }
+  } 
+
   return obj;
 }

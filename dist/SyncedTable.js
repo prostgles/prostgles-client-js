@@ -859,15 +859,15 @@ function quickClone(obj) {
     if (hasWnd && "structuredClone" in window && typeof window.structuredClone === "function") {
         return window.structuredClone(obj);
     }
-    if ((0, prostgles_types_1.isObject)(obj)) {
+    if (Array.isArray(obj)) {
+        return obj.slice(0).map(v => quickClone(v));
+    }
+    else if ((0, prostgles_types_1.isObject)(obj)) {
         let result = {};
         (0, prostgles_types_1.getKeys)(obj).map(k => {
             result[k] = quickClone(obj[k]);
         });
         return result;
-    }
-    else if (Array.isArray(obj)) {
-        return obj.slice(0).map(v => quickClone(v));
     }
     return obj;
 }
