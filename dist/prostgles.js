@@ -7,8 +7,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = exports.asName = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
-// type Sync = any; 
-// type SyncOne = any;
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
 const debug = function (...args) {

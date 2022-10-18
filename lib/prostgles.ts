@@ -12,10 +12,7 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker,
     asName
 } from "prostgles-types";
 
-// import { debug } from "./SyncedTable";
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
-// type Sync = any; 
-// type SyncOne = any;
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
