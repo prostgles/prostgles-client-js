@@ -29,5 +29,12 @@
   "bugs": {
     "url": "https://github.com/prostgles/prostgles-client-js/issues"
   },
-  "homepage": "https://github.com/prostgles/prostgles-client-js#readme"
+  "keywords": [
+    "postgres",
+    "postgreSQL",
+    "react",
+    "typescript",
+    "realtime"
+  ],
+  "homepage": "https://prostgles.com"
 }
