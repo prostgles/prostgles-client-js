@@ -442,7 +442,7 @@ function prostgles(initOpts, syncedTable) {
             let dbo = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
             if (auth) {
-                if (auth.pathGuard) {
+                if (auth.pathGuard && hasWnd) {
                     const doReload = (res) => {
                         var _a, _b;
                         if (res === null || res === void 0 ? void 0 : res.shouldReload) {

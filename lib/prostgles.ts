@@ -613,7 +613,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
                 _auth = {};
 
             if(auth){
-                if(auth.pathGuard){
+                if(auth.pathGuard && hasWnd){
                     const doReload = (res?: AuthGuardLocationResponse) => {
                         if(res?.shouldReload){
                             if(onReload) onReload();
