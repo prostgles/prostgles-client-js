@@ -59,7 +59,10 @@ export declare type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+    /**
+     * If not provided will fire onReady
+     */
     onReconnect?: (socket: any, error?: any) => any;
     onDisconnect?: (socket: any) => any;
 };

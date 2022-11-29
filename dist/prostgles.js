@@ -676,7 +676,7 @@ function prostgles(initOpts, syncedTable) {
             });
             (async () => {
                 try {
-                    await onReady(dbo, methodsObj, tableSchema, _auth);
+                    await onReady(dbo, methodsObj, tableSchema, _auth, connected);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);

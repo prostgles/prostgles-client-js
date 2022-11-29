@@ -9,7 +9,8 @@ import { TableHandler, TableHandlerBasic, DbJoinMaker,
     DBNoticeConfig, AnyObject, SubscriptionHandler, 
     SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
     AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler,
-    asName
+    asName,
+    TableSchemaForClient
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
@@ -104,7 +105,11 @@ export type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth?: Auth) => any;
+    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+
+    /**
+     * If not provided will fire onReady
+     */
     onReconnect?: (socket: any, error?: any) => any;
     onDisconnect?: (socket: any) => any;
 }
@@ -854,7 +859,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
 
             (async () => {
                 try {
-                    await onReady(dbo, methodsObj, tableSchema, _auth);
+                    await onReady(dbo, methodsObj, tableSchema, _auth, connected);
                 } catch(err){
                     console.error("Prostgles: Error within onReady: \n", err);
                     reject(err);
