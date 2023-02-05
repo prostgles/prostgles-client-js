@@ -478,8 +478,8 @@ function prostgles(initOpts, syncedTable) {
                 });
             }
             _methods.map(method => {
-                const methodName = typeof method === "string" ? method : method.name;
-                methodsObj[methodName] = function (...params) {
+                const isBasic = typeof method === "string";
+                const onRun = function (...params) {
                     return new Promise((resolve, reject) => {
                         socket.emit(prostgles_types_1.CHANNELS.METHOD, { method: methodName, params }, (err, res) => {
                             if (err)
@@ -488,6 +488,11 @@ function prostgles(initOpts, syncedTable) {
                                 resolve(res);
                         });
                     });
+                };
+                const methodName = isBasic ? method : method.name;
+                methodsObj[methodName] = isBasic ? onRun : {
+                    ...method,
+                    run: onRun
                 };
             });
             methodsObj = Object.freeze(methodsObj);
