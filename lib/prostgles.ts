@@ -613,7 +613,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             connected = true;
 
             let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
-            let _methods: string[] = JSON.parse(JSON.stringify(methods)),
+            let _methods: typeof methods = JSON.parse(JSON.stringify(methods)),
                 methodsObj: MethodHandler = {},
                 _auth = {};
 
@@ -653,9 +653,10 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
 
             _methods.map(method => {
-                methodsObj[method] = function(...params){
+                const methodName = typeof method === "string"? method : method.name;
+                methodsObj[methodName] = function(...params){
                     return new Promise((resolve, reject)=>{
-                        socket.emit(CHANNELS.METHOD, { method, params }, (err,res)=>{
+                        socket.emit(CHANNELS.METHOD, { method: methodName, params }, (err,res)=>{
                             if(err) reject(err);
                             else resolve(res);
                         });

@@ -478,9 +478,10 @@ function prostgles(initOpts, syncedTable) {
                 });
             }
             _methods.map(method => {
-                methodsObj[method] = function (...params) {
+                const methodName = typeof method === "string" ? method : method.name;
+                methodsObj[methodName] = function (...params) {
                     return new Promise((resolve, reject) => {
-                        socket.emit(prostgles_types_1.CHANNELS.METHOD, { method, params }, (err, res) => {
+                        socket.emit(prostgles_types_1.CHANNELS.METHOD, { method: methodName, params }, (err, res) => {
                             if (err)
                                 reject(err);
                             else
