@@ -653,6 +653,7 @@ export function prostgles(initOpts: InitOptions, syncedTable: any){
             }
 
             _methods.map(method => {
+                /** New method def */
                 const isBasic = typeof method === "string";
                 const onRun = function(...params){
                     return new Promise((resolve, reject)=>{
