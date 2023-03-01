@@ -5,7 +5,7 @@
   "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
   "dependencies": {
-    "prostgles-types": "^3.0.18"
+    "prostgles-types": "^3.0.25"
   },
   "devDependencies": {
     "@types/node": "^14.14.14",
