@@ -84,8 +84,8 @@ export type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
   [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
   ViewHandler<Schema[tov_name]["columns"], Schema> :
   TableHandlerClient<Schema[tov_name]["columns"], Schema>
-} :
-  DBHandlerClient;
+} & Pick<DBHandlerClient, "sql"> :
+DBHandlerClient;
 
 /** Type inference check */
 const db: DBHandlerClient<{ tbl1: { col1: string; col2: number } }> = 1 as any;

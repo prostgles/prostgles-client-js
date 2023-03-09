@@ -41,7 +41,7 @@ export declare type DBHandlerClient<Tables extends Record<string, Record<string,
 };
 export declare type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
     [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandler<Schema[tov_name]["columns"], Schema> : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
-} : DBHandlerClient;
+} & Pick<DBHandlerClient, "sql"> : DBHandlerClient;
 export declare type DBHandlerClientBasic = {
     [key: string]: Partial<TableHandlerClientBasic>;
 } & {
