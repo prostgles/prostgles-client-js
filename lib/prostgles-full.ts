@@ -1,6 +1,6 @@
 import { prostgles as pgls, InitOptions, DBHandlerClient } from "./prostgles";
 import { SyncedTable } from "./SyncedTable";
-function prostgles<DBSchema>(params: InitOptions) {
+function prostgles<DBSchema>(params: InitOptions<DBSchema>) {
     return pgls(params, SyncedTable);
 }
 prostgles.SyncedTable = SyncedTable;
