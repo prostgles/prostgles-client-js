@@ -1,5 +1,5 @@
 import { InitOptions } from "./prostgles";
-declare function prostgles(params: InitOptions): Promise<unknown>;
+declare function prostgles<DBSchema>(params: InitOptions): Promise<unknown>;
 declare namespace prostgles {
     var SyncedTable: typeof import("./SyncedTable").SyncedTable;
 }

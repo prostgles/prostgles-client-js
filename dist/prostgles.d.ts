@@ -9,6 +9,22 @@ export declare type TableHandlerClient<T extends AnyObject = AnyObject, S = void
     sync?: Sync<T>;
     syncOne?: SyncOne<T>;
     _sync?: any;
+    subscribeHook: (filter?: Parameters<TableHandler<T, S>["subscribe"]>[0], options?: Parameters<TableHandler<T, S>["subscribe"]>[1], onError?: Parameters<TableHandler<T, S>["subscribe"]>[3]) => {
+        start: ((onChange: Parameters<TableHandler<T, S>["subscribe"]>[2]) => ReturnType<TableHandler<T, S>["subscribe"]>);
+        args: [
+            filter?: Parameters<TableHandler<T, S>["subscribe"]>[0],
+            options?: Parameters<TableHandler<T, S>["subscribe"]>[1],
+            onError?: Parameters<TableHandler<T, S>["subscribe"]>[3]
+        ];
+    };
+    subscribeOneHook: (filter: Parameters<TableHandler<T, S>["subscribeOne"]>[0], options: Parameters<TableHandler<T, S>["subscribeOne"]>[1], onError?: Parameters<TableHandler<T, S>["subscribeOne"]>[3]) => {
+        start: (onChange: Parameters<TableHandler<T, S>["subscribeOne"]>[2]) => ReturnType<TableHandler<T, S>["subscribeOne"]>;
+        args: [
+            filter: Parameters<TableHandler<T, S>["subscribeOne"]>[0],
+            options: Parameters<TableHandler<T, S>["subscribeOne"]>[1],
+            onError?: Parameters<TableHandler<T, S>["subscribeOne"]>[3]
+        ];
+    };
 };
 export declare type TableHandlerClientBasic = TableHandlerBasic & {
     getJoinedTables: () => string[];
@@ -48,7 +64,7 @@ export declare type Auth = {
     logout?: (params: any) => Promise<any>;
     user?: any;
 };
-export declare type InitOptions = {
+export declare type InitOptions<DBSchema = void> = {
     socket: any;
     /**
      * Execute this when requesting user reload (due to session expiring authGuard)
@@ -59,7 +75,7 @@ export declare type InitOptions = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+    onReady: (dbo: DBOFullyTyped<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
     /**
      * If not provided will fire onReady
      */
@@ -75,5 +91,5 @@ export declare type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles(initOpts: InitOptions, syncedTable: any): Promise<unknown>;
+export declare function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: any): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map

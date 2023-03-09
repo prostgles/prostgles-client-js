@@ -550,7 +550,7 @@ function prostgles(initOpts, syncedTable) {
             }
             /* Building DBO object */
             const isPojo = (obj) => Object.prototype.toString.call(obj) === "[object Object]";
-            const checkArgs = (basicFilter, options, onChange, onError) => {
+            const checkSubscriptionArgs = (basicFilter, options, onChange, onError) => {
                 if (!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function") || onError && typeof onError !== "function") {
                     throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
                 }
@@ -583,12 +583,12 @@ function prostgles(initOpts, syncedTable) {
                                 return syncedTables[syncName];
                             };
                             dbo[tableName].sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
-                                checkArgs(basicFilter, options, onChange, onError);
+                                checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.sync(onChange, options.handlesOnData);
                             };
                             dbo[tableName].syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
-                                checkArgs(basicFilter, options, onChange, onError);
+                                checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
@@ -598,14 +598,26 @@ function prostgles(initOpts, syncedTable) {
                         };
                     }
                     else if (sub_commands.includes(command)) {
-                        dbo[tableName][command] = function (param1, param2, onChange, onError) {
-                            checkArgs(param1, param2, onChange, onError);
+                        const subFunc = function (param1, param2, onChange, onError) {
+                            checkSubscriptionArgs(param1, param2, onChange, onError);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
+                        };
+                        dbo[tableName][command] = subFunc;
+                        /**
+                         * Used in for react hooks
+                         */
+                        dbo[tableName][command + "Hook"] = function (param1, param2, onError) {
+                            return {
+                                start: (onChange) => {
+                                    return subFunc(param1, param2, onChange, onError);
+                                },
+                                args: [param1, param2, onError]
+                            };
                         };
                         const SUBONE = "subscribeOne";
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dbo[tableName][SUBONE] = function (param1, param2, onChange, onError) {
-                                checkArgs(param1, param2, onChange, onError);
+                                checkSubscriptionArgs(param1, param2, onChange, onError);
                                 let onChangeOne = (rows) => { onChange(rows[0]); };
                                 return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
                             };
