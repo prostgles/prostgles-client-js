@@ -34,7 +34,7 @@ export declare type TableHandlerClientBasic = TableHandlerBasic & {
     syncOne?: SyncOne;
     _sync?: any;
 };
-export declare type DBHandlerClient<Tables extends Record<string, Record<string, any>> = Record<string, any>> = {
+export declare type DBHandlerClient<Tables extends Record<string, AnyObject> = Record<string, AnyObject>> = {
     [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
 } & DbJoinMaker & {
     sql?: SQLHandler;

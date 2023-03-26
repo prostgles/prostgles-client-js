@@ -71,13 +71,11 @@ export type TableHandlerClientBasic = TableHandlerBasic & {
   _sync?: any;
 }
 
-export type DBHandlerClient<Tables extends Record<string, Record<string, any>> = Record<string, any>> = {
+export type DBHandlerClient<Tables extends Record<string, AnyObject> = Record<string, AnyObject>> = {
   [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
 } & DbJoinMaker & {
   sql?: SQLHandler;
 };
-
-
 
 
 export type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
