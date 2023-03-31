@@ -11,7 +11,8 @@ import {
   SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
   AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler,
   asName,
-  TableSchemaForClient
+  TableSchemaForClient,
+  SubscriptionChannels
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
@@ -154,6 +155,7 @@ type Subscription = CoreParams & {
   onCall: Function,
   handlers: Function[];
   errorHandlers: Function[];
+  unsubChannel: string;
   destroy: () => any;
 };
 
@@ -289,14 +291,14 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     syncedTables = {};
   }
 
-  function _unsubscribe(channelName: string, handler: Function) {
+  function _unsubscribe(channelName: string, unsubChannel: string, handler: Function) {
     debug("_unsubscribe", { channelName, handler });
 
     return new Promise((resolve, reject) => {
       if (subscriptions[channelName]) {
         subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
         if (!subscriptions[channelName].handlers.length) {
-          socket.emit(channelName + "unsubscribe", {}, (err: any, _res: any) => {
+          socket.emit(unsubChannel, {}, (err: any, _res: any) => {
             // console.log("unsubscribed", err, res);
             if (err) console.error(err);
             // else resolve(res);
@@ -356,14 +358,14 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   /**
    * Obtaines subscribe channel from server
    */
-  function addServerSub({ tableName, command, param1, param2 }: CoreParams): Promise<string> {
+  function addServerSub({ tableName, command, param1, param2 }: CoreParams): Promise<SubscriptionChannels> {
     return new Promise((resolve, reject) => {
-      socket.emit(preffix, { tableName, command, param1, param2 }, (err?: any, res?: any) => {
+      socket.emit(preffix, { tableName, command, param1, param2 }, (err?: any, res?: SubscriptionChannels) => {
         if (err) {
           console.error(err);
           reject(err);
         } else if (res) {
-          resolve(res.channelName);
+          resolve(res);
         }
       });
     });
@@ -509,10 +511,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
    */
   async function _addSub<T extends AnyObject>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
 
-    function makeHandler(channelName: string) {
+    function makeHandler(channelName: string, unsubChannel: string) {
 
-      let unsubscribe = function () {
-        return _unsubscribe(channelName, onChange);
+      const unsubscribe = function () {
+        return _unsubscribe(channelName, unsubChannel, onChange);
       }
       let res: any = { unsubscribe, filter: { ...param1 } }
       /* Some dbo sorting was done to make sure this will work */
@@ -552,24 +554,26 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
       // }
       setTimeout(() => {
-        if (onChange && subscriptions?.[existing].lastData) onChange(subscriptions?.[existing].lastData)
+        if (onChange && subscriptions?.[existing].lastData) {
+          onChange(subscriptions?.[existing].lastData)
+        }
       }, 10)
-      return makeHandler(existing);
+      return makeHandler(existing, subscriptions[existing].unsubChannel);
     }
 
-    const channelName = await addServerSub({ tableName, command, param1, param2 })
+    const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({ tableName, command, param1, param2 })
 
-    let onCall = function (data: any, cb: Function) {
+    const onCall = function (data: any, cb: Function) {
       /* TO DO: confirm receiving data or server will unsubscribe */
       // if(cb) cb(true);
       if (subscriptions[channelName]) {
         if (data.data) {
           subscriptions[channelName].lastData = data.data;
-          subscriptions[channelName].handlers.map(h => {
+          subscriptions[channelName].handlers.forEach(h => {
             h(data.data);
           });
         } else if (data.err) {
-          subscriptions[channelName].errorHandlers.map(h => {
+          subscriptions[channelName].errorHandlers.forEach(h => {
             h(data.err);
           });
         } else {
@@ -579,7 +583,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         console.warn("Orphaned subscription: ", channelName)
       }
     }
-    let onError = _onError || function (err: any) { console.error(`Uncaught error within running subscription \n ${channelName}`, err) }
+    const onError = _onError || function (err: any) { console.error(`Uncaught error within running subscription \n ${channelName}`, err) }
 
     socket.on(channelName, onCall);
     subscriptions[channelName] = {
@@ -589,19 +593,20 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       param1,
       param2,
       onCall,
+      unsubChannel: channelNameUnsubscribe,
       handlers: [onChange],
       errorHandlers: [onError],
       destroy: () => {
         if (subscriptions[channelName]) {
           Object.values(subscriptions[channelName]).map((s: Subscription) => {
-            if (s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, h))
+            if (s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, channelNameUnsubscribe, h))
           });
           delete subscriptions[channelName];
         }
       }
     }
-
-    return makeHandler(channelName);
+    socket.emit(channelNameReady, { now: Date.now() });
+    return makeHandler(channelName, channelNameUnsubscribe);
 
   }
 
