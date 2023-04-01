@@ -193,7 +193,7 @@ function prostgles(initOpts, syncedTable) {
             });
         });
     }
-    const addSyncQueuer = new FunctionQueuer(_addSync);
+    const addSyncQueuer = new FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
     async function addSync(params, triggers) {
         return addSyncQueuer.run([params, triggers]);
     }
@@ -315,7 +315,7 @@ function prostgles(initOpts, syncedTable) {
     /**
      * Can be used concurrently
      */
-    const addSubQueuer = new FunctionQueuer(_addSub);
+    const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
     async function addSub(dbo, params, onChange, _onError) {
         return addSubQueuer.run([dbo, params, onChange, _onError]);
     }
@@ -356,6 +356,7 @@ function prostgles(initOpts, syncedTable) {
         });
         if (existing) {
             subscriptions[existing].handlers.push(onChange);
+            subscriptions[existing].errorHandlers.push(_onError);
             /* Reuse existing sub config */
             // if(subscriptions[existing].handlers.includes(onChange)){
             //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
@@ -712,10 +713,11 @@ function prostgles(initOpts, syncedTable) {
 exports.prostgles = prostgles;
 ;
 class FunctionQueuer {
-    constructor(func) {
+    constructor(func, groupBy) {
         this.queue = [];
         this.isRunning = false;
         this.func = func;
+        this.groupBy = groupBy;
     }
     async run(args) {
         const result = new Promise((resolve, reject) => {
@@ -727,10 +729,31 @@ class FunctionQueuer {
                 return;
             }
             this.isRunning = true;
-            const item = this.queue.shift();
-            if (item) {
-                const result = await this.func(...item.arguments);
-                item.onResult(result);
+            const runItem = async (item) => {
+                if (item) {
+                    const result = await this.func(...item.arguments);
+                    item.onResult(result);
+                }
+            };
+            if (!this.groupBy) {
+                const item = this.queue.shift();
+                await runItem(item);
+                /** Run items in parallel for each group */
+            }
+            else {
+                const groups = [];
+                const items = [];
+                this.queue.forEach(async (item, index) => {
+                    const group = this.groupBy(item.arguments);
+                    if (!groups.includes(group)) {
+                        groups.push(group);
+                        items.push({ index, item });
+                    }
+                });
+                await Promise.all(items.map(item => {
+                    this.queue.splice(item.index, 1);
+                    return runItem(item.item);
+                }));
             }
             this.isRunning = false;
             if (this.queue.length) {

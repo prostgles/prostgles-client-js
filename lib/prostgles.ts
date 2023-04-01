@@ -371,7 +371,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     });
   }
 
-  const addSyncQueuer = new FunctionQueuer(_addSync);
+  const addSyncQueuer = new FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
   async function addSync(params: CoreParams, triggers: ClientSyncHandles): Promise<any> {
     return addSyncQueuer.run([params, triggers])
   }
@@ -501,7 +501,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   /**
    * Can be used concurrently
    */
-  const addSubQueuer = new FunctionQueuer(_addSub);
+  const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
   async function addSub<T extends AnyObject>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
     return addSubQueuer.run([dbo, params, onChange, _onError]);
   }
@@ -549,6 +549,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     if (existing) {
       subscriptions[existing].handlers.push(onChange);
+      subscriptions[existing].errorHandlers.push(_onError);
       /* Reuse existing sub config */
       // if(subscriptions[existing].handlers.includes(onChange)){
       //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
@@ -928,8 +929,10 @@ type Func = (...args: any[]) => any;
 class FunctionQueuer<F extends Func> {
   private queue: { arguments: Parameters<F>; onResult: (result: ReturnType<F>) => void }[] = [];
   private func: F;
-  constructor(func: F) {
+  private groupBy?: (args: Parameters<F>) => string;
+  constructor(func: F, groupBy?: ((args: Parameters<F>) => string)) {
     this.func = func;
+    this.groupBy = groupBy;
   }
   private isRunning = false;
   async run(args: Parameters<F>): Promise<ReturnType<F>> {
@@ -944,11 +947,36 @@ class FunctionQueuer<F extends Func> {
         return;
       }
       this.isRunning = true;
-      const item = this.queue.shift();
-      if (item) {
-        const result = await this.func(...item.arguments);
-        item.onResult(result);
+
+      const runItem = async (item: undefined | typeof this.queue[number]) => {
+        if (item) {
+          const result = await this.func(...item.arguments);
+          item.onResult(result);
+        }
       }
+
+      if(!this.groupBy){
+        const item = this.queue.shift();
+        await runItem(item);
+
+      /** Run items in parallel for each group */
+      } else {
+        type Item = typeof this.queue[number];
+        const groups: string[] = [];
+        const items: { index: number; item: Item; }[] = [];
+        this.queue.forEach(async (item, index) => {
+          const group = this.groupBy!(item.arguments);
+          if(!groups.includes(group)){
+            groups.push(group);
+            items.push({ index, item });
+          }
+        });
+        await Promise.all(items.map(item => {
+          this.queue.splice(item.index, 1);
+          return runItem(item.item);
+        }));
+      }
+
       this.isRunning = false;
       if (this.queue.length) {
         startQueueJob();
