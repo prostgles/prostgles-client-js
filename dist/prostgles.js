@@ -750,8 +750,10 @@ class FunctionQueuer {
                         items.push({ index, item });
                     }
                 });
-                await Promise.all(items.map(item => {
+                items.slice(0).reverse().forEach((item) => {
                     this.queue.splice(item.index, 1);
+                });
+                await Promise.all(items.map(item => {
                     return runItem(item.item);
                 }));
             }
