@@ -317,6 +317,7 @@ function prostgles(initOpts, syncedTable) {
      */
     const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
     async function addSub(dbo, params, onChange, _onError) {
+        //@ts-ignore
         return addSubQueuer.run([dbo, params, onChange, _onError]);
     }
     /**
@@ -607,18 +608,19 @@ function prostgles(initOpts, syncedTable) {
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
                         dbo[tableName][command] = subFunc;
+                        const SUBONE = "subscribeOne";
                         /**
                          * Used in for react hooks
                          */
                         dbo[tableName][command + "Hook"] = function (param1, param2, onError) {
                             return {
                                 start: (onChange) => {
-                                    return subFunc(param1, param2, onChange, onError);
+                                    const changeFunc = command !== SUBONE ? onChange : (rows) => { onChange(rows[0]); };
+                                    return subFunc(param1, param2, changeFunc, onError);
                                 },
                                 args: [param1, param2, onError]
                             };
                         };
-                        const SUBONE = "subscribeOne";
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dbo[tableName][SUBONE] = function (param1, param2, onChange, onError) {
                                 checkSubscriptionArgs(param1, param2, onChange, onError);

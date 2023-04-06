@@ -16,6 +16,27 @@ const STORAGE_TYPES = {
     object: "object"
 };
 class SyncedTable {
+    /**
+     * add debug mode to fix sudden no data and sync listeners bug
+     */
+    set multiSubscriptions(mSubs) {
+        (0, exports.debug)(mSubs, this._multiSubscriptions);
+        this._multiSubscriptions = mSubs.slice(0);
+    }
+    ;
+    get multiSubscriptions() {
+        return this._multiSubscriptions;
+    }
+    ;
+    set singleSubscriptions(sSubs) {
+        (0, exports.debug)(sSubs, this._singleSubscriptions);
+        this._singleSubscriptions = sSubs.slice(0);
+    }
+    ;
+    get singleSubscriptions() {
+        return this._singleSubscriptions;
+    }
+    ;
     constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }) {
         this.throttle = 100;
         this.batch_size = 50;
@@ -517,27 +538,6 @@ class SyncedTable {
         }
         (0, exports.debug)(this);
     }
-    /**
-     * add debug mode to fix sudden no data and sync listeners bug
-     */
-    set multiSubscriptions(mSubs) {
-        (0, exports.debug)(mSubs, this._multiSubscriptions);
-        this._multiSubscriptions = mSubs.slice(0);
-    }
-    ;
-    get multiSubscriptions() {
-        return this._multiSubscriptions;
-    }
-    ;
-    set singleSubscriptions(sSubs) {
-        (0, exports.debug)(sSubs, this._singleSubscriptions);
-        this._singleSubscriptions = sSubs.slice(0);
-    }
-    ;
-    get singleSubscriptions() {
-        return this._singleSubscriptions;
-    }
-    ;
     static create(opts) {
         return new Promise((resolve, reject) => {
             try {

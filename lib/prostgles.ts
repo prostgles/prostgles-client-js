@@ -12,7 +12,11 @@ import {
   AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler,
   asName,
   TableSchemaForClient,
-  SubscriptionChannels
+  SubscriptionChannels,
+  FullFilter,
+  SubscribeParams,
+  OnError,
+  GetSelectReturnType
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
@@ -27,6 +31,43 @@ export const debug: any = function (...args: any[]) {
 
 export { MethodHandler, SQLResult, asName };
 
+export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewHandler<T, S> & {
+  getJoinedTables: () => string[];
+  _syncInfo?: any;
+  getSync?: any;
+  sync?: Sync<T>;
+  syncOne?: SyncOne<T>;
+  _sync?: any;
+  subscribeHook: <SubParams extends SubscribeParams<T>>(
+    filter?: FullFilter<T, S>, 
+    options?: SubParams, 
+    onError?: OnError
+  ) => { 
+    start: ((
+      onChange: (items: GetSelectReturnType<SubParams, T, false>[]) => any
+    ) => Promise<SubscriptionHandler<T>>) //ReturnType<ViewHandler<T, S>["subscribe"]>)
+    args: [
+      filter?: FullFilter<T, S>, 
+      options?: SubscribeParams<T>, 
+      onError?: OnError
+    ]
+  };
+  subscribeOneHook: <SubParams extends SubscribeParams<T>>(
+    filter?: FullFilter<T, S>, 
+    options?: SubscribeParams<T>, 
+    onError?: OnError
+  ) => { 
+    start: (
+      onChange:  (item: GetSelectReturnType<SubParams, T, false> | undefined) => any
+    ) => Promise<SubscriptionHandler<T>>;
+    args: [
+      filter?: FullFilter<T, S>, 
+      options?: SubscribeParams<T>, 
+      onError?: OnError
+    ]
+  }
+}
+
 export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = TableHandler<T, S> & {
   getJoinedTables: () => string[];
   _syncInfo?: any;
@@ -34,35 +75,8 @@ export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = Tabl
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
   _sync?: any;
-  subscribeHook: (
-    filter?: Parameters<TableHandler<T, S>["subscribe"]>[0],
-    options?: Parameters<TableHandler<T, S>["subscribe"]>[1],
-    onError?: Parameters<TableHandler<T, S>["subscribe"]>[3],
-  ) => { 
-    start: ((
-      onChange: Parameters<TableHandler<T, S>["subscribe"]>[2]
-    ) => ReturnType<TableHandler<T, S>["subscribe"]>)
-    args: [
-      filter?: Parameters<TableHandler<T, S>["subscribe"]>[0],
-      options?: Parameters<TableHandler<T, S>["subscribe"]>[1],
-      onError?: Parameters<TableHandler<T, S>["subscribe"]>[3],
-    ]
-  };
-  subscribeOneHook: (
-    filter: Parameters<TableHandler<T, S>["subscribeOne"]>[0],
-    options: Parameters<TableHandler<T, S>["subscribeOne"]>[1],
-    onError?: Parameters<TableHandler<T, S>["subscribeOne"]>[3],
-  ) => { 
-    start: (
-      onChange: Parameters<TableHandler<T, S>["subscribeOne"]>[2]
-    ) => ReturnType<TableHandler<T, S>["subscribeOne"]>;
-    args: [
-      filter: Parameters<TableHandler<T, S>["subscribeOne"]>[0],
-      options: Parameters<TableHandler<T, S>["subscribeOne"]>[1],
-      onError?: Parameters<TableHandler<T, S>["subscribeOne"]>[3],
-    ]
-  }
 }
+
 export type TableHandlerClientBasic = TableHandlerBasic & {
   getJoinedTables: () => string[];
   _syncInfo?: any;
@@ -81,7 +95,7 @@ export type DBHandlerClient<Tables extends Record<string, AnyObject> = Record<st
 
 export type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
   [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
-  ViewHandler<Schema[tov_name]["columns"], Schema> :
+  ViewHandlerClient<Schema[tov_name]["columns"], Schema> :
   TableHandlerClient<Schema[tov_name]["columns"], Schema>
 } & Pick<DBHandlerClient, "sql"> :
 DBHandlerClient;
@@ -503,6 +517,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
    */
   const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
   async function addSub<T extends AnyObject>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+    //@ts-ignore
     return addSubQueuer.run([dbo, params, onChange, _onError]);
   }
 
@@ -814,19 +829,20 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 return addSub<T>(dbo, { tableName, command, param1, param2 }, onChange, onError);
               };
               dbo[tableName][command] = subFunc;
+              const SUBONE = "subscribeOne";
               /**
                * Used in for react hooks 
                */
               dbo[tableName][command + "Hook"] = function (param1, param2, onError?) {
                 return { 
                   start: (onChange: any) => {
-                    return subFunc(param1, param2, onChange, onError);
+                    const changeFunc = command !== SUBONE? onChange : (rows) => { onChange(rows[0]); }; 
+                    return subFunc(param1, param2, changeFunc, onError);
                   },
                   args: [param1, param2, onError]
                 }
               }
 
-              const SUBONE = "subscribeOne";
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                 dbo[tableName][SUBONE] = function <T extends AnyObject = AnyObject>(param1, param2, onChange, onError) {
                   checkSubscriptionArgs(param1, param2, onChange, onError);

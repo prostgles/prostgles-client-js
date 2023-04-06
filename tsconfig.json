@@ -24,7 +24,8 @@
     // "moduleResolution": "node"
     "declaration": true,
     "declarationMap": true,
-    "keyofStringsOnly": true
+    "keyofStringsOnly": true,
+    "ignoreDeprecations": "5.0"
   },
   "include": ["lib"],
   "exclude": [
