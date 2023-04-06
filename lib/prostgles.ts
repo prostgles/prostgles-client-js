@@ -16,7 +16,8 @@ import {
   FullFilter,
   SubscribeParams,
   OnError,
-  GetSelectReturnType
+  GetSelectReturnType,
+  getKeys
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
@@ -226,10 +227,11 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
   } = {};
   const removeNotifListener = (listener: any, conf: DBNotifConfig) => {
-    if (notifSubs && notifSubs[conf.notifChannel]) {
-      notifSubs[conf.notifChannel].listeners = notifSubs[conf.notifChannel].listeners.filter(nl => nl !== listener);
-      if (!notifSubs[conf.notifChannel].listeners.length && notifSubs[conf.notifChannel].config && notifSubs[conf.notifChannel].config.socketUnsubChannel && socket) {
-        socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
+    const channelSubs = notifSubs[conf.notifChannel]
+    if (channelSubs) {
+      channelSubs.listeners = channelSubs.listeners.filter(nl => nl !== listener);
+      if (!channelSubs.listeners.length && channelSubs.config && channelSubs.config.socketUnsubChannel && socket) {
+        socket.emit(channelSubs.config.socketUnsubChannel, {});
         delete notifSubs[conf.notifChannel];
       }
     }
@@ -237,24 +239,25 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   const addNotifListener = (listener: any, conf: DBNotifConfig) => {
     notifSubs = notifSubs || {};
 
-    if (!notifSubs[conf.notifChannel]) {
+    const channelSubs = notifSubs[conf.notifChannel]
+    if (!channelSubs) {
       notifSubs[conf.notifChannel] = {
         config: conf,
         listeners: [listener]
       };
       socket.removeAllListeners(conf.socketChannel);
       socket.on(conf.socketChannel, (notif: any) => {
-        if (notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length) {
-          notifSubs[conf.notifChannel].listeners.map(l => {
+        if (notifSubs[conf.notifChannel]?.listeners.length) {
+          notifSubs[conf.notifChannel]!.listeners.map(l => {
             l(notif);
           })
         } else {
-          socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
+          socket.emit(notifSubs[conf.notifChannel]?.config.socketUnsubChannel, {});
         }
       });
 
     } else {
-      notifSubs[conf.notifChannel].listeners.push(listener);
+      notifSubs[conf.notifChannel]?.listeners.push(listener);
     }
   };
 
@@ -310,14 +313,14 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     return new Promise((resolve, reject) => {
       if (subscriptions[channelName]) {
-        subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
-        if (!subscriptions[channelName].handlers.length) {
+        subscriptions[channelName]!.handlers = subscriptions[channelName]!.handlers.filter(h => h !== handler);
+        if (!subscriptions[channelName]!.handlers.length) {
           socket.emit(unsubChannel, {}, (err: any, _res: any) => {
             // console.log("unsubscribed", err, res);
             if (err) console.error(err);
             // else resolve(res);
           });
-          socket.removeListener(channelName, subscriptions[channelName].onCall);
+          socket.removeListener(channelName, subscriptions[channelName]!.onCall);
           delete subscriptions[channelName];
 
           /* Not waiting for server confirmation to speed things up */
@@ -335,18 +338,18 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     debug("_unsync", { channelName, triggers })
     return new Promise((resolve, reject) => {
       if (syncs[channelName]) {
-        syncs[channelName].triggers = syncs[channelName].triggers.filter(tr => (
+        syncs[channelName]!.triggers = syncs[channelName]!.triggers.filter(tr => (
           tr.onPullRequest !== triggers.onPullRequest &&
           tr.onSyncRequest !== triggers.onSyncRequest &&
           tr.onUpdates !== triggers.onUpdates
         ));
 
-        if (!syncs[channelName].triggers.length) {
+        if (!syncs[channelName]!.triggers.length) {
           socket.emit(channelName + "unsync", {}, (err: any, res: any) => {
             if (err) reject(err);
             else resolve(res);
           });
-          socket.removeListener(channelName, syncs[channelName].onCall);
+          socket.removeListener(channelName, syncs[channelName]!.onCall);
           delete syncs[channelName];
         }
       }
@@ -418,6 +421,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     const existingChannel = Object.keys(syncs).find(ch => {
       let s = syncs[ch];
       return (
+        s &&
         s.tableName === tableName &&
         s.command === command &&
         JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
@@ -431,7 +435,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     });
 
     if (existingChannel) {
-      syncs[existingChannel].triggers.push(triggers);
+      syncs[existingChannel]!.triggers.push(triggers);
       return makeHandler(existingChannel);
     } else {
       const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
@@ -448,7 +452,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
         if (!syncs[channelName]) return;
 
-        syncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
+        syncs[channelName]!.triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
           // onChange(data.data);
           if (data.data) {
             Promise.resolve(onUpdates(data))
@@ -552,9 +556,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       return Object.freeze(res);
     }
 
-    const existing = Object.keys(subscriptions).find(ch => {
+    const existing = Object.entries(subscriptions).find(([ch]) => {
       let s = subscriptions[ch];
       return (
+        s &&
         s.tableName === tableName &&
         s.command === command &&
         JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
@@ -563,18 +568,19 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     });
 
     if (existing) {
-      subscriptions[existing].handlers.push(onChange);
-      subscriptions[existing].errorHandlers.push(_onError);
+      const existingCh = existing[0];
+      existing[1].handlers.push(onChange);
+      existing[1].errorHandlers.push(_onError);
       /* Reuse existing sub config */
       // if(subscriptions[existing].handlers.includes(onChange)){
       //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
       // }
       setTimeout(() => {
-        if (onChange && subscriptions?.[existing].lastData) {
-          onChange(subscriptions?.[existing].lastData)
+        if (onChange && subscriptions?.[existingCh]?.lastData) {
+          onChange(subscriptions?.[existingCh]?.lastData)
         }
       }, 10)
-      return makeHandler(existing, subscriptions[existing].unsubChannel);
+      return makeHandler(existingCh, existing[1].unsubChannel);
     }
 
     const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({ tableName, command, param1, param2 })
@@ -582,14 +588,15 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     const onCall = function (data: any, cb: Function) {
       /* TO DO: confirm receiving data or server will unsubscribe */
       // if(cb) cb(true);
-      if (subscriptions[channelName]) {
+      const sub = subscriptions[channelName];
+      if (sub) {
         if (data.data) {
-          subscriptions[channelName].lastData = data.data;
-          subscriptions[channelName].handlers.forEach(h => {
+          sub.lastData = data.data;
+          sub.handlers.forEach(h => {
             h(data.data);
           });
         } else if (data.err) {
-          subscriptions[channelName].errorHandlers.forEach(h => {
+          sub.errorHandlers.forEach(h => {
             h(data.err);
           });
         } else {
@@ -614,7 +621,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       errorHandlers: [onError],
       destroy: () => {
         if (subscriptions[channelName]) {
-          Object.values(subscriptions[channelName]).map((s: Subscription) => {
+          Object.values(subscriptions[channelName]!).map((s: Subscription) => {
             if (s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, channelNameUnsubscribe, h))
           });
           delete subscriptions[channelName];
@@ -780,9 +787,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         }
       }
       const sub_commands = ["subscribe", "subscribeOne"] as const;
-      Object.keys(dbo).forEach(tableName => {
+      getKeys(dbo).forEach(tableName => {
         const all_commands = Object.keys(dbo[tableName]);
-
+        
         all_commands
           .sort((a, b) => <never>sub_commands.includes(a as any) - <never>sub_commands.includes(b as any))
           .forEach(command => {
@@ -875,7 +882,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       if (subscriptions && Object.keys(subscriptions).length) {
         Object.keys(subscriptions).map(async ch => {
           try {
-            let s = subscriptions[ch];
+            let s = subscriptions[ch]!;
             await addServerSub(s);
             socket.on(ch, s.onCall);
           } catch (err) {
@@ -884,12 +891,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         });
       }
       if (syncs && Object.keys(syncs).length) {
-        Object.keys(syncs).filter(ch => {
-          return syncs[ch].triggers && syncs[ch].triggers.length
+        getKeys(syncs).filter(ch => {
+          return syncs[ch]?.triggers.length
         }).map(async ch => {
           try {
-            let s = syncs[ch];
-            await addServerSync(s, s.triggers[0].onSyncRequest);
+            let s = syncs[ch]!;
+            await addServerSync(s, s.triggers[0]!.onSyncRequest);
             socket.on(ch, s.onCall);
           } catch (err) {
             console.error("There was an issue reconnecting olf subscriptions", err)

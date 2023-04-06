@@ -25,7 +25,9 @@
     "declaration": true,
     "declarationMap": true,
     "keyofStringsOnly": true,
-    "ignoreDeprecations": "5.0"
+    "ignoreDeprecations": "5.0",
+    /** TODO */
+    "noUncheckedIndexedAccess": false
   },
   "include": ["lib"],
   "exclude": [

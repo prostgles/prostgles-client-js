@@ -762,7 +762,7 @@ class SyncedTable {
     }
     get tableHandler() {
         const tblHandler = this.db[this.name];
-        if (tblHandler.update && tblHandler.updateBatch) {
+        if ((tblHandler === null || tblHandler === void 0 ? void 0 : tblHandler.update) && tblHandler.updateBatch) {
             return tblHandler;
         }
         return undefined;

@@ -228,8 +228,8 @@ export class SyncedTable {
       if (batch.length) {
 
         res = {
-          c_fr: this.getRowSyncObj(batch[0]),
-          c_lr: this.getRowSyncObj(batch[batch.length - 1]),
+          c_fr: this.getRowSyncObj(batch[0]!),
+          c_lr: this.getRowSyncObj(batch[batch.length - 1]!),
           c_count: batch.length
         };
       }
@@ -602,7 +602,7 @@ export class SyncedTable {
       this.getItems().map(d => {
         allItems.push({ ...d });
         const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
-        allDeltas.push(deltas[dIdx]);
+        allDeltas.push(deltas[dIdx]!);
       });
 
       /* Notify main subscription */
@@ -737,7 +737,7 @@ export class SyncedTable {
 
   private get tableHandler(): Pick<TableHandler, "update" | "updateBatch" | "delete"> | undefined {
     const tblHandler = this.db[this.name];
-    if(tblHandler.update && tblHandler.updateBatch){
+    if(tblHandler?.update && tblHandler.updateBatch){
       return tblHandler as any;
     }
 

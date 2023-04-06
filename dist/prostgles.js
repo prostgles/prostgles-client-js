@@ -42,35 +42,39 @@ function prostgles(initOpts, syncedTable) {
     let syncs = {};
     let notifSubs = {};
     const removeNotifListener = (listener, conf) => {
-        if (notifSubs && notifSubs[conf.notifChannel]) {
-            notifSubs[conf.notifChannel].listeners = notifSubs[conf.notifChannel].listeners.filter(nl => nl !== listener);
-            if (!notifSubs[conf.notifChannel].listeners.length && notifSubs[conf.notifChannel].config && notifSubs[conf.notifChannel].config.socketUnsubChannel && socket) {
-                socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
+        const channelSubs = notifSubs[conf.notifChannel];
+        if (channelSubs) {
+            channelSubs.listeners = channelSubs.listeners.filter(nl => nl !== listener);
+            if (!channelSubs.listeners.length && channelSubs.config && channelSubs.config.socketUnsubChannel && socket) {
+                socket.emit(channelSubs.config.socketUnsubChannel, {});
                 delete notifSubs[conf.notifChannel];
             }
         }
     };
     const addNotifListener = (listener, conf) => {
+        var _a;
         notifSubs = notifSubs || {};
-        if (!notifSubs[conf.notifChannel]) {
+        const channelSubs = notifSubs[conf.notifChannel];
+        if (!channelSubs) {
             notifSubs[conf.notifChannel] = {
                 config: conf,
                 listeners: [listener]
             };
             socket.removeAllListeners(conf.socketChannel);
             socket.on(conf.socketChannel, (notif) => {
-                if (notifSubs[conf.notifChannel] && notifSubs[conf.notifChannel].listeners && notifSubs[conf.notifChannel].listeners.length) {
+                var _a, _b;
+                if ((_a = notifSubs[conf.notifChannel]) === null || _a === void 0 ? void 0 : _a.listeners.length) {
                     notifSubs[conf.notifChannel].listeners.map(l => {
                         l(notif);
                     });
                 }
                 else {
-                    socket.emit(notifSubs[conf.notifChannel].config.socketUnsubChannel, {});
+                    socket.emit((_b = notifSubs[conf.notifChannel]) === null || _b === void 0 ? void 0 : _b.config.socketUnsubChannel, {});
                 }
             });
         }
         else {
-            notifSubs[conf.notifChannel].listeners.push(listener);
+            (_a = notifSubs[conf.notifChannel]) === null || _a === void 0 ? void 0 : _a.listeners.push(listener);
         }
     };
     let noticeSubs;
@@ -218,7 +222,8 @@ function prostgles(initOpts, syncedTable) {
         }
         const existingChannel = Object.keys(syncs).find(ch => {
             let s = syncs[ch];
-            return (s.tableName === tableName &&
+            return (s &&
+                s.tableName === tableName &&
                 s.command === command &&
                 JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
                 JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
@@ -348,40 +353,44 @@ function prostgles(initOpts, syncedTable) {
             }
             return Object.freeze(res);
         }
-        const existing = Object.keys(subscriptions).find(ch => {
+        const existing = Object.entries(subscriptions).find(([ch]) => {
             let s = subscriptions[ch];
-            return (s.tableName === tableName &&
+            return (s &&
+                s.tableName === tableName &&
                 s.command === command &&
                 JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
                 JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {}));
         });
         if (existing) {
-            subscriptions[existing].handlers.push(onChange);
-            subscriptions[existing].errorHandlers.push(_onError);
+            const existingCh = existing[0];
+            existing[1].handlers.push(onChange);
+            existing[1].errorHandlers.push(_onError);
             /* Reuse existing sub config */
             // if(subscriptions[existing].handlers.includes(onChange)){
             //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
             // }
             setTimeout(() => {
-                if (onChange && (subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData)) {
-                    onChange(subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existing].lastData);
+                var _a, _b;
+                if (onChange && ((_a = subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existingCh]) === null || _a === void 0 ? void 0 : _a.lastData)) {
+                    onChange((_b = subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existingCh]) === null || _b === void 0 ? void 0 : _b.lastData);
                 }
             }, 10);
-            return makeHandler(existing, subscriptions[existing].unsubChannel);
+            return makeHandler(existingCh, existing[1].unsubChannel);
         }
         const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({ tableName, command, param1, param2 });
         const onCall = function (data, cb) {
             /* TO DO: confirm receiving data or server will unsubscribe */
             // if(cb) cb(true);
-            if (subscriptions[channelName]) {
+            const sub = subscriptions[channelName];
+            if (sub) {
                 if (data.data) {
-                    subscriptions[channelName].lastData = data.data;
-                    subscriptions[channelName].handlers.forEach(h => {
+                    sub.lastData = data.data;
+                    sub.handlers.forEach(h => {
                         h(data.data);
                     });
                 }
                 else if (data.err) {
-                    subscriptions[channelName].errorHandlers.forEach(h => {
+                    sub.errorHandlers.forEach(h => {
                         h(data.err);
                     });
                 }
@@ -561,7 +570,7 @@ function prostgles(initOpts, syncedTable) {
                 }
             };
             const sub_commands = ["subscribe", "subscribeOne"];
-            Object.keys(dbo).forEach(tableName => {
+            (0, prostgles_types_1.getKeys)(dbo).forEach(tableName => {
                 const all_commands = Object.keys(dbo[tableName]);
                 all_commands
                     .sort((a, b) => sub_commands.includes(a) - sub_commands.includes(b))
@@ -660,8 +669,9 @@ function prostgles(initOpts, syncedTable) {
                 });
             }
             if (syncs && Object.keys(syncs).length) {
-                Object.keys(syncs).filter(ch => {
-                    return syncs[ch].triggers && syncs[ch].triggers.length;
+                (0, prostgles_types_1.getKeys)(syncs).filter(ch => {
+                    var _a;
+                    return (_a = syncs[ch]) === null || _a === void 0 ? void 0 : _a.triggers.length;
                 }).map(async (ch) => {
                     try {
                         let s = syncs[ch];
