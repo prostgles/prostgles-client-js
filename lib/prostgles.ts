@@ -5,7 +5,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-  TableHandler, TableHandlerBasic, DbJoinMaker,
+  TableHandler, DbJoinMaker,
   TableJoinBasic, CHANNELS, DBNotifConfig,
   DBNoticeConfig, AnyObject, SubscriptionHandler,
   SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
@@ -39,13 +39,13 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
   _sync?: any;
-  subscribeHook: <SubParams extends SubscribeParams<T>>(
+  subscribeHook: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
     onError?: OnError
   ) => { 
     start: ((
-      onChange: (items: GetSelectReturnType<SubParams, T, false>[]) => any
+      onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any
     ) => Promise<SubscriptionHandler<T>>) //ReturnType<ViewHandler<T, S>["subscribe"]>)
     args: [
       filter?: FullFilter<T, S>, 
@@ -53,13 +53,13 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
       onError?: OnError
     ]
   };
-  subscribeOneHook: <SubParams extends SubscribeParams<T>>(
+  subscribeOneHook: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubscribeParams<T>, 
     onError?: OnError
   ) => { 
     start: (
-      onChange:  (item: GetSelectReturnType<SubParams, T, false> | undefined) => any
+      onChange:  (item: GetSelectReturnType<S, SubParams, T, false> | undefined) => any
     ) => Promise<SubscriptionHandler<T>>;
     args: [
       filter?: FullFilter<T, S>, 
@@ -78,14 +78,14 @@ export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = Tabl
   _sync?: any;
 }
 
-export type TableHandlerClientBasic = TableHandlerBasic & {
-  getJoinedTables: () => string[];
-  _syncInfo?: any;
-  getSync?: any;
-  sync?: Sync;
-  syncOne?: SyncOne;
-  _sync?: any;
-}
+// export type TableHandlerClientBasic = TableHandlerBasic & {
+//   getJoinedTables: () => string[];
+//   _syncInfo?: any;
+//   getSync?: any;
+//   sync?: Sync;
+//   syncOne?: SyncOne;
+//   _sync?: any;
+// }
 
 export type DBHandlerClient<Tables extends Record<string, AnyObject> = Record<string, AnyObject>> = {
   [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
@@ -110,23 +110,23 @@ const db: DBHandlerClient<{ tbl1: { col1: string; col2: number } }> = 1 as any;
   res.col2;
 });
 
-export type DBHandlerClientBasic = {
-  [key: string]: Partial<TableHandlerClientBasic>;
-} & {
-  innerJoin: TableJoinBasic;
-  leftJoin: TableJoinBasic;
-  innerJoinOne: TableJoinBasic;
-  leftJoinOne: TableJoinBasic;
-} & {
+// export type DBHandlerClientBasic = {
+//   [key: string]: Partial<TableHandlerClientBasic>;
+// } & {
+//   innerJoin: TableJoinBasic;
+//   leftJoin: TableJoinBasic;
+//   innerJoinOne: TableJoinBasic;
+//   leftJoinOne: TableJoinBasic;
+// } & {
 
-  /**
-   * 
-   * @param query <string> query. e.g.: SELECT * FROM users;
-   * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
-   * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
-   */
-  sql?: SQLHandler;
-};
+//   /**
+//    * 
+//    * @param query <string> query. e.g.: SELECT * FROM users;
+//    * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
+//    * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
+//    */
+//   sql?: SQLHandler;
+// };
 
 export type Auth = {
   register?: (params: any) => Promise<any>;
