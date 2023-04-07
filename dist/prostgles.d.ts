@@ -1,4 +1,4 @@
-import { TableHandler, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
+import { TableHandler, DbJoinMaker, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
@@ -38,7 +38,7 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
     [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandlerClient<Schema[tov_name]["columns"], Schema> : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
 } : Record<string, Partial<TableHandlerClient>>) & {
     sql?: SQLHandler;
-};
+} & DbJoinMaker;
 export type Auth = {
     register?: (params: any) => Promise<any>;
     login?: (params: any) => Promise<any>;

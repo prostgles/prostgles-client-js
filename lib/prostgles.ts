@@ -82,11 +82,11 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
   [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
     ViewHandlerClient<Schema[tov_name]["columns"], Schema> :
     TableHandlerClient<Schema[tov_name]["columns"], Schema>
-} : 
+  } : 
   Record<string, Partial<TableHandlerClient>>
- ) & { 
+) & { 
   sql?: SQLHandler; 
-};
+} & DbJoinMaker;
 
 export type Auth = {
   register?: (params: any) => Promise<any>;
