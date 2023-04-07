@@ -43,6 +43,10 @@ import { DBHandlerClient, TableHandlerClient } from "./prostgles";
       addedY: { "$date_trunc_5minute": ["added"] }
     }});
    
+    dbH.d.find?.({}, { 
+
+      select: { id: 1, name: 1, items3: { name: "$upper" } }
+    })
   // const dboBasic: DBHandlerClient = dbo;
   
 })
