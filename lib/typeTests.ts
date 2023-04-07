@@ -47,6 +47,10 @@ import { DBHandlerClient, TableHandlerClient } from "./prostgles";
 
       select: { id: 1, name: 1, items3: { name: "$upper" } }
     })
+
+    dbH.d.find!({}, {
+      select: { connection_id: 1, access_control_user_types: { access_control_id: 1 }, access_control_methods: { access_control_id: 1 }  } 
+    })
   // const dboBasic: DBHandlerClient = dbo;
   
 })
