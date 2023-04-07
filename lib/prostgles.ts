@@ -10,8 +10,7 @@ import {
   DBNoticeConfig, AnyObject, SubscriptionHandler,
   SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
   AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler,
-  asName,
-  TableSchemaForClient,
+  asName, 
   SubscriptionChannels,
   FullFilter,
   SubscribeParams,
@@ -32,7 +31,7 @@ export const debug: any = function (...args: any[]) {
 
 export { MethodHandler, SQLResult, asName };
 
-export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewHandler<T, S> & {
+export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
   getJoinedTables: () => string[];
   _syncInfo?: any;
   getSync?: any;
@@ -46,7 +45,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
   ) => { 
     start: ((
       onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any
-    ) => Promise<SubscriptionHandler<T>>) //ReturnType<ViewHandler<T, S>["subscribe"]>)
+    ) => Promise<SubscriptionHandler>) 
     args: [
       filter?: FullFilter<T, S>, 
       options?: SubscribeParams<T>, 
@@ -60,7 +59,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
   ) => { 
     start: (
       onChange:  (item: GetSelectReturnType<S, SubParams, T, false> | undefined) => any
-    ) => Promise<SubscriptionHandler<T>>;
+    ) => Promise<SubscriptionHandler>;
     args: [
       filter?: FullFilter<T, S>, 
       options?: SubscribeParams<T>, 
@@ -69,7 +68,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
   }
 }
 
-export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = TableHandler<T, S> & {
+export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = TableHandler<T, S> & {
   getJoinedTables: () => string[];
   _syncInfo?: any;
   getSync?: any;
@@ -78,55 +77,16 @@ export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = Tabl
   _sync?: any;
 }
 
-// export type TableHandlerClientBasic = TableHandlerBasic & {
-//   getJoinedTables: () => string[];
-//   _syncInfo?: any;
-//   getSync?: any;
-//   sync?: Sync;
-//   syncOne?: SyncOne;
-//   _sync?: any;
-// }
 
-export type DBHandlerClient<Tables extends Record<string, AnyObject> = Record<string, AnyObject>> = {
-  [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
-} & DbJoinMaker & {
-  sql?: SQLHandler;
-};
-
-
-export type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
+export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
   [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
-  ViewHandlerClient<Schema[tov_name]["columns"], Schema> :
-  TableHandlerClient<Schema[tov_name]["columns"], Schema>
-} & Pick<DBHandlerClient, "sql"> :
-DBHandlerClient;
-
-/** Type inference check */
-const db: DBHandlerClient<{ tbl1: { col1: string; col2: number } }> = 1 as any;
-(async () => {
-  const res = await db.tbl1.findOne!()
-  res?.col1;
-  // @ts-expect-error
-  res.col2;
-});
-
-// export type DBHandlerClientBasic = {
-//   [key: string]: Partial<TableHandlerClientBasic>;
-// } & {
-//   innerJoin: TableJoinBasic;
-//   leftJoin: TableJoinBasic;
-//   innerJoinOne: TableJoinBasic;
-//   leftJoinOne: TableJoinBasic;
-// } & {
-
-//   /**
-//    * 
-//    * @param query <string> query. e.g.: SELECT * FROM users;
-//    * @param params <any[] | object> query arguments to be escaped. e.g.: { name: 'dwadaw' }
-//    * @param options <object> { returnType: "statement" | "rows" | "noticeSubscription" }
-//    */
-//   sql?: SQLHandler;
-// };
+    ViewHandlerClient<Schema[tov_name]["columns"], Schema> :
+    TableHandlerClient<Schema[tov_name]["columns"], Schema>
+} : 
+  Record<string, Partial<TableHandlerClient>>
+ ) & { 
+  sql?: SQLHandler; 
+};
 
 export type Auth = {
   register?: (params: any) => Promise<any>;
@@ -148,7 +108,7 @@ export type InitOptions<DBSchema = void> = {
    * true by default
    */
   onSchemaChange?: false | (() => void);
-  onReady: (dbo: DBOFullyTyped<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+  onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
 
   /**
    * If not provided will fire onReady
@@ -169,7 +129,7 @@ type Subscription = CoreParams & {
   lastData: any;
   onCall: Function,
   handlers: Function[];
-  errorHandlers: Function[];
+  errorHandlers: (Function | undefined)[];
   unsubChannel: string;
   destroy: () => any;
 };
@@ -520,15 +480,14 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
    * Can be used concurrently
    */
   const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
-  async function addSub<T extends AnyObject>(dbo: any, params: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
-    //@ts-ignore
+  async function addSub(dbo: any, params: CoreParams, onChange: Function, _onError?: Function): Promise<SubscriptionHandler> { 
     return addSubQueuer.run([dbo, params, onChange, _onError]);
   }
 
   /**
    * Do NOT use concurrently
    */
-  async function _addSub<T extends AnyObject>(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError: Function): Promise<SubscriptionHandler<T>> {
+  async function _addSub(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError?: Function): Promise<SubscriptionHandler> {
 
     function makeHandler(channelName: string, unsubChannel: string) {
 
@@ -597,7 +556,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           });
         } else if (data.err) {
           sub.errorHandlers.forEach(h => {
-            h(data.err);
+            h?.(data.err);
           });
         } else {
           console.error("INTERNAL ERROR: Unexpected data format from subscription: ", data)
@@ -667,7 +626,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
       connected = true;
 
-      let dbo: DBOFullyTyped = JSON.parse(JSON.stringify(schema));
+      let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
       let _methods: typeof methods = JSON.parse(JSON.stringify(methods)),
         methodsObj: MethodHandler = {},
         _auth = {};
@@ -833,7 +792,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
             } else if (sub_commands.includes(command as any)) {
               const subFunc = function <T extends AnyObject = AnyObject>(param1, param2, onChange, onError) {
                 checkSubscriptionArgs(param1, param2, onChange, onError);
-                return addSub<T>(dbo, { tableName, command, param1, param2 }, onChange, onError);
+                return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
               };
               dbo[tableName][command] = subFunc;
               const SUBONE = "subscribeOne";
@@ -851,11 +810,11 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {
-                dbo[tableName][SUBONE] = function <T extends AnyObject = AnyObject>(param1, param2, onChange, onError) {
+                dbo[tableName][SUBONE] = function (param1, param2, onChange, onError) {
                   checkSubscriptionArgs(param1, param2, onChange, onError);
 
                   let onChangeOne = (rows) => { onChange(rows[0]) };
-                  return addSub<T>(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
+                  return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
                 };
               }
             } else {
@@ -934,7 +893,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
       (async () => {
         try {
-          await onReady(dbo as DBOFullyTyped<DBSchema>, methodsObj, tableSchema, _auth, connected);
+          await onReady(dbo as DBHandlerClient<DBSchema>, methodsObj, tableSchema, _auth, connected);
         } catch (err) {
           console.error("Prostgles: Error within onReady: \n", err);
           reject(err);

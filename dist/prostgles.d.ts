@@ -1,8 +1,8 @@
-import { TableHandler, DbJoinMaker, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
+import { TableHandler, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
-export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewHandler<T, S> & {
+export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
@@ -10,7 +10,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
     syncOne?: SyncOne<T>;
     _sync?: any;
     subscribeHook: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => {
-        start: ((onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any) => Promise<SubscriptionHandler<T>>);
+        start: ((onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any) => Promise<SubscriptionHandler>);
         args: [
             filter?: FullFilter<T, S>,
             options?: SubscribeParams<T>,
@@ -18,7 +18,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
         ];
     };
     subscribeOneHook: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubscribeParams<T>, onError?: OnError) => {
-        start: (onChange: (item: GetSelectReturnType<S, SubParams, T, false> | undefined) => any) => Promise<SubscriptionHandler<T>>;
+        start: (onChange: (item: GetSelectReturnType<S, SubParams, T, false> | undefined) => any) => Promise<SubscriptionHandler>;
         args: [
             filter?: FullFilter<T, S>,
             options?: SubscribeParams<T>,
@@ -26,7 +26,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S = void> = ViewH
         ];
     };
 };
-export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = TableHandler<T, S> & {
+export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = TableHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
@@ -34,14 +34,11 @@ export type TableHandlerClient<T extends AnyObject = AnyObject, S = void> = Tabl
     syncOne?: SyncOne<T>;
     _sync?: any;
 };
-export type DBHandlerClient<Tables extends Record<string, AnyObject> = Record<string, AnyObject>> = {
-    [key in keyof Tables]: Partial<TableHandlerClient<Tables[key]>>;
-} & DbJoinMaker & {
+export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
+    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandlerClient<Schema[tov_name]["columns"], Schema> : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
+} : Record<string, Partial<TableHandlerClient>>) & {
     sql?: SQLHandler;
 };
-export type DBOFullyTyped<Schema = void> = Schema extends DBSchema ? {
-    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandlerClient<Schema[tov_name]["columns"], Schema> : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
-} & Pick<DBHandlerClient, "sql"> : DBHandlerClient;
 export type Auth = {
     register?: (params: any) => Promise<any>;
     login?: (params: any) => Promise<any>;
@@ -59,7 +56,7 @@ export type InitOptions<DBSchema = void> = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBOFullyTyped<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+    onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
     /**
      * If not provided will fire onReady
      */

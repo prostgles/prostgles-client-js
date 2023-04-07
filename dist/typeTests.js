@@ -9,3 +9,4 @@ const f = (a) => { };
 // f(dbo.table1)
 const ra = (a) => {
 };
+// const dboBasic: DBHandlerClient = dbo;

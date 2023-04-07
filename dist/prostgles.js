@@ -15,14 +15,6 @@ const debug = function (...args) {
     }
 };
 exports.debug = debug;
-/** Type inference check */
-const db = 1;
-(async () => {
-    const res = await db.tbl1.findOne();
-    res === null || res === void 0 ? void 0 : res.col1;
-    // @ts-expect-error
-    res.col2;
-});
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload } = initOpts;
     (0, exports.debug)("prostgles", { initOpts });
@@ -322,7 +314,6 @@ function prostgles(initOpts, syncedTable) {
      */
     const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
     async function addSub(dbo, params, onChange, _onError) {
-        //@ts-ignore
         return addSubQueuer.run([dbo, params, onChange, _onError]);
     }
     /**
@@ -391,7 +382,7 @@ function prostgles(initOpts, syncedTable) {
                 }
                 else if (data.err) {
                     sub.errorHandlers.forEach(h => {
-                        h(data.err);
+                        h === null || h === void 0 ? void 0 : h(data.err);
                     });
                 }
                 else {

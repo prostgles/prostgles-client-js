@@ -872,3 +872,12 @@ function quickClone(obj) {
     return obj;
 }
 exports.quickClone = quickClone;
+/**
+ * Type tests
+ */
+(async () => {
+    const s = 1;
+    const sh = s({ a: 1 }, {}, (d) => { d; });
+    const syncTyped = 1;
+    // const sUntyped: Sync<AnyObject, any> = syncTyped;
+});

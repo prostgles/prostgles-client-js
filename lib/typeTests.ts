@@ -1,5 +1,5 @@
 import { AnyObject, DBSchema, FullFilter, TableHandler } from "prostgles-types";
-import { DBOFullyTyped } from "./prostgles";
+import { DBHandlerClient } from "./prostgles";
 
 
 // const schema: DBSchema = {
@@ -16,11 +16,11 @@ import { DBOFullyTyped } from "./prostgles";
   }
 };
 
-const dbo: DBOFullyTyped<GeneratedSchema> = 1 as any;
+const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
 
-const filter: FullFilter<GeneratedSchema, GeneratedSchema["table1"]["columns"]> = {  };
+const filter: FullFilter<GeneratedSchema["table1"]["columns"], GeneratedSchema> = {  };
 
-const filterCheck = <F extends FullFilter | undefined>(f: F) => {};
+const filterCheck = <F extends FullFilter<void, void> | undefined>(f: F) => {};
 filterCheck(filter);
 
 const sub: TableHandler["count"] = dbo.table1.count
@@ -31,3 +31,6 @@ const f = <A extends TableHandler>(a: A) => {};
 const ra = <A extends AnyObject>(a: A) => {
 
 }; 
+
+
+// const dboBasic: DBHandlerClient = dbo;

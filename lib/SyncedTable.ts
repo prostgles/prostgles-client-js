@@ -25,12 +25,31 @@ export type SyncOneOptions = Partial<SyncedTableOptions> & {
 /**
  * Creates a local synchronized table
  */
-export type Sync<T = POJO> = (basicFilter: Partial<T>, options: SyncOptions, onChange: (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any, onError?: (error: any) => void) => Promise<MultiSyncHandles<T>>;
+type OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any
+export type Sync<
+  T extends AnyObject,
+  OnChangeFunc extends OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any,
+  // Result extends MultiSyncHandles<T> = {
+  //   $unsync: () => void;
+  //   $upsert: (newData: T[]) => any;
+  //   getItems: () => T[];
+  // }
+  Upsert extends ((newData: T[]) => any) = ((newData: T[]) => any)
+> = (
+  basicFilter: Partial<T>, 
+  options: SyncOptions, 
+  onChange: OnChangeFunc, 
+  onError?: (error: any) => void
+) => Promise<{
+  $unsync: () => void;
+  $upsert: Upsert;
+  getItems: () => T[];
+}>;
 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T = POJO> = (basicFilter: Partial<T>, options: SyncOneOptions, onChange: (data: (SyncDataItem<Required<T>>), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
+export type SyncOne<T extends AnyObject = AnyObject> = (basicFilter: Partial<T>, options: SyncOneOptions, onChange: (data: (SyncDataItem<Required<T>>), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
 
 export type SyncBatchRequest = {
   from_synced?: string | number;
@@ -51,13 +70,13 @@ export type ItemUpdated = ItemUpdate & {
   from_server: boolean;
 }
 
-export type CloneSync<T, Full extends boolean> = (
+export type CloneSync<T extends AnyObject, Full extends boolean> = (
   onChange: SingleChangeListener<T>,
   onError?: (error: any) => void
 ) => SingleSyncHandles<T, Full>;
 
-export type CloneMultiSync<T> = (
-  onChange: MultiChangeListener,
+export type CloneMultiSync<T extends AnyObject> = (
+  onChange: MultiChangeListener<T>,
   onError?: (error: any) => void
 ) => MultiSyncHandles<T>;
 
@@ -71,7 +90,7 @@ type DeepPartial<T> = T extends Array<any> ? T : T extends object ? {
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export type SingleSyncHandles<T = POJO, Full extends boolean = false> = {
+export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false> = {
   $get: () => T;
   $find: (idObj: Partial<T>) => (T | undefined);
   $unsync: () => any;
@@ -81,22 +100,22 @@ export type SingleSyncHandles<T = POJO, Full extends boolean = false> = {
   $cloneMultiSync: CloneMultiSync<T>;
 }
 
-export type SyncDataItem<T = POJO, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, true> : Partial<SingleSyncHandles<T>>);
+export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, true> : Partial<SingleSyncHandles<T>>);
 
-export type MultiSyncHandles<T = POJO> = {
+export type MultiSyncHandles<T extends AnyObject> = {
   $unsync: () => void;
   $upsert: (newData: T[]) => any;
   getItems: () => AnyObject[];
 }
 
-export type SubscriptionSingle<T = POJO, Full extends boolean = false> = {
+export type SubscriptionSingle<T extends AnyObject = AnyObject, Full extends boolean = false> = {
   _onChange: SingleChangeListener<T, Full>
   notify: (data: T, delta?: DeepPartial<T>) => T;
   idObj: Partial<T>;
   handlesOnData?: boolean;
   handles?: SingleSyncHandles<T, Full>;
 }
-export type SubscriptionMulti<T = POJO> = {
+export type SubscriptionMulti<T extends AnyObject = AnyObject> = {
   _onChange: MultiChangeListener<T>;
   notify: (data: T[], delta: DeepPartial<T>[]) => T[];
   idObj?: Partial<T>;
@@ -110,8 +129,8 @@ const STORAGE_TYPES = {
   object: "object"
 } as const;
 
-export type MultiChangeListener<T = POJO> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
-export type SingleChangeListener<T = POJO, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
+export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
+export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
 
 export type SyncedTableOptions = {
   name: string;
@@ -430,7 +449,7 @@ export class SyncedTable {
    * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
    */
   sync<T extends AnyObject = AnyObject>(onChange: MultiChangeListener<T>, handlesOnData = true): MultiSyncHandles<T> {
-    const handles: MultiSyncHandles = {
+    const handles: MultiSyncHandles<T> = {
       $unsync: () => {
         return this.unsubscribe(onChange)
       },
@@ -1084,3 +1103,15 @@ export function quickClone<T>(obj: T): T {
 
   return obj;
 }
+
+/**
+ * Type tests
+ */
+(async () => {
+  const s: Sync<{ a: number, b: string; }> = 1 as any;
+  const sh = s({ a: 1 }, {  } as any, (d) => { d });
+  
+  const syncTyped: Sync<{ col1: string; }, ()=>any> = 1 as any;
+  
+  // const sUntyped: Sync<AnyObject, any> = syncTyped;
+})
