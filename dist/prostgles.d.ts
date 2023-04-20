@@ -26,7 +26,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
         ];
     };
 };
-export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = TableHandler<T, S> & {
+export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
