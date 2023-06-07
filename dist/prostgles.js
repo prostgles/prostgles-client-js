@@ -612,7 +612,7 @@ function prostgles(initOpts, syncedTable) {
                         /**
                          * Used in for react hooks
                          */
-                        dbo[tableName][command + "Hook"] = function (param1, param2, onError) {
+                        dbo[tableName][command + "Hook"] = function (param1 = {}, param2 = {}, onError) {
                             return {
                                 start: (onChange) => {
                                     const changeFunc = command !== SUBONE ? onChange : (rows) => { onChange(rows[0]); };
