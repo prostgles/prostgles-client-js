@@ -37,13 +37,11 @@ class SyncedTable {
         return this._singleSubscriptions;
     }
     ;
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }) {
+    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
         this.columns = [];
-        // multiSubscriptions: SubscriptionMulti[];
-        // singleSubscriptions:  SubscriptionSingle[];
         this._multiSubscriptions = [];
         this._singleSubscriptions = [];
         this.items = [];
@@ -399,6 +397,9 @@ class SyncedTable {
         this.filter = filter;
         this.select = select;
         this.onChange = onChange;
+        if (onDebug) {
+            this.onDebug = evt => onDebug({ ...evt, type: "sync", tableName: name }, this);
+        }
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
@@ -422,32 +423,35 @@ class SyncedTable {
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
         this.onError = onError || function (err) { console.error("Sync internal error: ", err); };
-        const onSyncRequest = (params) => {
-            let res = { c_lr: undefined, c_fr: undefined, c_count: 0 };
-            let batch = this.getBatch(params);
+        const onSyncRequest = (syncBatchParams) => {
+            var _a;
+            let clientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
+            let batch = this.getBatch(syncBatchParams);
             if (batch.length) {
-                res = {
+                clientSyncInfo = {
                     c_fr: this.getRowSyncObj(batch[0]),
                     c_lr: this.getRowSyncObj(batch[batch.length - 1]),
                     c_count: batch.length
                 };
             }
-            // console.log("onSyncRequest", res);
-            return res;
-        }, onPullRequest = async (params) => {
+            (_a = this.onDebug) === null || _a === void 0 ? void 0 : _a.call(this, { command: "onUpdates", data: { syncBatchParams, batch, clientSyncInfo } });
+            return clientSyncInfo;
+        }, onPullRequest = async (syncBatchParams) => {
+            var _a;
             // if(this.getDeleted().length){
             //     await this.syncDeleted();
             // }
-            const data = this.getBatch(params);
-            // console.log(`onPullRequest: total(${ data.length })`)
+            const data = this.getBatch(syncBatchParams);
+            await ((_a = this.onDebug) === null || _a === void 0 ? void 0 : _a.call(this, { command: "onPullRequest", data: { syncBatchParams, data } }));
             return data;
-        }, onUpdates = async (args) => {
-            var _a;
-            if ("err" in args && args.err) {
-                (_a = this.onError) === null || _a === void 0 ? void 0 : _a.call(this, args.err);
+        }, onUpdates = async (onUpdatesParams) => {
+            var _a, _b;
+            await ((_a = this.onDebug) === null || _a === void 0 ? void 0 : _a.call(this, { command: "onUpdates", data: { onUpdatesParams } }));
+            if ("err" in onUpdatesParams && onUpdatesParams.err) {
+                (_b = this.onError) === null || _b === void 0 ? void 0 : _b.call(this, onUpdatesParams.err);
             }
-            else if ("isSynced" in args && args.isSynced && !this.isSynced) {
-                this.isSynced = args.isSynced;
+            else if ("isSynced" in onUpdatesParams && onUpdatesParams.isSynced && !this.isSynced) {
+                this.isSynced = onUpdatesParams.isSynced;
                 let items = this.getItems().map(d => ({ ...d }));
                 this.setItems([]);
                 const updateItems = items.map(d => ({
@@ -456,9 +460,9 @@ class SyncedTable {
                 }));
                 await this.upsert(updateItems, true);
             }
-            else if ("data" in args) {
+            else if ("data" in onUpdatesParams) {
                 /* Delta left empty so we can prepare it here */
-                let updateItems = args.data.map(d => {
+                let updateItems = onUpdatesParams.data.map(d => {
                     return {
                         idObj: this.getIdObj(d),
                         delta: d
@@ -542,7 +546,8 @@ class SyncedTable {
         return new Promise((resolve, reject) => {
             try {
                 const res = new SyncedTable({
-                    ...opts, onReady: () => {
+                    ...opts,
+                    onReady: () => {
                         setTimeout(() => {
                             resolve(res);
                         }, 0);

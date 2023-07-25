@@ -1,4 +1,4 @@
-import { TableHandler, DbJoinMaker, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
+import { TableHandler, DbJoinMaker, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, ClientSyncHandles, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
@@ -45,6 +45,23 @@ export type Auth = {
     logout?: (params: any) => Promise<any>;
     user?: any;
 };
+type SyncDebugEvent = {
+    type: "sync";
+    tableName: string;
+    channelName: string;
+    command: keyof ClientSyncHandles;
+    data: AnyObject;
+};
+type DebugEvent = {
+    type: "table";
+    command: keyof Required<TableHandlerClient>;
+    tableName: string;
+    data: AnyObject;
+} | {
+    type: "method";
+    command: string;
+    data: AnyObject;
+} | SyncDebugEvent;
 export type InitOptions<DBSchema = void> = {
     socket: any;
     /**
@@ -62,6 +79,7 @@ export type InitOptions<DBSchema = void> = {
      */
     onReconnect?: (socket: any, error?: any) => any;
     onDisconnect?: (socket: any) => any;
+    onDebug?: (event: DebugEvent) => any;
 };
 export type onUpdatesParams = {
     data: object[];

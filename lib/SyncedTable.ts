@@ -22,6 +22,13 @@ export type SyncOneOptions = Partial<SyncedTableOptions> & {
   handlesOnData?: boolean;
 }
 
+type SyncDebugEvent = {
+  type: "sync";
+  tableName: string;
+  command: keyof ClientSyncHandles;
+  data: AnyObject;
+};
+
 /**
  * Creates a local synchronized table
  */
@@ -148,6 +155,7 @@ export type SyncedTableOptions = {
   patchJSON: boolean;
   onReady: () => any;
   skipIncomingDeltaCheck?: boolean;
+  onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
 };
 
 export type DbTableSync = {
@@ -173,9 +181,7 @@ export class SyncedTable {
   wal?: WAL;
 
   notifyWal?: WAL;
-
-  // multiSubscriptions: SubscriptionMulti[];
-  // singleSubscriptions:  SubscriptionSingle[];
+ 
   _multiSubscriptions: SubscriptionMulti[] = [];
   _singleSubscriptions: SubscriptionSingle[] = [];
 
@@ -206,12 +212,17 @@ export class SyncedTable {
   patchJSON: boolean;
   isSynced: boolean = false;
   onError: SyncedTableOptions["onError"];
+  onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName">) => Promise<void>;
 
-  constructor({ name, filter, onChange, onReady, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }: SyncedTableOptions) {
+  constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }: SyncedTableOptions) {
     this.name = name;
     this.filter = filter;
     this.select = select;
     this.onChange = onChange;
+
+    if(onDebug){
+      this.onDebug = evt => onDebug({ ...evt, type: "sync", tableName: name }, this)
+    }
 
     if (!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
     if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
@@ -239,37 +250,38 @@ export class SyncedTable {
 
     this.onError = onError || function (err) { console.error("Sync internal error: ", err) }
 
-    const onSyncRequest: ClientSyncHandles["onSyncRequest"] = (params) => {
+    const onSyncRequest: ClientSyncHandles["onSyncRequest"] = (syncBatchParams) => {
 
-      let res: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
+      let clientSyncInfo: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
 
-      let batch = this.getBatch(params);
+      let batch = this.getBatch(syncBatchParams);
       if (batch.length) {
 
-        res = {
+        clientSyncInfo = {
           c_fr: this.getRowSyncObj(batch[0]!),
           c_lr: this.getRowSyncObj(batch[batch.length - 1]!),
           c_count: batch.length
         };
       }
 
-      // console.log("onSyncRequest", res);
-      return res;
+      this.onDebug?.({ command: "onUpdates", data: { syncBatchParams, batch, clientSyncInfo } });
+      return clientSyncInfo;
     },
-      onPullRequest = async (params: SyncBatchParams) => {
+      onPullRequest = async (syncBatchParams: SyncBatchParams) => {
 
         // if(this.getDeleted().length){
         //     await this.syncDeleted();
         // }
-        const data = this.getBatch(params);
-        // console.log(`onPullRequest: total(${ data.length })`)
+        const data = this.getBatch(syncBatchParams);
+        await this.onDebug?.({ command: "onPullRequest", data: { syncBatchParams, data } });
         return data;
       },
-      onUpdates: ClientSyncHandles["onUpdates"] = async (args) => {
-        if ("err" in args && args.err) {
-          this.onError?.(args.err);
-        } else if ("isSynced" in args && args.isSynced && !this.isSynced) {
-          this.isSynced = args.isSynced;
+      onUpdates: ClientSyncHandles["onUpdates"] = async (onUpdatesParams) => {
+        await this.onDebug?.({ command: "onUpdates", data: { onUpdatesParams } });
+        if ("err" in onUpdatesParams && onUpdatesParams.err) {
+          this.onError?.(onUpdatesParams.err);
+        } else if ("isSynced" in onUpdatesParams && onUpdatesParams.isSynced && !this.isSynced) {
+          this.isSynced = onUpdatesParams.isSynced;
           let items = this.getItems().map(d => ({ ...d }));
           this.setItems([]);
           const updateItems = items.map(d => ({
@@ -277,9 +289,9 @@ export class SyncedTable {
             delta: { ...d }
           }))
           await this.upsert(updateItems, true)
-        } else if ("data" in args) {
+        } else if ("data" in onUpdatesParams) {
           /* Delta left empty so we can prepare it here */
-          let updateItems = args.data.map(d => {
+          let updateItems = onUpdatesParams.data.map(d => {
             return {
               idObj: this.getIdObj(d),
               delta: d
@@ -289,6 +301,7 @@ export class SyncedTable {
         } else {
           console.error("Unexpected onUpdates");
         }
+
         return true;
       };
 
@@ -431,7 +444,8 @@ export class SyncedTable {
     return new Promise((resolve, reject) => {
       try {
         const res = new SyncedTable({
-          ...opts, onReady: () => {
+          ...opts, 
+          onReady: () => {
             setTimeout(() => {
               resolve(res);
             }, 0)

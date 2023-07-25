@@ -18,7 +18,8 @@
   "scripts": {
     "start": "webpack --config webpack.dev.js",
     "build": "rm -rf ./dist/* && tsc && NODE_OPTIONS=--openssl-legacy-provider && webpack  --mode production --config webpack.prod.js",
-    "test": "npm run build"
+    "test": "npm run build",
+    "pushpublish": "npm version patch --git-tag-version false && git push && npm publish"
   },
   "repository": {
     "type": "git",

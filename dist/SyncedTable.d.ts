@@ -1,4 +1,4 @@
-import { FieldFilter, WAL, AnyObject, SyncBatchParams } from "prostgles-types";
+import { FieldFilter, WAL, AnyObject, ClientSyncHandles, SyncBatchParams } from "prostgles-types";
 import { DBHandlerClient } from "./prostgles";
 export type POJO = {
     [key: string]: any;
@@ -10,6 +10,12 @@ export type SyncOptions = Partial<SyncedTableOptions> & {
 };
 export type SyncOneOptions = Partial<SyncedTableOptions> & {
     handlesOnData?: boolean;
+};
+type SyncDebugEvent = {
+    type: "sync";
+    tableName: string;
+    command: keyof ClientSyncHandles;
+    data: AnyObject;
 };
 /**
  * Creates a local synchronized table
@@ -104,6 +110,7 @@ export type SyncedTableOptions = {
     patchJSON: boolean;
     onReady: () => any;
     skipIncomingDeltaCheck?: boolean;
+    onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
 };
 export type DbTableSync = {
     unsync: () => void;
@@ -143,7 +150,8 @@ export declare class SyncedTable {
     patchJSON: boolean;
     isSynced: boolean;
     onError: SyncedTableOptions["onError"];
-    constructor({ name, filter, onChange, onReady, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError }: SyncedTableOptions);
+    onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName">) => Promise<void>;
+    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError }: SyncedTableOptions);
     /**
      * Will update text/json fields through patching method
      * This will send less data to server

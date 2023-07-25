@@ -16,7 +16,7 @@ const debug = function (...args) {
 };
 exports.debug = debug;
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
         let cb;
@@ -485,7 +485,9 @@ function prostgles(initOpts, syncedTable) {
             _methods.map(method => {
                 /** New method def */
                 const isBasic = typeof method === "string";
-                const onRun = function (...params) {
+                const methodName = isBasic ? method : method.name;
+                const onRun = async function (...params) {
+                    await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "method", command: methodName, data: { params } }));
                     return new Promise((resolve, reject) => {
                         socket.emit(prostgles_types_1.CHANNELS.METHOD, { method: methodName, params }, (err, res) => {
                             if (err)
@@ -495,7 +497,6 @@ function prostgles(initOpts, syncedTable) {
                         });
                     });
                 };
-                const methodName = isBasic ? method : method.name;
                 methodsObj[methodName] = isBasic ? onRun : {
                     ...method,
                     run: onRun
@@ -503,7 +504,6 @@ function prostgles(initOpts, syncedTable) {
             });
             methodsObj = Object.freeze(methodsObj);
             if (rawSQL) {
-                // dbo.schema = Object.freeze([ ...dbo.sql ]);
                 dbo.sql = function (query, params, options) {
                     return new Promise((resolve, reject) => {
                         socket.emit(prostgles_types_1.CHANNELS.SQL, { query, params, options }, (err, res) => {
@@ -577,33 +577,38 @@ function prostgles(initOpts, syncedTable) {
                     if (command === "sync") {
                         dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
                         if (syncedTable) {
-                            dbo[tableName].getSync = (filter, params = {}) => {
-                                return syncedTable.create({ name: tableName, filter, db: dbo, ...params });
+                            dbo[tableName].getSync = async (filter, params = {}) => {
+                                await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { filter, params } }));
+                                return syncedTable.create({ name: tableName, onDebug, filter, db: dbo, ...params });
                             };
                             const upsertSTable = async (basicFilter = {}, options = {}, onError) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`;
                                 if (!syncedTables[syncName]) {
-                                    syncedTables[syncName] = await syncedTable.create({ ...options, name: tableName, filter: basicFilter, db: dbo, onError });
+                                    syncedTables[syncName] = await syncedTable.create({ ...options, onDebug, name: tableName, filter: basicFilter, db: dbo, onError });
                                 }
                                 return syncedTables[syncName];
                             };
                             dbo[tableName].sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
+                                await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "sync", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.sync(onChange, options.handlesOnData);
                             };
                             dbo[tableName].syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
+                                await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
                         }
-                        dbo[tableName]._sync = function (param1, param2, syncHandles) {
+                        dbo[tableName]._sync = async function (param1, param2, syncHandles) {
+                            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "_sync", tableName, data: { param1, param2, syncHandles } }));
                             return addSync({ tableName, command, param1, param2 }, syncHandles);
                         };
                     }
                     else if (sub_commands.includes(command)) {
-                        const subFunc = function (param1, param2, onChange, onError) {
+                        const subFunc = async function (param1, param2, onChange, onError) {
+                            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: command, tableName, data: { param1, param2, onChange, onError } }));
                             checkSubscriptionArgs(param1, param2, onChange, onError);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
@@ -622,7 +627,8 @@ function prostgles(initOpts, syncedTable) {
                             };
                         };
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
-                            dbo[tableName][SUBONE] = function (param1, param2, onChange, onError) {
+                            dbo[tableName][SUBONE] = async function (param1, param2, onChange, onError) {
+                                await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } }));
                                 checkSubscriptionArgs(param1, param2, onChange, onError);
                                 let onChangeOne = (rows) => { onChange(rows[0]); };
                                 return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
@@ -630,8 +636,8 @@ function prostgles(initOpts, syncedTable) {
                         }
                     }
                     else {
-                        dbo[tableName][command] = function (param1, param2, param3) {
-                            // if(Array.isArray(param2) || Array.isArray(param3)) throw "Expecting an object";
+                        dbo[tableName][command] = async function (param1, param2, param3) {
+                            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: command, tableName, data: { param1, param2, param3 } }));
                             return new Promise((resolve, reject) => {
                                 socket.emit(preffix, { tableName, command, param1, param2, param3 }, 
                                 /* Get col definition and re-cast data types?! */
