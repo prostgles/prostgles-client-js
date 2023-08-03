@@ -104,7 +104,7 @@ type SyncDebugEvent = {
 };
 type DebugEvent = {
   type: "table";
-  command: keyof Required<TableHandlerClient>;
+  command: keyof TableHandlerClient;
   tableName: string;
   data: AnyObject;
 } | {
