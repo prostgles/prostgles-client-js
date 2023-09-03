@@ -16,7 +16,8 @@ import {
   SubscribeParams,
   OnError,
   GetSelectReturnType,
-  getKeys
+  getKeys,
+  getJoinHandlers
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
@@ -895,26 +896,11 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         dbo.leftJoin = dbo.leftJoin || {};
         dbo.innerJoinOne = dbo.innerJoinOne || {};
         dbo.leftJoinOne = dbo.leftJoinOne || {};
-        dbo.leftJoin[table] = (filter, select, options = {}) => {
-          return makeJoin(true, filter, select, options);
-        }
-        dbo.innerJoin[table] = (filter, select, options = {}) => {
-          return makeJoin(false, filter, select, options);
-        }
-        dbo.leftJoinOne[table] = (filter, select, options = {}) => {
-          return makeJoin(true, filter, select, { ...options, limit: 1 });
-        }
-        dbo.innerJoinOne[table] = (filter, select, options = {}) => {
-          return makeJoin(false, filter, select, { ...options, limit: 1 });
-        }
-        function makeJoin(isLeft = true, filter, select, options) {
-          return {
-            [isLeft ? "$leftJoin" : "$innerJoin"]: table,
-            filter,
-            select,
-            ...options
-          }
-        }
+        const joinHandlers = getJoinHandlers(table);
+        dbo.leftJoin[table] = joinHandlers.leftJoin;
+        dbo.innerJoin[table] = joinHandlers.innerJoin;
+        dbo.leftJoinOne[table] = joinHandlers.leftJoinOne;
+        dbo.innerJoinOne[table] = joinHandlers.innerJoinOne;
       });
 
       (async () => {
