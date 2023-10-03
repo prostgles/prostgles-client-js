@@ -715,7 +715,7 @@ class FunctionQueuer {
     }
     async run(args) {
         const result = new Promise((resolve, reject) => {
-            const item = { arguments: args, onResult: resolve };
+            const item = { arguments: args, onResult: resolve, onFail: reject };
             this.queue.push(item);
         });
         const startQueueJob = async () => {
@@ -725,8 +725,13 @@ class FunctionQueuer {
             this.isRunning = true;
             const runItem = async (item) => {
                 if (item) {
-                    const result = await this.func(...item.arguments);
-                    item.onResult(result);
+                    try {
+                        const result = await this.func(...item.arguments);
+                        item.onResult(result);
+                    }
+                    catch (error) {
+                        item.onFail(error);
+                    }
                 }
             };
             if (!this.groupBy) {

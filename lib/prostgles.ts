@@ -921,7 +921,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
 type Func = (...args: any[]) => any;
 class FunctionQueuer<F extends Func> {
-  private queue: { arguments: Parameters<F>; onResult: (result: ReturnType<F>) => void }[] = [];
+  private queue: { arguments: Parameters<F>; onResult: (result: ReturnType<F>) => void; onFail: (error: any) => void }[] = [];
   private func: F;
   private groupBy?: (args: Parameters<F>) => string;
   constructor(func: F, groupBy?: ((args: Parameters<F>) => string)) {
@@ -932,7 +932,7 @@ class FunctionQueuer<F extends Func> {
   async run(args: Parameters<F>): Promise<ReturnType<F>> {
 
     const result = new Promise<ReturnType<F>>((resolve, reject) => {
-      const item = { arguments: args, onResult: resolve }
+      const item = { arguments: args, onResult: resolve, onFail: reject }
       this.queue.push(item);
     });
 
@@ -944,8 +944,12 @@ class FunctionQueuer<F extends Func> {
 
       const runItem = async (item: undefined | typeof this.queue[number]) => {
         if (item) {
-          const result = await this.func(...item.arguments);
-          item.onResult(result);
+          try {
+            const result = await this.func(...item.arguments);
+            item.onResult(result);
+          } catch(error) {
+            item.onFail(error);
+          }
         }
       }
 
