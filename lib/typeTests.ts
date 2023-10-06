@@ -23,7 +23,7 @@ import { DBHandlerClient, TableHandlerClient } from "./prostgles";
   const filterCheck = <F extends FullFilter<void, void> | undefined>(f: F) => {};
   filterCheck(filter);
   
-  const sub: TableHandler["count"] = dbo.table1.count
+  const sub: TableHandler["size"] = dbo.table1.size
   
   const f = <A extends TableHandler>(a: A) => {};
   
