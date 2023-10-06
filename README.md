@@ -5,7 +5,8 @@
 [![npm version](https://img.shields.io/npm/v/prostgles-client.svg?style=flat)](https://www.npmjs.com/package/prostgles-client)
 [![Dependency Status](https://david-dm.org/prostgles/prostgles-client-js/status.svg)](https://david-dm.org/prostgles/prostgles-client-js/status.svg#info=dependencies)
 [![Known Vulnerabilities](https://snyk.io/test/github/prostgles/prostgles-client-js/badge.svg)](https://snyk.io/test/github/prostgles/prostgles-client-js)
-![tests](https://github.com/prostgles/prostgles-server-js/workflows/tests/badge.svg?branch=master)
+![Tests](https://github.com/prostgles/prostgles-server-js/actions/workflows/main.yml/badge.svg)
+
 
 
 ## Installation
