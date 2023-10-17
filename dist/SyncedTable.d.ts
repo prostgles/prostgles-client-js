@@ -47,7 +47,7 @@ export type ItemUpdated = ItemUpdate & {
     status: "inserted" | "updated" | "deleted" | "unchanged";
     from_server: boolean;
 };
-export type CloneSync<T extends AnyObject, Full extends boolean> = (onChange: SingleChangeListener<T>, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;
+export type CloneSync<T extends AnyObject, Full extends boolean> = (onChange: SingleChangeListener<T, Full>, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;
 export type CloneMultiSync<T extends AnyObject> = (onChange: MultiChangeListener<T>, onError?: (error: any) => void) => MultiSyncHandles<T>;
 type $UpdateOpts = {
     deepMerge: boolean;
@@ -69,7 +69,7 @@ export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends bool
     $cloneSync: CloneSync<T, Full>;
     $cloneMultiSync: CloneMultiSync<T>;
 };
-export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, true> : Partial<SingleSyncHandles<T>>);
+export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, Full> : Partial<SingleSyncHandles<T, Full>>);
 export type MultiSyncHandles<T extends AnyObject> = {
     $unsync: () => void;
     $upsert: (newData: T[]) => any;

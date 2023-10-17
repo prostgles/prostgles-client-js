@@ -78,7 +78,7 @@ export type ItemUpdated = ItemUpdate & {
 }
 
 export type CloneSync<T extends AnyObject, Full extends boolean> = (
-  onChange: SingleChangeListener<T>,
+  onChange: SingleChangeListener<T, Full>,
   onError?: (error: any) => void
 ) => SingleSyncHandles<T, Full>;
 
@@ -107,7 +107,7 @@ export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends bool
   $cloneMultiSync: CloneMultiSync<T>;
 }
 
-export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, true> : Partial<SingleSyncHandles<T>>);
+export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, Full> : Partial<SingleSyncHandles<T, Full>>);
 
 export type MultiSyncHandles<T extends AnyObject> = {
   $unsync: () => void;
@@ -531,7 +531,7 @@ export class SyncedTable {
   private makeSingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
     if (!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
-    const handles: SingleSyncHandles<T> = {
+    const handles: SingleSyncHandles<T, Full> = {
       $get: () => this.getItem<T>(idObj).data!,
       $find: (idObject) => this.getItem<T>(idObject).data,
       $unsync: () => {
@@ -548,7 +548,7 @@ export class SyncedTable {
         }
         this.upsert([{ idObj, delta: newData, opts }]);
       },
-      $cloneSync: (onChange) => this.syncOne<T>(idObj, onChange) as any,
+      $cloneSync: (onChange) => this.syncOne<T, Full>(idObj, onChange),
       $cloneMultiSync: (onChange) => this.sync(onChange, true),
     };
 
@@ -563,7 +563,7 @@ export class SyncedTable {
    */
   syncOne<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full>, handlesOnData = true): SingleSyncHandles<T, Full> {
 
-    const handles = this.makeSingleSyncHandles(idObj, onChange);
+    const handles = this.makeSingleSyncHandles<T, Full>(idObj, onChange);
     const sub: SubscriptionSingle<T, Full> = {
       _onChange: onChange,
       idObj,
@@ -578,7 +578,7 @@ export class SyncedTable {
           newData.$update = handles.$update;
           newData.$delete = handles.$delete;
           newData.$unsync = handles.$unsync;
-          newData.$cloneSync = handles.$cloneSync;
+          newData.$cloneSync = handles.$cloneSync as any;
         }
         return onChange(newData, delta)
       }
