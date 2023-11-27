@@ -2,6 +2,7 @@ import { TableHandler, DbJoinMaker, AnyObject, SubscriptionHandler, SQLHandler, 
 import type { Sync, SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
+export * from "./react-hooks";
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
