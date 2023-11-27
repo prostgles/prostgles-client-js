@@ -6,20 +6,24 @@ import { ViewHandlerClient } from "./prostgles";
 const { useEffect, useCallback, useRef, useState } = React ?? {};
 
 export const useEffectAsync = (effect: () => Promise<void | (() => void)>, inputs: any[]) => {
-  const onCleanup = useRef({ run: undefined as undefined | (() => void), effect, didRun: false });
+  const onCleanup = useRef({ 
+    cleanup: undefined as undefined | (() => void), 
+    effect, 
+    cleanupEffect: undefined as undefined | typeof effect, 
+  });
   onCleanup.current.effect = effect;
   useEffect(() => {
     effect().then(result => {
       if(typeof result === "function"){
-        onCleanup.current.run = result;
-        if(onCleanup.current.didRun && onCleanup.current.effect === effect){
+        onCleanup.current.cleanup = result;
+        if(onCleanup.current.cleanupEffect === effect){
           result();
         }
       }
     });
     return () => { 
-      onCleanup.current.didRun = true; 
-      onCleanup.current.run?.(); 
+      onCleanup.current.cleanupEffect = effect; 
+      onCleanup.current.cleanup?.(); 
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, inputs);
