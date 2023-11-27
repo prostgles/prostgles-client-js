@@ -6,14 +6,20 @@ const React = require("react");
 const prostgles_types_1 = require("prostgles-types");
 const { useEffect, useCallback, useRef, useState } = React !== null && React !== void 0 ? React : {};
 const useEffectAsync = (effect, inputs) => {
-    const onCleanup = useRef(() => { });
+    const onCleanup = useRef({ run: () => { }, didRun: false });
     useEffect(() => {
         effect().then(result => {
             if (typeof result === "function") {
-                onCleanup.current = result;
+                onCleanup.current.run = result;
+                if (onCleanup.current.didRun) {
+                    result();
+                }
             }
         });
-        return onCleanup.current;
+        return () => {
+            onCleanup.current.didRun = true;
+            onCleanup.current.run();
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, inputs);
 };
