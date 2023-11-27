@@ -78,7 +78,7 @@ export type InitOptions<DBSchema = void> = {
      * If not provided will fire onReady
      */
     onReconnect?: (socket: any, error?: any) => any;
-    onDisconnect?: (socket: any) => any;
+    onDisconnect?: () => any;
     onDebug?: (event: DebugEvent) => any;
 };
 export type onUpdatesParams = {

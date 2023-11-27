@@ -133,7 +133,7 @@ export type InitOptions<DBSchema = void> = {
    * If not provided will fire onReady
    */
   onReconnect?: (socket: any, error?: any) => any;
-  onDisconnect?: (socket: any) => any;
+  onDisconnect?: () => any;
 
   onDebug?: (event: DebugEvent) => any;
 }
@@ -615,7 +615,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
   return new Promise((resolve, reject) => {
 
-
     socket.removeAllListeners(CHANNELS.CONNECTION)
     socket.on(CHANNELS.CONNECTION, error => {
       reject(error);
@@ -623,8 +622,20 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     })
 
     if (onDisconnect) {
-      // socket.removeAllListeners("disconnect", onDisconnect)
-      socket.on("disconnect", onDisconnect);
+      let connected = true;
+      socket.on("disconnect", () => {
+        connected = false; 
+        onDisconnect();
+      });
+      /** A disconnect might not trigger reconnect */
+      if(onReconnect){
+        socket.on("connect", () => {
+          if(!connected){
+            onReconnect?.(socket)
+          }
+          connected = true;
+        });
+      }
     }
 
     /* Schema = published schema */

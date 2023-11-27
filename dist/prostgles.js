@@ -425,8 +425,20 @@ function prostgles(initOpts, syncedTable) {
             return "ok";
         });
         if (onDisconnect) {
-            // socket.removeAllListeners("disconnect", onDisconnect)
-            socket.on("disconnect", onDisconnect);
+            let connected = true;
+            socket.on("disconnect", () => {
+                connected = false;
+                onDisconnect();
+            });
+            /** A disconnect might not trigger reconnect */
+            if (onReconnect) {
+                socket.on("connect", () => {
+                    if (!connected) {
+                        onReconnect === null || onReconnect === void 0 ? void 0 : onReconnect(socket);
+                    }
+                    connected = true;
+                });
+            }
         }
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
