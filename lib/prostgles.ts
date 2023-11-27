@@ -926,7 +926,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
       })();
     });
-
   })
 };
 
