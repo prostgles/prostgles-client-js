@@ -13,5 +13,6 @@ type SubOneHook = {
     })>);
 };
 export declare const useSubscribeOne: <S extends SubOneHook>(subHook: S) => Parameters<Parameters<S["start"]>[0]>[0] | undefined;
+export declare const __prglReactInstalled: () => boolean;
 export {};
 //# sourceMappingURL=react-hooks.d.ts.map

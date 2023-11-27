@@ -1,24 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = void 0;
+exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = void 0;
 // TODO add react hooks
 const React = require("react");
 const prostgles_types_1 = require("prostgles-types");
 const { useEffect, useCallback, useRef, useState } = React !== null && React !== void 0 ? React : {};
 const useEffectAsync = (effect, inputs) => {
-    const onCleanup = useRef({ run: () => { }, didRun: false });
+    const onCleanup = useRef({ run: undefined, effect, didRun: false });
+    onCleanup.current.effect = effect;
     useEffect(() => {
         effect().then(result => {
             if (typeof result === "function") {
                 onCleanup.current.run = result;
-                if (onCleanup.current.didRun) {
+                if (onCleanup.current.didRun && onCleanup.current.effect === effect) {
                     result();
                 }
             }
         });
         return () => {
+            var _a, _b;
             onCleanup.current.didRun = true;
-            onCleanup.current.run();
+            (_b = (_a = onCleanup.current).run) === null || _b === void 0 ? void 0 : _b.call(_a);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, inputs);
@@ -109,3 +111,5 @@ const useSubscribeOne = (subHook) => {
     return data;
 };
 exports.useSubscribeOne = useSubscribeOne;
+const __prglReactInstalled = () => Boolean(React && useRef);
+exports.__prglReactInstalled = __prglReactInstalled;

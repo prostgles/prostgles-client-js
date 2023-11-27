@@ -1,0 +1,26 @@
+{
+  "files": ["test.ts"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "es2019",
+    "lib": [
+      "es6",
+      "dom", 
+      "es2017",
+      "es2019"
+    ],
+    "strict": true,
+    "module": "commonjs",
+    "resolveJsonModule": true, 
+    "rootDir": "./", 
+    "noImplicitAny": false, 
+    "declaration": true,
+    "declarationMap": true,
+    "keyofStringsOnly": true,
+    "ignoreDeprecations": "5.0", 
+    "noUncheckedIndexedAccess": false
+  }, 
+  "exclude": [ 
+    "node_modules"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsc && node --test test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "prostgles-client": "file:.."
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  }
+}

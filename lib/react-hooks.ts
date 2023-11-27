@@ -6,19 +6,20 @@ import { ViewHandlerClient } from "./prostgles";
 const { useEffect, useCallback, useRef, useState } = React ?? {};
 
 export const useEffectAsync = (effect: () => Promise<void | (() => void)>, inputs: any[]) => {
-  const onCleanup = useRef({ run: () => {}, didRun: false });
+  const onCleanup = useRef({ run: undefined as undefined | (() => void), effect, didRun: false });
+  onCleanup.current.effect = effect;
   useEffect(() => {
     effect().then(result => {
       if(typeof result === "function"){
         onCleanup.current.run = result;
-        if(onCleanup.current.didRun){
+        if(onCleanup.current.didRun && onCleanup.current.effect === effect){
           result();
         }
       }
     });
     return () => { 
       onCleanup.current.didRun = true; 
-      onCleanup.current.run(); 
+      onCleanup.current.run?.(); 
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, inputs);
@@ -127,3 +128,5 @@ export const useSubscribeOne = <S extends SubOneHook>(
 
   return data;
 }
+
+export const __prglReactInstalled = () => Boolean(React && useRef);
