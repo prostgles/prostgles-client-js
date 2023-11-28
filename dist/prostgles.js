@@ -114,6 +114,7 @@ function prostgles(initOpts, syncedTable) {
         noticeSubs.listeners.push(listener);
     };
     let connected = false;
+    let reconnected = false;
     const destroySyncs = () => {
         (0, exports.debug)("destroySyncs", { subscriptions, syncedTables });
         Object.values(subscriptions).map(s => s.destroy());
@@ -442,20 +443,20 @@ function prostgles(initOpts, syncedTable) {
         if (onDisconnect) {
             socket.on("disconnect", () => {
                 connected = false;
+                reconnected = false;
                 onDisconnect();
             });
         }
         if (onReconnect) {
             /** A reconnect will happen after the server is ready and pushed the schema */
             socket.on("connect", () => {
-                connected = true;
+                reconnected = true;
             });
         }
         /* Schema = published schema */
-        // socket.removeAllListeners(CHANNELS.SCHEMA)
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
             destroySyncs();
-            if (connected && onReconnect) {
+            if ((connected || reconnected) && onReconnect) {
                 onReconnect(socket, err);
                 if (err) {
                     console.error(err);

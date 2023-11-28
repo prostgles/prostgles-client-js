@@ -279,6 +279,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   };
 
   let connected = false;
+  let reconnected = false;
 
   const destroySyncs = () => {
     debug("destroySyncs", { subscriptions, syncedTables })
@@ -625,23 +626,23 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     if (onDisconnect) {
       socket.on("disconnect", () => {
-        connected = false; 
+        connected = false;
+        reconnected = false;
         onDisconnect();
       });
     }
     if(onReconnect){
       /** A reconnect will happen after the server is ready and pushed the schema */
       socket.on("connect", () => {
-        connected = true; 
+        reconnected = true; 
       });
     }
 
     /* Schema = published schema */
-    // socket.removeAllListeners(CHANNELS.SCHEMA)
     socket.on(CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
 
       destroySyncs();
-      if (connected && onReconnect) {
+      if ((connected || reconnected) && onReconnect) {
         onReconnect(socket, err);
         if (err) {
           console.error(err)
