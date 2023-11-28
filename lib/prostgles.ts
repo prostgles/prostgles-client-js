@@ -278,8 +278,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     noticeSubs.listeners.push(listener);
   };
 
-  let connected = false;
-  let reconnected = false;
+  let state: undefined | "connected" | "disconnected" | "reconnected";
 
   const destroySyncs = () => {
     debug("destroySyncs", { subscriptions, syncedTables })
@@ -626,15 +625,16 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     if (onDisconnect) {
       socket.on("disconnect", () => {
-        connected = false;
-        reconnected = false;
+        state = "disconnected"
         onDisconnect();
       });
     }
     if(onReconnect){
       /** A reconnect will happen after the server is ready and pushed the schema */
       socket.on("connect", () => {
-        reconnected = true; 
+        if(state === "disconnected"){
+          state = "reconnected"
+        }
       });
     }
 
@@ -642,7 +642,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     socket.on(CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
 
       destroySyncs();
-      if ((connected || reconnected) && onReconnect) {
+      if ((state === "connected" || state === "reconnected") && onReconnect) {
         onReconnect(socket, err);
         if (err) {
           console.error(err)
@@ -655,7 +655,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         throw err;
       }
 
-      connected = true;
+      const isReconnect = state === "reconnected";
+      state = "connected";
 
       let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
       let _methods: typeof methods = JSON.parse(JSON.stringify(methods)),
@@ -915,7 +916,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
       (async () => {
         try {
-          await onReady(dbo as DBHandlerClient<DBSchema>, methodsObj, tableSchema, _auth, connected);
+          await onReady(dbo as DBHandlerClient<DBSchema>, methodsObj, tableSchema, _auth, isReconnect);
         } catch (err) {
           console.error("Prostgles: Error within onReady: \n", err);
           reject(err);

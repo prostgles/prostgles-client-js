@@ -113,8 +113,7 @@ function prostgles(initOpts, syncedTable) {
         }
         noticeSubs.listeners.push(listener);
     };
-    let connected = false;
-    let reconnected = false;
+    let state;
     const destroySyncs = () => {
         (0, exports.debug)("destroySyncs", { subscriptions, syncedTables });
         Object.values(subscriptions).map(s => s.destroy());
@@ -442,21 +441,22 @@ function prostgles(initOpts, syncedTable) {
         });
         if (onDisconnect) {
             socket.on("disconnect", () => {
-                connected = false;
-                reconnected = false;
+                state = "disconnected";
                 onDisconnect();
             });
         }
         if (onReconnect) {
             /** A reconnect will happen after the server is ready and pushed the schema */
             socket.on("connect", () => {
-                reconnected = true;
+                if (state === "disconnected") {
+                    state = "reconnected";
+                }
             });
         }
         /* Schema = published schema */
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
             destroySyncs();
-            if ((connected || reconnected) && onReconnect) {
+            if ((state === "connected" || state === "reconnected") && onReconnect) {
                 onReconnect(socket, err);
                 if (err) {
                     console.error(err);
@@ -467,7 +467,8 @@ function prostgles(initOpts, syncedTable) {
                 reject(err);
                 throw err;
             }
-            connected = true;
+            const isReconnect = state === "reconnected";
+            state = "connected";
             let dbo = JSON.parse(JSON.stringify(schema));
             let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
             if (auth) {
@@ -717,7 +718,7 @@ function prostgles(initOpts, syncedTable) {
             });
             (async () => {
                 try {
-                    await onReady(dbo, methodsObj, tableSchema, _auth, connected);
+                    await onReady(dbo, methodsObj, tableSchema, _auth, isReconnect);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);
