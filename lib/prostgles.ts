@@ -629,6 +629,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         onDisconnect();
       });
     }
+    if(onReconnect){
+      /** A reconnect will happen after the server is ready and pushed the schema */
+      socket.on("connect", () => {
+        connected = true; 
+      });
+    }
 
     /* Schema = published schema */
     // socket.removeAllListeners(CHANNELS.SCHEMA)

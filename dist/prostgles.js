@@ -445,6 +445,12 @@ function prostgles(initOpts, syncedTable) {
                 onDisconnect();
             });
         }
+        if (onReconnect) {
+            /** A reconnect will happen after the server is ready and pushed the schema */
+            socket.on("connect", () => {
+                connected = true;
+            });
+        }
         /* Schema = published schema */
         // socket.removeAllListeners(CHANNELS.SCHEMA)
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
