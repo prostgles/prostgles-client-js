@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = void 0;
-// TODO add react hooks
 const React = require("react");
 const prostgles_types_1 = require("prostgles-types");
 const { useEffect, useCallback, useRef, useState } = React !== null && React !== void 0 ? React : {};

@@ -1,6 +1,5 @@
 import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject, TableHandler } from "prostgles-types";
 import { DBHandlerClient } from "./prostgles";
-export type POJO = { [key: string]: any };
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -9,10 +8,6 @@ export const debug: any = function (...args: any[]) {
     (window as any)[DEBUG_KEY](...args);
   }
 };
-
-/* Maybe implement later. This brings issues with filter mismatch */
-// type FilterFunction = (data: POJO) => boolean;
-
 
 export type SyncOptions = Partial<SyncedTableOptions> & {
   select?: FieldFilter;
@@ -36,11 +31,6 @@ type OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) =
 export type Sync<
   T extends AnyObject,
   OnChangeFunc extends OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any,
-  // Result extends MultiSyncHandles<T> = {
-  //   $unsync: () => void;
-  //   $upsert: (newData: T[]) => any;
-  //   getItems: () => T[];
-  // }
   Upsert extends ((newData: T[]) => any) = ((newData: T[]) => any)
 > = (
   basicFilter: Partial<T>, 
@@ -141,7 +131,7 @@ export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends b
 
 export type SyncedTableOptions = {
   name: string;
-  filter?: POJO;
+  filter?: AnyObject;
   onChange?: MultiChangeListener;
   onError?: (error: any) => void;
   db: any;
@@ -168,7 +158,7 @@ export class SyncedTable {
   db: DBHandlerClient;
   name: string;
   select?: "*" | {};
-  filter?: POJO;
+  filter?: AnyObject;
   onChange?: MultiChangeListener;
   id_fields: string[];
   synced_field: string;
@@ -205,9 +195,9 @@ export class SyncedTable {
   };
 
   dbSync?: DbTableSync;
-  items: POJO[] = [];
+  items: AnyObject[] = [];
   storageType: string;
-  itemsObj: POJO = {};
+  itemsObj: AnyObject = {};
   patchText: boolean;
   patchJSON: boolean;
   isSynced: boolean = false;
@@ -502,7 +492,7 @@ export class SyncedTable {
                 ...this.makeSingleSyncHandles(idObj, onChange),
                 $get: () => getItem(this.getItem(idObj).data!, idObj),
                 $find: (idObject: Partial<T>) => getItem(this.getItem(idObject).data!, idObject),
-                $update: (newData: POJO, opts: $UpdateOpts): Promise<boolean> => {
+                $update: (newData: AnyObject, opts: $UpdateOpts): Promise<boolean> => {
                   return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
                 },
                 $delete: async (): Promise<boolean> => {
@@ -742,7 +732,7 @@ export class SyncedTable {
    * @param o current full data item
    * @param n new data item
    */
-  private getDelta(o: POJO, n: POJO): POJO {
+  private getDelta(o: AnyObject, n: AnyObject): AnyObject {
     if (isEmpty(o)) return { ...n };
     return Object.keys({ ...o, ...n })
       .filter(k => !this.id_fields.includes(k))
@@ -791,7 +781,7 @@ export class SyncedTable {
   /** 
    * Ensures that all object keys match valid column names 
    */
-  private checkItemCols = (item: POJO) => {
+  private checkItemCols = (item: AnyObject) => {
     if (this.columns && this.columns.length) {
       const badCols = Object.keys({ ...item })
         .filter(k =>
@@ -910,9 +900,6 @@ export class SyncedTable {
         //     }
         // }
 
-        // if(!updatedWithPatch){
-        // walItems.push({ ...delta, ...idObj });
-
         walItems.push({
           initial: oldItem,
           current: { ...newItem }
@@ -931,14 +918,11 @@ export class SyncedTable {
     })).catch(err => {
       console.error("SyncedTable failed upsert: ", err)
     });
-    // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
 
-    // this.notifySubscribers(results);
     this.notifyWal?.addData(results.map(d => ({ initial: d.oldItem, current: d.newItem })))
 
     /* Push to server */
     if (!from_server && walItems.length) {
-      // this.addWALItems(walItems);
       this.wal?.addData(walItems);
     }
   }
@@ -966,7 +950,7 @@ export class SyncedTable {
    * @param isFullData 
    * @param deleteItem 
    */
-  setItem(_item: POJO, index: number | undefined, isFullData: boolean = false, deleteItem: boolean = false) {
+  setItem(_item: AnyObject, index: number | undefined, isFullData: boolean = false, deleteItem: boolean = false) {
     const item = quickClone(_item);
     if (this.storageType === STORAGE_TYPES.localStorage) {
       let items = this.getItems();
@@ -998,7 +982,7 @@ export class SyncedTable {
    * Sets the current data
    * @param items data
    */
-  setItems = (_items: POJO[]): void => {
+  setItems = (_items: AnyObject[]): void => {
     const items = quickClone(_items);
     if (this.storageType === STORAGE_TYPES.localStorage) {
       if (!hasWnd) throw "Cannot access window object. Choose another storage method (array OR object)";

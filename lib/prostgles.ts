@@ -624,20 +624,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     })
 
     if (onDisconnect) {
-      let connected = true;
       socket.on("disconnect", () => {
         connected = false; 
         onDisconnect();
       });
-      /** A disconnect might not trigger reconnect */
-      if(onReconnect){
-        socket.on("connect", () => {
-          if(!connected){
-            onReconnect?.(socket)
-          }
-          connected = true;
-        });
-      }
     }
 
     /* Schema = published schema */

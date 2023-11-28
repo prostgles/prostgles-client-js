@@ -288,8 +288,6 @@ class SyncedTable {
                     //         // console.log("json-stable-stringify ???")
                     //     }
                     // }
-                    // if(!updatedWithPatch){
-                    // walItems.push({ ...delta, ...idObj });
                     walItems.push({
                         initial: oldItem,
                         current: { ...newItem }
@@ -306,12 +304,9 @@ class SyncedTable {
             })).catch(err => {
                 console.error("SyncedTable failed upsert: ", err);
             });
-            // console.log(`onUpdates: inserts( ${inserts.length} ) updates( ${updates.length} )  total( ${data.length} )`);
-            // this.notifySubscribers(results);
             (_a = this.notifyWal) === null || _a === void 0 ? void 0 : _a.addData(results.map(d => ({ initial: d.oldItem, current: d.newItem })));
             /* Push to server */
             if (!from_server && walItems.length) {
-                // this.addWALItems(walItems);
                 (_b = this.wal) === null || _b === void 0 ? void 0 : _b.addData(walItems);
             }
         };

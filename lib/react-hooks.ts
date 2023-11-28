@@ -1,4 +1,3 @@
-// TODO add react hooks
 import * as React from "react";
 import { getKeys, isObject } from "prostgles-types";
 import { ViewHandlerClient } from "./prostgles";

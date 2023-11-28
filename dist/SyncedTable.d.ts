@@ -1,8 +1,5 @@
 import { FieldFilter, WAL, AnyObject, ClientSyncHandles, SyncBatchParams } from "prostgles-types";
 import { DBHandlerClient } from "./prostgles";
-export type POJO = {
-    [key: string]: any;
-};
 export declare const debug: any;
 export type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;
@@ -98,7 +95,7 @@ export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: SyncD
 export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
 export type SyncedTableOptions = {
     name: string;
-    filter?: POJO;
+    filter?: AnyObject;
     onChange?: MultiChangeListener;
     onError?: (error: any) => void;
     db: any;
@@ -120,7 +117,7 @@ export declare class SyncedTable {
     db: DBHandlerClient;
     name: string;
     select?: "*" | {};
-    filter?: POJO;
+    filter?: AnyObject;
     onChange?: MultiChangeListener;
     id_fields: string[];
     synced_field: string;
@@ -143,9 +140,9 @@ export declare class SyncedTable {
     set singleSubscriptions(sSubs: SubscriptionSingle[]);
     get singleSubscriptions(): SubscriptionSingle[];
     dbSync?: DbTableSync;
-    items: POJO[];
+    items: AnyObject[];
     storageType: string;
-    itemsObj: POJO;
+    itemsObj: AnyObject;
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean;
@@ -217,12 +214,12 @@ export declare class SyncedTable {
      * @param isFullData
      * @param deleteItem
      */
-    setItem(_item: POJO, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
+    setItem(_item: AnyObject, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
     /**
      * Sets the current data
      * @param items data
      */
-    setItems: (_items: POJO[]) => void;
+    setItems: (_items: AnyObject[]) => void;
     /**
      * Returns the current data ordered by synced_field ASC and matching the main filter;
      */
