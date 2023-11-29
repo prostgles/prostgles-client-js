@@ -1,8 +1,16 @@
-import * as React from "react";
 import { getKeys, isObject } from "prostgles-types";
 import { ViewHandlerClient } from "./prostgles";
+import type ReactT from "react";
+let React: typeof ReactT | undefined;
+try {
+  React = require("react");
+} catch(err){
 
-const { useEffect, useCallback, useRef, useState } = React ?? {};
+} 
+
+const alertNoReact = (...args: any[]): any => { throw "Must install react" }
+const alertNoReactT = <T>(...args: any[]): any => { throw "Must install react" }
+const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React ?? {};
 
 export const isEqual = (x, y)  => {
   const keys = Object.keys, tx = typeof x, ty = typeof y;
@@ -121,7 +129,7 @@ export function useIsMounted() {
 type PromiseFunc = () => Promise<any>
 type NamedResult = Record<string, PromiseFunc>;
 
-export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, dependencyArray: any[] = []):
+export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[] = []):
   F extends NamedResult ? { [key in keyof F]: Awaited<ReturnType<F[key]>> } :
   F extends PromiseFunc ? undefined | Awaited<ReturnType<F>> :
   undefined => {
@@ -163,7 +171,7 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, dependency
     }
     if (!getIsMounted()) return;
     setResult(newD);
-  }, dependencyArray);
+  }, deps);
 
   return result as any;
 }

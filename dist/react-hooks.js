@@ -1,9 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = void 0;
-const React = require("react");
 const prostgles_types_1 = require("prostgles-types");
-const { useEffect, useCallback, useRef, useState } = React !== null && React !== void 0 ? React : {};
+let React;
+try {
+    React = require("react");
+}
+catch (err) {
+}
+const alertNoReact = (...args) => { throw "Must install react"; };
+const alertNoReactT = (...args) => { throw "Must install react"; };
+const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React !== null && React !== void 0 ? React : {};
 const isEqual = (x, y) => {
     const keys = Object.keys, tx = typeof x, ty = typeof y;
     return x && y && tx === 'object' && tx === ty ? (keys(x).length === keys(y).length &&
@@ -99,7 +106,7 @@ function useIsMounted() {
     return isMounted;
 }
 exports.useIsMounted = useIsMounted;
-const usePromise = (f, dependencyArray = []) => {
+const usePromise = (f, deps = []) => {
     const isPromiseFunc = (val) => {
         try {
             return typeof val === "function" || val instanceof Promise;
@@ -142,7 +149,7 @@ const usePromise = (f, dependencyArray = []) => {
         if (!getIsMounted())
             return;
         setResult(newD);
-    }, dependencyArray);
+    }, deps);
     return result;
 };
 exports.usePromise = usePromise;

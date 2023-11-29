@@ -12,7 +12,7 @@
     "strict": true,
     "module": "commonjs",
     "resolveJsonModule": true,
-    // "allowSyntheticDefaultImports": true,
+    "allowSyntheticDefaultImports": true,
     // "removeComments": true,
     // "sourceMap": true,
 
