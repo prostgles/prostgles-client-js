@@ -1,9 +1,70 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = void 0;
+exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = void 0;
 const React = require("react");
 const prostgles_types_1 = require("prostgles-types");
 const { useEffect, useCallback, useRef, useState } = React !== null && React !== void 0 ? React : {};
+const isEqual = (x, y) => {
+    const keys = Object.keys, tx = typeof x, ty = typeof y;
+    return x && y && tx === 'object' && tx === ty ? (keys(x).length === keys(y).length &&
+        keys(x).every(key => (0, exports.isEqual)(x[key], y[key]))) : (x === y);
+};
+exports.isEqual = isEqual;
+const useDeepCompareMemoize = (value) => {
+    const ref = useRef();
+    if (!(0, exports.isEqual)(value, ref.current)) {
+        ref.current = value;
+    }
+    return ref.current;
+};
+exports.useDeepCompareMemoize = useDeepCompareMemoize;
+const useEffectDeep = (callback, deps) => {
+    useEffect(callback, deps.map(exports.useDeepCompareMemoize));
+};
+exports.useEffectDeep = useEffectDeep;
+const useAsyncEffectQueue = (effect, deps) => {
+    const latestEffect = { effect, deps, didCleanup: false };
+    const queue = useRef({
+        activeEffect: undefined,
+        latestEffect
+    });
+    queue.current.latestEffect = latestEffect;
+    const runAsyncEffect = async (queue) => {
+        if (queue.current.latestEffect && !queue.current.activeEffect) {
+            queue.current.activeEffect = queue.current.latestEffect;
+            queue.current.latestEffect = undefined;
+            queue.current.activeEffect.resolvedCleanup = { run: await queue.current.activeEffect.effect() };
+            if (queue.current.activeEffect.didCleanup) {
+                cleanup();
+            }
+        }
+    };
+    const cleanup = async () => {
+        var _a, _b, _c;
+        if (!((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup))
+            return;
+        await ((_c = (_b = queue.current.activeEffect.resolvedCleanup).run) === null || _c === void 0 ? void 0 : _c.call(_b));
+        queue.current.activeEffect = undefined;
+        runAsyncEffect(queue);
+    };
+    useEffect(() => {
+        runAsyncEffect(queue);
+        return () => {
+            var _a, _b;
+            if (((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.effect) === effect) {
+                queue.current.activeEffect.didCleanup = true;
+                if (queue.current.activeEffect.resolvedCleanup) {
+                    cleanup();
+                }
+            }
+            if (((_b = queue.current.latestEffect) === null || _b === void 0 ? void 0 : _b.effect) === effect) {
+                queue.current.latestEffect.didCleanup = true;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+};
+exports.useAsyncEffectQueue = useAsyncEffectQueue;
 const useEffectAsync = (effect, inputs) => {
     const onCleanup = useRef({
         cleanup: undefined,
@@ -68,7 +129,7 @@ const usePromise = (f, dependencyArray = []) => {
     };
     const [result, setResult] = useState(isNamedObj(f) ? {} : undefined);
     const getIsMounted = useIsMounted();
-    (0, exports.useEffectAsync)(async () => {
+    (0, exports.useAsyncEffectQueue)(async () => {
         let newD;
         if (isNamedObj(f)) {
             newD = await getNamedObjResults(f);
@@ -89,7 +150,7 @@ exports.usePromise = usePromise;
 const useSubscribe = (subHok) => {
     const [data, setData] = useState();
     const getIsMounted = useIsMounted();
-    (0, exports.useEffectAsync)(async () => {
+    (0, exports.useAsyncEffectQueue)(async () => {
         const sub = await subHok.start(newData => {
             if (!getIsMounted())
                 return;
@@ -103,7 +164,7 @@ exports.useSubscribe = useSubscribe;
 const useSubscribeOne = (subHook) => {
     const [data, setData] = useState();
     const getIsMounted = useIsMounted();
-    (0, exports.useEffectAsync)(async () => {
+    (0, exports.useAsyncEffectQueue)(async () => {
         const sub = await subHook.start(newData => {
             if (!getIsMounted())
                 return;

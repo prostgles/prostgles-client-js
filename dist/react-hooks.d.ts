@@ -1,3 +1,7 @@
+export declare const isEqual: (x: any, y: any) => any;
+export declare const useDeepCompareMemoize: (value: any) => undefined;
+export declare const useEffectDeep: (callback: any, deps: any) => void;
+export declare const useAsyncEffectQueue: (effect: () => Promise<void | (() => void)>, deps: any[]) => void;
 export declare const useEffectAsync: (effect: () => Promise<void | (() => void)>, inputs: any[]) => void;
 export declare function useIsMounted(): () => boolean;
 type PromiseFunc = () => Promise<any>;

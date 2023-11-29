@@ -4,6 +4,85 @@ import { ViewHandlerClient } from "./prostgles";
 
 const { useEffect, useCallback, useRef, useState } = React ?? {};
 
+export const isEqual = (x, y)  => {
+  const keys = Object.keys, tx = typeof x, ty = typeof y;
+  return x && y && tx === 'object' && tx === ty ? (
+    keys(x).length === keys(y).length &&
+      keys(x).every(key => isEqual(x[key], y[key]))
+  ) : (x === y);
+}
+
+export const useDeepCompareMemoize = (value: any) => {
+  const ref = useRef();
+
+  if (!isEqual(value, ref.current)) {
+    ref.current = value
+  }
+
+  return ref.current
+}
+
+export const useEffectDeep = (callback, deps) => {
+  useEffect(
+    callback,
+    deps.map(useDeepCompareMemoize)
+  )
+}
+
+type AsyncCleanup = void | (() => void | Promise<void>)
+type AsyncActiveEffect = {
+  effect: () => Promise<AsyncCleanup>;
+  deps: any[];
+  didCleanup: boolean;
+  resolvedCleanup?: {
+    run: AsyncCleanup;
+  };
+};
+type AsyncEffectQueue = {
+  latestEffect: undefined | AsyncActiveEffect;
+  activeEffect: undefined | AsyncActiveEffect;
+}
+export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, deps: any[]) => {
+  const latestEffect = { effect, deps, didCleanup: false }
+  const queue = useRef<AsyncEffectQueue>({
+    activeEffect: undefined,
+    latestEffect
+  });
+  queue.current.latestEffect = latestEffect;
+
+  const runAsyncEffect = async (queue: React.MutableRefObject<AsyncEffectQueue>) => {
+    if(queue.current.latestEffect && !queue.current.activeEffect){
+      queue.current.activeEffect = queue.current.latestEffect;
+      queue.current.latestEffect = undefined;
+      queue.current.activeEffect.resolvedCleanup = { run: await queue.current.activeEffect.effect() };
+      if(queue.current.activeEffect.didCleanup){
+        cleanup();
+      }
+    }
+  }
+  const cleanup = async () => {
+    if(!queue.current.activeEffect?.resolvedCleanup) return;
+    await queue.current.activeEffect.resolvedCleanup.run?.();
+    queue.current.activeEffect = undefined;
+    runAsyncEffect(queue)
+  }
+
+  useEffect(() => {
+    runAsyncEffect(queue);
+    return () => { 
+      if(queue.current.activeEffect?.effect === effect){
+        queue.current.activeEffect.didCleanup = true;
+        if(queue.current.activeEffect.resolvedCleanup){
+          cleanup()
+        }
+      }
+      if(queue.current.latestEffect?.effect === effect){
+        queue.current.latestEffect.didCleanup = true;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
 export const useEffectAsync = (effect: () => Promise<void | (() => void)>, inputs: any[]) => {
   const onCleanup = useRef({ 
     cleanup: undefined as undefined | (() => void), 
@@ -73,7 +152,7 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, dependency
   }
   const [result, setResult] = useState(isNamedObj(f) ? {} : undefined);
   const getIsMounted = useIsMounted();
-  useEffectAsync(async () => {
+  useAsyncEffectQueue(async () => {
     let newD
     if (isNamedObj(f)) {
       newD = await getNamedObjResults(f);
@@ -97,7 +176,7 @@ export const useSubscribe = <SubHook extends ReturnType<SubHooks>>(
   const [data, setData] = useState<undefined | Parameters<Parameters<SubHook["start"]>[0]>[0]>();
 
   const getIsMounted = useIsMounted();
-  useEffectAsync(async () => {
+  useAsyncEffectQueue(async () => {
     const sub = await subHok.start(newData => {
       if (!getIsMounted()) return;
       setData(newData);
@@ -120,7 +199,7 @@ export const useSubscribeOne = <S extends SubOneHook>(
   const [data, setData] = useState<undefined | Parameters<Parameters<S["start"]>[0]>[0]>();
 
   const getIsMounted = useIsMounted();
-  useEffectAsync(async () => {
+  useAsyncEffectQueue(async () => {
     const sub = await subHook.start(newData => {
       if (!getIsMounted()) return;
       setData(newData);
@@ -133,3 +212,4 @@ export const useSubscribeOne = <S extends SubOneHook>(
 }
 
 export const __prglReactInstalled = () => Boolean(React && useRef);
+
