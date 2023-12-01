@@ -537,13 +537,14 @@ function prostgles(initOpts, syncedTable) {
                             else {
                                 if ((options === null || options === void 0 ? void 0 : options.returnType) === "stream") {
                                     const { channel, unsubChannel } = res;
-                                    const start = (listener) => new Promise((resolve, reject) => {
+                                    const start = (listener) => new Promise((resolveStart, rejectStart) => {
                                         socket.emit(channel, {}, (_data, err) => {
                                             if (err) {
-                                                reject(err);
+                                                rejectStart(err);
                                             }
                                             else {
-                                                resolve({
+                                                socket.emit(channel, listener);
+                                                resolveStart({
                                                     stop: () => socket.emit(unsubChannel, {})
                                                 });
                                             }
