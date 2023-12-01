@@ -550,11 +550,12 @@ function prostgles(initOpts, syncedTable) {
                                             }
                                         });
                                     });
-                                    return {
+                                    const streamHandlers = {
                                         channel,
                                         unsubChannel,
                                         start,
                                     };
+                                    return resolve(streamHandlers);
                                 }
                                 else if (options &&
                                     (options.returnType === "noticeSubscription") &&

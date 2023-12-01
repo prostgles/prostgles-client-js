@@ -740,12 +740,13 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                       }
                     });
                   });
-
-                  return {
+                  const streamHandlers = {
                     channel,
                     unsubChannel,
                     start,
                   } satisfies SocketSQLStreamClient;
+
+                  return resolve(streamHandlers as any);
                 } else if (options &&
                   (options.returnType === "noticeSubscription") &&
                   res &&
