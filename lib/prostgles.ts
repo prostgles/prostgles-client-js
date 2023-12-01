@@ -6,7 +6,7 @@
 
 import {
   TableHandler, DbJoinMaker,
-  TableJoinBasic, CHANNELS, DBNotifConfig,
+  CHANNELS, DBNotifConfig,
   DBNoticeConfig, AnyObject, SubscriptionHandler,
   SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
   AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler,
@@ -728,13 +728,11 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               else {
                 if(options?.returnType === "stream"){
                   const { channel, unsubChannel } = res as SocketSQLStreamServer;
-                
                   const start: SocketSQLStreamClient["start"] = (listener) => new Promise((resolve, reject) => {
                     socket.emit(channel, {}, (_data, err) => {
                       if(err){
                         reject(err);
                       } else {
-                        socket.on(channel, listener);
                         resolve({
                           stop: () => socket.emit(unsubChannel, {})
                         });
