@@ -17,7 +17,9 @@ import {
   OnError,
   GetSelectReturnType,
   getKeys,
-  getJoinHandlers
+  getJoinHandlers,
+  SocketSQLStreamClient,
+  SocketSQLStreamServer
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
@@ -724,8 +726,26 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
             socket.emit(CHANNELS.SQL, { query, params, options }, (err, res) => {
               if (err) reject(err);
               else {
-                if (options &&
-                  (options.returnType === "noticeSubscription" || options.returnType === "stream") &&
+                if(options?.returnType === "stream"){
+                  const { channel, unsubChannel } = res as SocketSQLStreamServer;
+                
+                  const start: SocketSQLStreamClient["start"] = (listener) => {
+                    socket.emit(channel, {});
+                    socket.on(channel, listener);
+                    return {
+                      stop: () => {
+                        socket.emit(unsubChannel, {});
+                      }
+                    }
+                  }
+
+                  return {
+                    channel,
+                    unsubChannel,
+                    start,
+                  } satisfies SocketSQLStreamClient;
+                } else if (options &&
+                  (options.returnType === "noticeSubscription") &&
                   res &&
                   Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
                   !Object.values(res).find(v => typeof v !== "string")

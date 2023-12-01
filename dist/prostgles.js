@@ -535,8 +535,25 @@ function prostgles(initOpts, syncedTable) {
                             if (err)
                                 reject(err);
                             else {
-                                if (options &&
-                                    (options.returnType === "noticeSubscription" || options.returnType === "stream") &&
+                                if ((options === null || options === void 0 ? void 0 : options.returnType) === "stream") {
+                                    const { channel, unsubChannel } = res;
+                                    const start = (listener) => {
+                                        socket.emit(channel, {});
+                                        socket.on(channel, listener);
+                                        return {
+                                            stop: () => {
+                                                socket.emit(unsubChannel, {});
+                                            }
+                                        };
+                                    };
+                                    return {
+                                        channel,
+                                        unsubChannel,
+                                        start,
+                                    };
+                                }
+                                else if (options &&
+                                    (options.returnType === "noticeSubscription") &&
                                     res &&
                                     Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
                                     !Object.values(res).find(v => typeof v !== "string")) {
