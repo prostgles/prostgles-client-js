@@ -725,7 +725,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               if (err) reject(err);
               else {
                 if (options &&
-                  options.returnType === "noticeSubscription" &&
+                  (options.returnType === "noticeSubscription" || options.returnType === "stream") &&
                   res &&
                   Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
                   !Object.values(res).find(v => typeof v !== "string")
@@ -750,16 +750,16 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                   Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() &&
                   !Object.values(res).find(v => typeof v !== "string")
                 ) {
+                  const sockInfo: DBNotifConfig = res;
                   const addListener = (listener: (arg: any) => void) => {
-                    addNotifListener(listener, res as DBNotifConfig)
+                    addNotifListener(listener, sockInfo)
                     return {
                       ...res,
-                      removeListener: () => removeNotifListener(listener, res as DBNotifConfig)
+                      removeListener: () => removeNotifListener(listener, sockInfo)
                     }
                   }
                   const handle: DBEventHandles = { ...res, addListener };
-                  // @ts-ignore
-                  resolve(handle);
+                  resolve(handle as any);
 
                 } else {
                   resolve(res);

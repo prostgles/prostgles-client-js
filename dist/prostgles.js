@@ -536,7 +536,7 @@ function prostgles(initOpts, syncedTable) {
                                 reject(err);
                             else {
                                 if (options &&
-                                    options.returnType === "noticeSubscription" &&
+                                    (options.returnType === "noticeSubscription" || options.returnType === "stream") &&
                                     res &&
                                     Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
                                     !Object.values(res).find(v => typeof v !== "string")) {
@@ -559,15 +559,15 @@ function prostgles(initOpts, syncedTable) {
                                     res &&
                                     Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() &&
                                     !Object.values(res).find(v => typeof v !== "string")) {
+                                    const sockInfo = res;
                                     const addListener = (listener) => {
-                                        addNotifListener(listener, res);
+                                        addNotifListener(listener, sockInfo);
                                         return {
                                             ...res,
-                                            removeListener: () => removeNotifListener(listener, res)
+                                            removeListener: () => removeNotifListener(listener, sockInfo)
                                         };
                                     };
                                     const handle = { ...res, addListener };
-                                    // @ts-ignore
                                     resolve(handle);
                                 }
                                 else {
