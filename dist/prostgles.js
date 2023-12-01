@@ -543,7 +543,7 @@ function prostgles(initOpts, syncedTable) {
                                                 rejectStart(err);
                                             }
                                             else {
-                                                socket.emit(channel, listener);
+                                                socket.on(channel, listener);
                                                 resolveStart({
                                                     stop: () => socket.emit(unsubChannel, {})
                                                 });

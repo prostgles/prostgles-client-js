@@ -733,7 +733,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                       if(err){
                         rejectStart(err);
                       } else {
-                        socket.emit(channel, listener)
+                        socket.on(channel, listener)
                         resolveStart({
                           stop: () => socket.emit(unsubChannel, {})
                         });
