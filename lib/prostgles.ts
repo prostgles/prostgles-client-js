@@ -729,11 +729,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 if(options?.returnType === "stream"){
                   const { channel, unsubChannel } = res as SocketSQLStreamServer;
                   const start: SocketSQLStreamClient["start"] = (listener) => new Promise((resolveStart, rejectStart) => {
+                    socket.on(channel, listener)
                     socket.emit(channel, {}, (_data, err) => {
                       if(err){
                         rejectStart(err);
+                        socket.removeAllListeners(channel);
                       } else {
-                        socket.on(channel, listener)
                         resolveStart({
                           stop: () => socket.emit(unsubChannel, {})
                         });
