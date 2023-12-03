@@ -546,9 +546,9 @@ function prostgles(initOpts, syncedTable) {
                                             }
                                             else {
                                                 resolveStart({
-                                                    stop: () => {
+                                                    stop: (terminate) => {
                                                         return new Promise((resolveStop, rejectStop) => {
-                                                            socket.emit(unsubChannel, {}, (data, _err) => {
+                                                            socket.emit(unsubChannel, { terminate }, (data, _err) => {
                                                                 if (_err) {
                                                                     rejectStop(_err);
                                                                 }

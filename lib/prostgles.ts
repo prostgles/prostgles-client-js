@@ -736,9 +736,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                         socket.removeAllListeners(channel);
                       } else {
                         resolveStart({
-                          stop: () => {
+                          stop: (terminate?: boolean) => {
                             return new Promise((resolveStop, rejectStop) => {
-                              socket.emit(unsubChannel, {}, (data, _err) => {
+                              socket.emit(unsubChannel, { terminate }, (data, _err) => {
                                 if(_err){
                                   rejectStop(_err);
                                 } else {
