@@ -736,7 +736,17 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                         socket.removeAllListeners(channel);
                       } else {
                         resolveStart({
-                          stop: () => socket.emit(unsubChannel, {})
+                          stop: () => {
+                            return new Promise((resolveStop, rejectStop) => {
+                              socket.emit(unsubChannel, {}, (data, _err) => {
+                                if(_err){
+                                  rejectStop(_err);
+                                } else {
+                                  resolveStop(data);
+                                }
+                              });
+                            });
+                          }
                         });
                       }
                     });
