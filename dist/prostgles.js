@@ -546,6 +546,18 @@ function prostgles(initOpts, syncedTable) {
                                             }
                                             else {
                                                 resolveStart({
+                                                    run: (query, params) => {
+                                                        return new Promise((resolveRun, rejectRun) => {
+                                                            socket.emit(channel, { query, params }, (data, _err) => {
+                                                                if (_err) {
+                                                                    rejectRun(_err);
+                                                                }
+                                                                else {
+                                                                    resolveRun(data);
+                                                                }
+                                                            });
+                                                        });
+                                                    },
                                                     stop: (terminate) => {
                                                         return new Promise((resolveStop, rejectStop) => {
                                                             socket.emit(unsubChannel, { terminate }, (data, _err) => {
