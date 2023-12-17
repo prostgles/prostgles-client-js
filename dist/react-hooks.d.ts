@@ -1,4 +1,4 @@
-export declare const isEqual: (x: any, y: any) => any;
+export declare const isEqual: (x: any, y: any) => boolean;
 export declare const useDeepCompareMemoize: (value: any) => any;
 export declare const useEffectDeep: (callback: any, deps: any) => void;
 export declare const useAsyncEffectQueue: (effect: () => Promise<void | (() => void)>, deps: any[]) => void;

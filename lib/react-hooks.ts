@@ -12,12 +12,27 @@ const alertNoReact = (...args: any[]): any => { throw "Must install react" }
 const alertNoReactT = <T>(...args: any[]): any => { throw "Must install react" }
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React ?? {};
 
-export const isEqual = (x, y)  => {
-  const keys = Object.keys, tx = typeof x, ty = typeof y;
-  return x && y && tx === 'object' && tx === ty ? (
-    keys(x).length === keys(y).length &&
-      keys(x).every(key => isEqual(x[key], y[key]))
-  ) : (x === y);
+export const isEqual = function (x, y) {
+  if (x === y) {
+    return true;
+
+  } else if ((typeof x == "object" && x != null) && (typeof y == "object" && y != null)) {
+    if (Object.keys(x).length != Object.keys(y).length){
+      return false;
+    }
+
+    for (const prop in x) {
+      if (y.hasOwnProperty(prop)){  
+        if (! isEqual(x[prop], y[prop])){
+          return false;
+        }
+      } else return false;
+    }
+    
+    return true;
+  } else {
+    return false;
+  }
 }
 
 export const useDeepCompareMemoize = (value: any) => {
