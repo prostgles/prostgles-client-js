@@ -54,7 +54,7 @@ const useAsyncEffectQueue = (effect, deps) => {
         queue.current.activeEffect = undefined;
         runAsyncEffect(queue);
     };
-    useEffect(() => {
+    (0, exports.useEffectDeep)(() => {
         runAsyncEffect(queue);
         return () => {
             var _a, _b;
@@ -79,7 +79,7 @@ const useEffectAsync = (effect, inputs) => {
         cleanupEffect: undefined,
     });
     onCleanup.current.effect = effect;
-    useEffect(() => {
+    (0, exports.useEffectDeep)(() => {
         effect().then(result => {
             if (typeof result === "function") {
                 onCleanup.current.cleanup = result;

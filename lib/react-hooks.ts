@@ -75,7 +75,7 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
     runAsyncEffect(queue)
   }
 
-  useEffect(() => {
+  useEffectDeep(() => {
     runAsyncEffect(queue);
     return () => { 
       if(queue.current.activeEffect?.effect === effect){
@@ -98,7 +98,7 @@ export const useEffectAsync = (effect: () => Promise<void | (() => void)>, input
     cleanupEffect: undefined as undefined | typeof effect, 
   });
   onCleanup.current.effect = effect;
-  useEffect(() => {
+  useEffectDeep(() => {
     effect().then(result => {
       if(typeof result === "function"){
         onCleanup.current.cleanup = result;
