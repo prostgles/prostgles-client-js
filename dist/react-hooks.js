@@ -182,7 +182,7 @@ const useSubscribe = (subHok) => {
             setData(newData);
         });
         return sub.unsubscribe;
-    }, subHok.args.map(v => JSON.stringify(v)));
+    }, subHok.args);
     return data;
 };
 exports.useSubscribe = useSubscribe;
@@ -196,7 +196,7 @@ const useSubscribeOne = (subHook) => {
             setData(newData);
         });
         return sub.unsubscribe;
-    }, []);
+    }, subHook.args);
     return data;
 };
 exports.useSubscribeOne = useSubscribeOne;

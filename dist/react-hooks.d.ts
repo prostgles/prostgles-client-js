@@ -12,6 +12,7 @@ export declare const useSubscribe: <SubHook extends {
     args: [filter?: import("prostgles-types").FullFilter<import("prostgles-types").AnyObject, void> | undefined, options?: import("prostgles-types").SubscribeParams<import("prostgles-types").AnyObject> | undefined, onError?: import("prostgles-types").OnError | undefined];
 }>(subHok: SubHook) => Parameters<Parameters<SubHook["start"]>[0]>[0] | undefined;
 type SubOneHook = {
+    args: any[];
     start: ((data: any) => Promise<({
         unsubscribe: VoidFunction;
     })>);

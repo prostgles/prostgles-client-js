@@ -206,12 +206,13 @@ export const useSubscribe = <SubHook extends ReturnType<SubHooks>>(
     });
 
     return sub.unsubscribe;
-  }, subHok.args.map(v => JSON.stringify(v)));
+  }, subHok.args);
 
   return data;
 }
 
 type SubOneHook = {
+  args: any[];
   start: ((data: any) => Promise<({
     unsubscribe: VoidFunction;
   })>);
@@ -229,7 +230,7 @@ export const useSubscribeOne = <S extends SubOneHook>(
     });
 
     return sub.unsubscribe;
-  }, []);
+  }, subHook.args);
 
   return data;
 }
