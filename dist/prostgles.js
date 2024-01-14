@@ -32,6 +32,7 @@ exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
+    let schemaAge;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
         let cb;
@@ -114,10 +115,10 @@ function prostgles(initOpts, syncedTable) {
         noticeSubs.listeners.push(listener);
     };
     let state;
-    const destroySyncs = () => {
+    const destroySyncs = async () => {
         (0, exports.debug)("destroySyncs", { subscriptions, syncedTables });
-        Object.values(subscriptions).map(s => s.destroy());
-        subscriptions = {};
+        await Promise.all(Object.values(subscriptions).map(s => s.destroy()));
+        // subscriptions = {};
         syncs = {};
         Object.values(syncedTables).map((s) => {
             if (s && s.destroy)
@@ -135,6 +136,8 @@ function prostgles(initOpts, syncedTable) {
                         // console.log("unsubscribed", err, res);
                         if (err)
                             console.error(err);
+                        else
+                            reject(err);
                         // else resolve(res);
                     });
                     socket.removeListener(channelName, subscriptions[channelName].onCall);
@@ -209,7 +212,7 @@ function prostgles(initOpts, syncedTable) {
         return addSyncQueuer.run([params, triggers]);
     }
     async function _addSync({ tableName, command, param1, param2 }, triggers) {
-        const { onPullRequest, onSyncRequest, onUpdates } = triggers;
+        const { onSyncRequest } = triggers;
         function makeHandler(channelName) {
             let unsync = function () {
                 _unsync(channelName, triggers);
@@ -420,14 +423,18 @@ function prostgles(initOpts, syncedTable) {
             unsubChannel: channelNameUnsubscribe,
             handlers: [onChange],
             errorHandlers: [onError],
-            destroy: () => {
-                if (subscriptions[channelName]) {
-                    Object.values(subscriptions[channelName]).map((s) => {
-                        if (s && s.handlers)
-                            s.handlers.map(h => _unsubscribe(channelName, channelNameUnsubscribe, h));
-                    });
-                    delete subscriptions[channelName];
+            destroy: async () => {
+                for await (const s of Object.values(subscriptions[channelName])) {
+                    for await (const h of s.handlers) {
+                        await _unsubscribe(channelName, channelNameUnsubscribe, h);
+                    }
                 }
+                // if (subscriptions[channelName]) {
+                //   Object.values(subscriptions[channelName]).forEach((s: Subscription) => {
+                //     s.handlers.forEach(h => _unsubscribe(channelName, channelNameUnsubscribe, h))
+                //   });
+                //   delete subscriptions[channelName];
+                // }
             }
         };
         socket.emit(channelNameReady, { now: Date.now() });
@@ -454,14 +461,18 @@ function prostgles(initOpts, syncedTable) {
             });
         }
         /* Schema = published schema */
-        socket.on(prostgles_types_1.CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
-            destroySyncs();
+        socket.on(prostgles_types_1.CHANNELS.SCHEMA, async ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }) => {
+            await destroySyncs();
             if ((state === "connected" || state === "reconnected") && onReconnect) {
                 onReconnect(socket, err);
                 if (err) {
                     console.error(err);
                     return;
                 }
+                schemaAge = { origin: "onReconnect", date: new Date() };
+            }
+            else {
+                schemaAge = { origin: "onReady", date: new Date() };
             }
             if (err) {
                 reject(err);

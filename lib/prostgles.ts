@@ -186,7 +186,7 @@ type Syncs = {
 };
 export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: any) {
   const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
-
+  let schemaAge: { origin: "onReady" | "onReconnect"; date: Date; } | undefined;
   debug("prostgles", { initOpts })
   if (onSchemaChange) {
     let cb;
@@ -282,10 +282,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
 
-  const destroySyncs = () => {
-    debug("destroySyncs", { subscriptions, syncedTables })
-    Object.values(subscriptions).map(s => s.destroy());
-    subscriptions = {};
+  const destroySyncs = async () => {
+    debug("destroySyncs", { subscriptions, syncedTables });
+    await Promise.all(Object.values(subscriptions).map(s => s.destroy()));
+    // subscriptions = {};
     syncs = {};
     Object.values(syncedTables).map((s: any) => {
       if (s && s.destroy) s.destroy();
@@ -298,14 +298,15 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     return new Promise((resolve, reject) => {
       if (subscriptions[channelName]) {
-        subscriptions[channelName]!.handlers = subscriptions[channelName]!.handlers.filter(h => h !== handler);
-        if (!subscriptions[channelName]!.handlers.length) {
+        subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
+        if (!subscriptions[channelName].handlers.length) {
           socket.emit(unsubChannel, {}, (err: any, _res: any) => {
             // console.log("unsubscribed", err, res);
             if (err) console.error(err);
+            else reject(err);
             // else resolve(res);
           });
-          socket.removeListener(channelName, subscriptions[channelName]!.onCall);
+          socket.removeListener(channelName, subscriptions[channelName].onCall);
           delete subscriptions[channelName];
 
           /* Not waiting for server confirmation to speed things up */
@@ -378,7 +379,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     return addSyncQueuer.run([params, triggers])
   }
   async function _addSync({ tableName, command, param1, param2 }: CoreParams, triggers: ClientSyncHandles): Promise<any> {
-    const { onPullRequest, onSyncRequest, onUpdates } = triggers;
+    const { onSyncRequest } = triggers;
 
     function makeHandler(channelName: string) {
       let unsync = function () {
@@ -603,13 +604,18 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       unsubChannel: channelNameUnsubscribe,
       handlers: [onChange],
       errorHandlers: [onError],
-      destroy: () => {
-        if (subscriptions[channelName]) {
-          Object.values(subscriptions[channelName]!).map((s: Subscription) => {
-            if (s && s.handlers) s.handlers.map(h => _unsubscribe(channelName, channelNameUnsubscribe, h))
-          });
-          delete subscriptions[channelName];
+      destroy: async () => {
+        for await(const s of Object.values(subscriptions[channelName]) as Subscription[]){
+          for await(const h of s.handlers){
+            await _unsubscribe(channelName, channelNameUnsubscribe, h);
+          }
         }
+        // if (subscriptions[channelName]) {
+        //   Object.values(subscriptions[channelName]).forEach((s: Subscription) => {
+        //     s.handlers.forEach(h => _unsubscribe(channelName, channelNameUnsubscribe, h))
+        //   });
+        //   delete subscriptions[channelName];
+        // }
       }
     }
     socket.emit(channelNameReady, { now: Date.now() });
@@ -641,15 +647,17 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
 
     /* Schema = published schema */
-    socket.on(CHANNELS.SCHEMA, ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
-
-      destroySyncs();
+    socket.on(CHANNELS.SCHEMA, async ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
+      await destroySyncs();
       if ((state === "connected" || state === "reconnected") && onReconnect) {
         onReconnect(socket, err);
         if (err) {
           console.error(err)
           return;
         }
+        schemaAge = { origin: "onReconnect", date: new Date() };
+      } else {
+        schemaAge = { origin: "onReady", date: new Date() };
       }
 
       if (err) {
