@@ -34,7 +34,7 @@ import { DBHandlerClient, TableHandlerClient } from "./prostgles";
   
   const dbH: DBHandlerClient = 1 as any;
    
-  dbH.dwadwa.findOne!(
+  dbH.dwadwa?.findOne!(
     { "name.@@.to_tsquery": ["abc81"] }, 
     { select: { 
       h: { "$ts_headline_simple": ["name", { plainto_tsquery: "abc81" }] },
@@ -43,12 +43,12 @@ import { DBHandlerClient, TableHandlerClient } from "./prostgles";
       addedY: { "$date_trunc_5minute": ["added"] }
     }});
    
-    dbH.d.find?.({}, { 
+    dbH.d?.find?.({}, { 
 
       select: { id: 1, name: 1, items3: { name: "$upper" } }
     })
 
-    dbH.d.find!({}, {
+    dbH.d?.find!({}, {
       select: { connection_id: 1, access_control_user_types: { access_control_id: 1 }, access_control_methods: { access_control_id: 1 }  } 
     })
   // const dboBasic: DBHandlerClient = dbo;

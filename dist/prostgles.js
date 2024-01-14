@@ -129,9 +129,10 @@ function prostgles(initOpts, syncedTable) {
     function _unsubscribe(channelName, unsubChannel, handler) {
         (0, exports.debug)("_unsubscribe", { channelName, handler });
         return new Promise((resolve, reject) => {
-            if (subscriptions[channelName]) {
-                subscriptions[channelName].handlers = subscriptions[channelName].handlers.filter(h => h !== handler);
-                if (!subscriptions[channelName].handlers.length) {
+            const sub = subscriptions[channelName];
+            if (sub) {
+                sub.handlers = sub.handlers.filter(h => h !== handler);
+                if (!sub.handlers.length) {
                     socket.emit(unsubChannel, {}, (err, _res) => {
                         // console.log("unsubscribed", err, res);
                         if (err)
@@ -140,7 +141,7 @@ function prostgles(initOpts, syncedTable) {
                             reject(err);
                         // else resolve(res);
                     });
-                    socket.removeListener(channelName, subscriptions[channelName].onCall);
+                    socket.removeListener(channelName, sub.onCall);
                     delete subscriptions[channelName];
                     /* Not waiting for server confirmation to speed things up */
                     resolve(true);
@@ -424,10 +425,9 @@ function prostgles(initOpts, syncedTable) {
             handlers: [onChange],
             errorHandlers: [onError],
             destroy: async () => {
-                for await (const s of Object.values(subscriptions[channelName])) {
-                    for await (const h of s.handlers) {
-                        await _unsubscribe(channelName, channelNameUnsubscribe, h);
-                    }
+                var _a, _b;
+                for await (const h of (_b = (_a = subscriptions[channelName]) === null || _a === void 0 ? void 0 : _a.handlers) !== null && _b !== void 0 ? _b : []) {
+                    await _unsubscribe(channelName, channelNameUnsubscribe, h);
                 }
                 // if (subscriptions[channelName]) {
                 //   Object.values(subscriptions[channelName]).forEach((s: Subscription) => {
@@ -645,11 +645,12 @@ function prostgles(initOpts, syncedTable) {
             const sub_commands = ["subscribe", "subscribeOne"];
             (0, prostgles_types_1.getKeys)(dbo).forEach(tableName => {
                 const all_commands = Object.keys(dbo[tableName]);
+                const dboTable = dbo[tableName];
                 all_commands
                     .sort((a, b) => sub_commands.includes(a) - sub_commands.includes(b))
                     .forEach(command => {
                     if (["find", "findOne"].includes(command)) {
-                        dbo[tableName].getJoinedTables = function () {
+                        dboTable.getJoinedTables = function () {
                             return (joinTables || [])
                                 .filter(tb => Array.isArray(tb) && tb.includes(tableName))
                                 .flat()
@@ -657,9 +658,9 @@ function prostgles(initOpts, syncedTable) {
                         };
                     }
                     if (command === "sync") {
-                        dbo[tableName]._syncInfo = { ...dbo[tableName][command] };
+                        dboTable._syncInfo = { ...dboTable[command] };
                         if (syncedTable) {
-                            dbo[tableName].getSync = async (filter, params = {}) => {
+                            dboTable.getSync = async (filter, params = {}) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { filter, params } }));
                                 return syncedTable.create({ name: tableName, onDebug, filter, db: dbo, ...params });
                             };
@@ -670,20 +671,20 @@ function prostgles(initOpts, syncedTable) {
                                 }
                                 return syncedTables[syncName];
                             };
-                            dbo[tableName].sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
+                            dboTable.sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "sync", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.sync(onChange, options.handlesOnData);
                             };
-                            dbo[tableName].syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
+                            dboTable.syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
                         }
-                        dbo[tableName]._sync = async function (param1, param2, syncHandles) {
+                        dboTable._sync = async function (param1, param2, syncHandles) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "_sync", tableName, data: { param1, param2, syncHandles } }));
                             return addSync({ tableName, command, param1, param2 }, syncHandles);
                         };
@@ -694,12 +695,12 @@ function prostgles(initOpts, syncedTable) {
                             checkSubscriptionArgs(param1, param2, onChange, onError);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
-                        dbo[tableName][command] = subFunc;
+                        dboTable[command] = subFunc;
                         const SUBONE = "subscribeOne";
                         /**
                          * Used in for react hooks
                          */
-                        dbo[tableName][command + "Hook"] = function (param1 = {}, param2 = {}, onError) {
+                        dboTable[command + "Hook"] = function (param1 = {}, param2 = {}, onError) {
                             return {
                                 start: (onChange) => {
                                     const changeFunc = command !== SUBONE ? onChange : (rows) => { onChange(rows[0]); };
@@ -709,7 +710,7 @@ function prostgles(initOpts, syncedTable) {
                             };
                         };
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
-                            dbo[tableName][SUBONE] = async function (param1, param2, onChange, onError) {
+                            dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } }));
                                 checkSubscriptionArgs(param1, param2, onChange, onError);
                                 let onChangeOne = (rows) => { onChange(rows[0]); };
@@ -718,7 +719,7 @@ function prostgles(initOpts, syncedTable) {
                         }
                     }
                     else {
-                        dbo[tableName][command] = async function (param1, param2, param3) {
+                        dboTable[command] = async function (param1, param2, param3) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: command, tableName, data: { param1, param2, param3 } }));
                             return new Promise((resolve, reject) => {
                                 socket.emit(preffix, { tableName, command, param1, param2, param3 }, 

@@ -27,7 +27,7 @@
     "keyofStringsOnly": true,
     "ignoreDeprecations": "5.0",
     /** TODO */
-    "noUncheckedIndexedAccess": false
+    "noUncheckedIndexedAccess": true
   },
   "include": ["lib"],
   "exclude": [
