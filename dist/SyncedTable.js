@@ -504,7 +504,7 @@ class SyncedTable {
                     if (!_data.length)
                         return [];
                     return this.dbSync.syncData(data);
-                },
+                }, //, deletedData);,
                 onSendEnd: () => {
                     if (hasWnd)
                         window.onbeforeunload = null;

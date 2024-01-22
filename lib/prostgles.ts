@@ -609,12 +609,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         for await(const h of subscriptions[channelName]?.handlers ?? []){
           await _unsubscribe(channelName, channelNameUnsubscribe, h);
         }
-        // if (subscriptions[channelName]) {
-        //   Object.values(subscriptions[channelName]).forEach((s: Subscription) => {
-        //     s.handlers.forEach(h => _unsubscribe(channelName, channelNameUnsubscribe, h))
-        //   });
-        //   delete subscriptions[channelName];
-        // }
       }
     }
     socket.emit(channelNameReady, { now: Date.now() });
@@ -961,6 +955,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         dbo.innerJoinOne = dbo.innerJoinOne || {};
         dbo.leftJoinOne = dbo.leftJoinOne || {};
         const joinHandlers = getJoinHandlers(table);
+        //@ts-ignore
         dbo.leftJoin[table] = joinHandlers.leftJoin;
         dbo.innerJoin[table] = joinHandlers.innerJoin;
         dbo.leftJoinOne[table] = joinHandlers.leftJoinOne;

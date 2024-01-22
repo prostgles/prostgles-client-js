@@ -19,6 +19,7 @@
     "declarationMap": true,
     "keyofStringsOnly": true,
     "ignoreDeprecations": "5.0", 
+    "skipLibCheck": true,
     "noUncheckedIndexedAccess": false
   }, 
   "exclude": [ 

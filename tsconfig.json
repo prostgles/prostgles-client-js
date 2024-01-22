@@ -26,6 +26,7 @@
     "declarationMap": true,
     "keyofStringsOnly": true,
     "ignoreDeprecations": "5.0",
+    "skipLibCheck": true,
     /** TODO */
     "noUncheckedIndexedAccess": true
   },
