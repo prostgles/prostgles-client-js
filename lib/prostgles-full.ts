@@ -5,6 +5,4 @@ function prostgles<DBSchema = void>(params: InitOptions<DBSchema>) {
 }
 prostgles.SyncedTable = SyncedTable;
 
-// export { InitOptions, DBHandlerClient };
-// export default prostgles;
 export = prostgles; 
