@@ -89,8 +89,12 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
       (!queue.current.activeEffect || queue.current.activeEffect.resolvedCleanup)
     ){
       await queue.current.activeEffect?.resolvedCleanup?.run?.();
-      queue.current.activeEffect = queue.current.latestEffect;
+      queue.current.activeEffect = queue.current.latestEffect as AsyncActiveEffect | undefined;
       queue.current.latestEffect = undefined;
+      /**
+       * latestEffect might have since been cleaned up
+       */
+      if(!queue.current.activeEffect) return;
       const run = await queue.current.activeEffect.effect();
       queue.current.activeEffect.resolvedCleanup = { run };
       if(queue.current.activeEffect.didCleanup){
