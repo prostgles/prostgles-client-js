@@ -18,7 +18,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = exports.useProstgles = exports.asName = exports.debug = void 0;
+exports.prostgles = exports.useProstglesClient = exports.asName = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
 const SyncedTable_1 = require("./SyncedTable");
@@ -32,7 +32,7 @@ const debug = function (...args) {
 };
 exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
-const useProstgles = (initOpts) => {
+const useProstglesClient = (initOpts) => {
     const React = (0, react_hooks_1.getReact)(true);
     const [onReadyArgs, setOnReadyArgs] = React.useState();
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
@@ -52,7 +52,7 @@ const useProstgles = (initOpts) => {
     }, [initOpts]);
     return onReadyArgs;
 };
-exports.useProstgles = useProstgles;
+exports.useProstglesClient = useProstglesClient;
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
     let schemaAge;
