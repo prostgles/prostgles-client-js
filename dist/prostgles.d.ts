@@ -1,8 +1,16 @@
-import { TableHandler, DbJoinMaker, AnyObject, SubscriptionHandler, SQLHandler, DBSchemaTable, MethodHandler, ClientSyncHandles, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
-import type { Sync, SyncOne } from "./SyncedTable";
+import { TableHandler, DbJoinMaker, AnyObject, SQLHandler, DBSchemaTable, MethodHandler, ClientSyncHandles, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
+import { type Sync, type SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
+type OnReadyParams<DBSchema> = {
+    dbo: DBHandlerClient<DBSchema>;
+    methods: MethodHandler | undefined;
+    tableSchema: DBSchemaTable[] | undefined;
+    auth: Auth | undefined;
+    isReconnect: boolean;
+};
+export declare const useProstgles: <DBSchema_1>(initOpts: InitOptions<DBSchema_1>) => OnReadyParams<DBSchema_1> | undefined;
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
@@ -10,24 +18,14 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     sync?: Sync<T>;
     syncOne?: SyncOne<T>;
     _sync?: any;
+    /**
+     * Will return undefined while loading
+     */
     useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+    /**
+     * Will return undefined while loading
+     */
     useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false> | undefined;
-    subscribeHook: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => {
-        start: ((onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any) => Promise<SubscriptionHandler>);
-        args: [
-            filter?: FullFilter<T, S>,
-            options?: SubscribeParams<T>,
-            onError?: OnError
-        ];
-    };
-    subscribeOneHook: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubscribeParams<T>, onError?: OnError) => {
-        start: (onChange: (item: GetSelectReturnType<S, SubParams, T, false> | undefined) => any) => Promise<SubscriptionHandler>;
-        args: [
-            filter?: FullFilter<T, S>,
-            options?: SubscribeParams<T>,
-            onError?: OnError
-        ];
-    };
 };
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
     getJoinedTables: () => string[];

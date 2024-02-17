@@ -22,8 +22,8 @@ import {
   SocketSQLStreamServer
 } from "prostgles-types";
 
-import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
-import { useSubscribe, useSubscribeOne } from "./react-hooks";
+import { SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable";
+import { getReact, useAsyncEffectQueue, useIsMounted, useSubscribe, useSubscribeOne } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -37,6 +37,35 @@ export { MethodHandler, SQLResult, asName };
 
 export * from "./react-hooks";
 
+type OnReadyParams<DBSchema> = {
+  dbo: DBHandlerClient<DBSchema>;
+  methods: MethodHandler | undefined; 
+  tableSchema: DBSchemaTable[] | undefined; 
+  auth: Auth | undefined;
+  isReconnect: boolean;
+}
+export const useProstgles = <DBSchema>(initOpts: InitOptions<DBSchema>): undefined | OnReadyParams<DBSchema> => {
+  const React = getReact(true);
+  const [onReadyArgs, setOnReadyArgs] = React.useState<undefined | OnReadyParams<DBSchema>>();
+  const getIsMounted = useIsMounted();
+  useAsyncEffectQueue(async () => {
+    //@ts-ignore
+    const prgl = await prostgles({ 
+      ...initOpts, 
+      onReady: (...args) => {
+        if (!getIsMounted()) return;
+        //@ts-ignore
+        initOpts.onReady(...args);
+        const [dbo, methods,tableSchema, auth, isReconnect] = args;
+        setOnReadyArgs({ dbo, methods,tableSchema, auth, isReconnect } as OnReadyParams<DBSchema>);
+      }
+    }, SyncedTable);
+
+  }, [initOpts]);
+
+  return onReadyArgs;
+}
+
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
   getJoinedTables: () => string[];
   _syncInfo?: any;
@@ -44,44 +73,22 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
   _sync?: any;
+  /**
+   * Will return undefined while loading
+   */
   useSubscribe: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
     onError?: OnError
   ) => GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+  /**
+   * Will return undefined while loading
+   */
   useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
     onError?: OnError
   ) => GetSelectReturnType<S, SubParams, T, false> | undefined;
-  subscribeHook: <SubParams extends SubscribeParams<T, S>>(
-    filter?: FullFilter<T, S>, 
-    options?: SubParams, 
-    onError?: OnError
-  ) => { 
-    start: ((
-      onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any
-    ) => Promise<SubscriptionHandler>) 
-    args: [
-      filter?: FullFilter<T, S>, 
-      options?: SubscribeParams<T>, 
-      onError?: OnError
-    ]
-  };
-  subscribeOneHook: <SubParams extends SubscribeParams<T, S>>(
-    filter?: FullFilter<T, S>, 
-    options?: SubscribeParams<T>, 
-    onError?: OnError
-  ) => { 
-    start: (
-      onChange:  (item: GetSelectReturnType<S, SubParams, T, false> | undefined) => any
-    ) => Promise<SubscriptionHandler>;
-    args: [
-      filter?: FullFilter<T, S>, 
-      options?: SubscribeParams<T>, 
-      onError?: OnError
-    ]
-  }
 }
 
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
@@ -891,9 +898,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               };
               dboTable[command] = subFunc;
               const SUBONE = "subscribeOne";
-              /**
-               * React hooks 
-               */
               const startHook = function (param1 = {}, param2 = {}, onError?) {
                 return { 
                   start: (onChange: any) => {
@@ -903,7 +907,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                   args: [param1, param2, onError]
                 }
               }
-              dboTable[command + "Hook"] = startHook;
+              
+              /**
+               * React hooks 
+               */
               if(command === "subscribe"){
                 dboTable.useSubscribe = (...args) => useSubscribe(startHook(...args) as any)
               } else if(command === "subscribeOne"){

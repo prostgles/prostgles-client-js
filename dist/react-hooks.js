@@ -1,15 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = void 0;
+exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
-try {
-    React = require("react");
-}
-catch (err) {
-}
 const alertNoReact = (...args) => { throw "Must install react"; };
 const alertNoReactT = (...args) => { throw "Must install react"; };
+const getReact = (throwError) => {
+    try {
+        React !== null && React !== void 0 ? React : (React = require("react"));
+    }
+    catch (err) {
+    }
+    if (throwError && !React)
+        throw new Error("Must install react");
+    return React;
+};
+exports.getReact = getReact;
+(0, exports.getReact)();
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React !== null && React !== void 0 ? React : {};
 const isEqual = function (x, y) {
     if (x === y) {
@@ -175,7 +182,6 @@ const usePromise = (f, deps = []) => {
     return result;
 };
 exports.usePromise = usePromise;
-//@ts-ignore
 const useSubscribe = (subHok) => {
     const [data, setData] = useState();
     const getIsMounted = useIsMounted();

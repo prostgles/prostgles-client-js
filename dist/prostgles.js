@@ -18,9 +18,10 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = exports.asName = exports.debug = void 0;
+exports.prostgles = exports.useProstgles = exports.asName = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
+const SyncedTable_1 = require("./SyncedTable");
 const react_hooks_1 = require("./react-hooks");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -31,6 +32,27 @@ const debug = function (...args) {
 };
 exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
+const useProstgles = (initOpts) => {
+    const React = (0, react_hooks_1.getReact)(true);
+    const [onReadyArgs, setOnReadyArgs] = React.useState();
+    const getIsMounted = (0, react_hooks_1.useIsMounted)();
+    (0, react_hooks_1.useAsyncEffectQueue)(async () => {
+        //@ts-ignore
+        const prgl = await prostgles({
+            ...initOpts,
+            onReady: (...args) => {
+                if (!getIsMounted())
+                    return;
+                //@ts-ignore
+                initOpts.onReady(...args);
+                const [dbo, methods, tableSchema, auth, isReconnect] = args;
+                setOnReadyArgs({ dbo, methods, tableSchema, auth, isReconnect });
+            }
+        }, SyncedTable_1.SyncedTable);
+    }, [initOpts]);
+    return onReadyArgs;
+};
+exports.useProstgles = useProstgles;
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
     let schemaAge;
@@ -692,9 +714,6 @@ function prostgles(initOpts, syncedTable) {
                         };
                         dboTable[command] = subFunc;
                         const SUBONE = "subscribeOne";
-                        /**
-                         * React hooks
-                         */
                         const startHook = function (param1 = {}, param2 = {}, onError) {
                             return {
                                 start: (onChange) => {
@@ -704,7 +723,9 @@ function prostgles(initOpts, syncedTable) {
                                 args: [param1, param2, onError]
                             };
                         };
-                        dboTable[command + "Hook"] = startHook;
+                        /**
+                         * React hooks
+                         */
                         if (command === "subscribe") {
                             dboTable.useSubscribe = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
                         }

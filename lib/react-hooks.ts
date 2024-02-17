@@ -1,15 +1,20 @@
-import { getKeys, isObject } from "prostgles-types";
+import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
 import { ViewHandlerClient } from "./prostgles";
-import type ReactT from "react";
-let React: typeof ReactT | undefined;
-try {
-  React = require("react");
-} catch(err){
+let React: typeof import("react") | undefined;
 
-} 
 
 const alertNoReact = (...args: any[]): any => { throw "Must install react" }
 const alertNoReactT = <T>(...args: any[]): any => { throw "Must install react" }
+export const getReact = (throwError?: boolean): typeof import("react") => {
+  try {
+    React ??= require("react");
+  } catch(err){
+  
+  }
+  if(throwError && !React) throw new Error("Must install react");
+  return React as any;
+};
+getReact();
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React ?? {};
 
 export const isEqual = function (x, y) {
@@ -198,8 +203,11 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[
   return result as any;
 }
 
-type SubHooks = ViewHandlerClient["subscribeHook"];
-//@ts-ignore
+type SubHooks = (param1?: {}, param2?: {}, onError?: any) => {
+  start: (onChange: any) => Promise<SubscriptionHandler>;
+  args: any[];
+};
+
 export const useSubscribe = <SubHook extends ReturnType<SubHooks>>(
   subHok: SubHook
 ): undefined | Parameters<Parameters<SubHook["start"]>[0]>[0] => {
