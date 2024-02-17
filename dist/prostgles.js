@@ -21,6 +21,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = exports.asName = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
+const react_hooks_1 = require("./react-hooks");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
@@ -692,9 +693,9 @@ function prostgles(initOpts, syncedTable) {
                         dboTable[command] = subFunc;
                         const SUBONE = "subscribeOne";
                         /**
-                         * Used in for react hooks
+                         * React hooks
                          */
-                        dboTable[command + "Hook"] = function (param1 = {}, param2 = {}, onError) {
+                        const startHook = function (param1 = {}, param2 = {}, onError) {
                             return {
                                 start: (onChange) => {
                                     const changeFunc = command !== SUBONE ? onChange : (rows) => { onChange(rows[0]); };
@@ -703,6 +704,13 @@ function prostgles(initOpts, syncedTable) {
                                 args: [param1, param2, onError]
                             };
                         };
+                        dboTable[command + "Hook"] = startHook;
+                        if (command === "subscribe") {
+                            dboTable.useSubscribe = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
+                        }
+                        else if (command === "subscribeOne") {
+                            dboTable.useSubscribeOne = (...args) => (0, react_hooks_1.useSubscribeOne)(startHook(...args));
+                        }
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } }));

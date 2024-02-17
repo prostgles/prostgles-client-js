@@ -65,6 +65,11 @@ type AsyncEffectQueue = {
   latestEffect: undefined | AsyncActiveEffect;
   activeEffect: undefined | AsyncActiveEffect;
 }
+
+/**
+ * Debounce with execute first
+ * Used to ensure subscriptions are always cleaned up 
+ */
 export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, deps: any[]) => {
   const latestEffect = { effect, deps, didCleanup: false }
   const queue = useRef<AsyncEffectQueue>({
@@ -74,17 +79,21 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
   queue.current.latestEffect = latestEffect;
 
   const runAsyncEffect = async (queue: React.MutableRefObject<AsyncEffectQueue>) => {
-    if(queue.current.latestEffect && !queue.current.activeEffect){
+    if(
+      queue.current.latestEffect && 
+      (!queue.current.activeEffect || queue.current.activeEffect.resolvedCleanup)
+    ){
+      await queue.current.activeEffect?.resolvedCleanup?.run?.();
       queue.current.activeEffect = queue.current.latestEffect;
       queue.current.latestEffect = undefined;
-      queue.current.activeEffect.resolvedCleanup = { run: await queue.current.activeEffect.effect() };
+      const run = await queue.current.activeEffect.effect();
+      queue.current.activeEffect.resolvedCleanup = { run };
       if(queue.current.activeEffect.didCleanup){
-        cleanup();
+        cleanupActiveEffect();
       }
     }
   }
-  const cleanup = async () => {
-    if(!queue.current.activeEffect?.resolvedCleanup) return;
+  const cleanupActiveEffect = async () => {
     await queue.current.activeEffect.resolvedCleanup.run?.();
     queue.current.activeEffect = undefined;
     runAsyncEffect(queue)
@@ -95,12 +104,10 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
     return () => { 
       if(queue.current.activeEffect?.effect === effect){
         queue.current.activeEffect.didCleanup = true;
-        if(queue.current.activeEffect.resolvedCleanup){
-          cleanup()
-        }
+        cleanupActiveEffect();
       }
       if(queue.current.latestEffect?.effect === effect){
-        queue.current.latestEffect.didCleanup = true;
+        queue.current.latestEffect = undefined;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,16 +183,16 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[
   const [result, setResult] = useState(isNamedObj(f) ? {} : undefined);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
-    let newD
+    let promiseResult
     if (isNamedObj(f)) {
-      newD = await getNamedObjResults(f);
+      promiseResult = await getNamedObjResults(f);
     } else {
       const funcRes = await f();
       const isNObj = isNamedObj(funcRes);
-      newD = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
+      promiseResult = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
     }
     if (!getIsMounted()) return;
-    setResult(newD);
+    setResult(promiseResult);
   }, deps);
 
   return result as any;

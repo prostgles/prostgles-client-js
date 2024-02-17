@@ -47,6 +47,10 @@ const useEffectDeep = (callback, deps) => {
     useEffect(callback, deps.map(exports.useDeepCompareMemoize));
 };
 exports.useEffectDeep = useEffectDeep;
+/**
+ * Debounce with execute first
+ * Used to ensure subscriptions are always cleaned up
+ */
 const useAsyncEffectQueue = (effect, deps) => {
     const latestEffect = { effect, deps, didCleanup: false };
     const queue = useRef({
@@ -55,20 +59,22 @@ const useAsyncEffectQueue = (effect, deps) => {
     });
     queue.current.latestEffect = latestEffect;
     const runAsyncEffect = async (queue) => {
-        if (queue.current.latestEffect && !queue.current.activeEffect) {
+        var _a, _b, _c;
+        if (queue.current.latestEffect &&
+            (!queue.current.activeEffect || queue.current.activeEffect.resolvedCleanup)) {
+            await ((_c = (_b = (_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
             queue.current.activeEffect = queue.current.latestEffect;
             queue.current.latestEffect = undefined;
-            queue.current.activeEffect.resolvedCleanup = { run: await queue.current.activeEffect.effect() };
+            const run = await queue.current.activeEffect.effect();
+            queue.current.activeEffect.resolvedCleanup = { run };
             if (queue.current.activeEffect.didCleanup) {
-                cleanup();
+                cleanupActiveEffect();
             }
         }
     };
-    const cleanup = async () => {
-        var _a, _b, _c;
-        if (!((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup))
-            return;
-        await ((_c = (_b = queue.current.activeEffect.resolvedCleanup).run) === null || _c === void 0 ? void 0 : _c.call(_b));
+    const cleanupActiveEffect = async () => {
+        var _a, _b;
+        await ((_b = (_a = queue.current.activeEffect.resolvedCleanup).run) === null || _b === void 0 ? void 0 : _b.call(_a));
         queue.current.activeEffect = undefined;
         runAsyncEffect(queue);
     };
@@ -78,12 +84,10 @@ const useAsyncEffectQueue = (effect, deps) => {
             var _a, _b;
             if (((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.effect) === effect) {
                 queue.current.activeEffect.didCleanup = true;
-                if (queue.current.activeEffect.resolvedCleanup) {
-                    cleanup();
-                }
+                cleanupActiveEffect();
             }
             if (((_b = queue.current.latestEffect) === null || _b === void 0 ? void 0 : _b.effect) === effect) {
-                queue.current.latestEffect.didCleanup = true;
+                queue.current.latestEffect = undefined;
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,18 +159,18 @@ const usePromise = (f, deps = []) => {
     const [result, setResult] = useState(isNamedObj(f) ? {} : undefined);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
-        let newD;
+        let promiseResult;
         if (isNamedObj(f)) {
-            newD = await getNamedObjResults(f);
+            promiseResult = await getNamedObjResults(f);
         }
         else {
             const funcRes = await f();
             const isNObj = isNamedObj(funcRes);
-            newD = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
+            promiseResult = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
         }
         if (!getIsMounted())
             return;
-        setResult(newD);
+        setResult(promiseResult);
     }, deps);
     return result;
 };

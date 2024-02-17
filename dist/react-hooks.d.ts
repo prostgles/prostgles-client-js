@@ -1,6 +1,10 @@
 export declare const isEqual: (x: any, y: any) => boolean;
 export declare const useDeepCompareMemoize: (value: any) => any;
 export declare const useEffectDeep: (callback: any, deps: any) => void;
+/**
+ * Debounce with execute first
+ * Used to ensure subscriptions are always cleaned up
+ */
 export declare const useAsyncEffectQueue: (effect: () => Promise<void | (() => void)>, deps: any[]) => void;
 export declare const useEffectAsync: (effect: () => Promise<void | (() => void)>, inputs: any[]) => void;
 export declare function useIsMounted(): any;

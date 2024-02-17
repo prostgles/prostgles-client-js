@@ -23,6 +23,7 @@ import {
 } from "prostgles-types";
 
 import type { DbTableSync, Sync, SyncOne } from "./SyncedTable";
+import { useSubscribe, useSubscribeOne } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -43,6 +44,16 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
   _sync?: any;
+  useSubscribe: <SubParams extends SubscribeParams<T, S>>(
+    filter?: FullFilter<T, S>, 
+    options?: SubParams, 
+    onError?: OnError
+  ) => GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+  useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
+    filter?: FullFilter<T, S>, 
+    options?: SubParams, 
+    onError?: OnError
+  ) => GetSelectReturnType<S, SubParams, T, false> | undefined;
   subscribeHook: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
@@ -873,7 +884,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 return addSync({ tableName, command, param1, param2 }, syncHandles);
               }
             } else if (sub_commands.includes(command as any)) {
-              const subFunc = async function <T extends AnyObject = AnyObject>(param1, param2, onChange, onError) {
+              const subFunc = async function (param1, param2, onChange, onError) {
                 await onDebug?.({ type: "table", command: command as typeof sub_commands[number], tableName, data: { param1, param2, onChange, onError } });
                 checkSubscriptionArgs(param1, param2, onChange, onError);
                 return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
@@ -881,9 +892,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               dboTable[command] = subFunc;
               const SUBONE = "subscribeOne";
               /**
-               * Used in for react hooks 
+               * React hooks 
                */
-              dboTable[command + "Hook"] = function (param1 = {}, param2 = {}, onError?) {
+              const startHook = function (param1 = {}, param2 = {}, onError?) {
                 return { 
                   start: (onChange: any) => {
                     const changeFunc = command !== SUBONE? onChange : (rows) => { onChange(rows[0]); }; 
@@ -891,6 +902,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                   },
                   args: [param1, param2, onError]
                 }
+              }
+              dboTable[command + "Hook"] = startHook;
+              if(command === "subscribe"){
+                dboTable.useSubscribe = (...args) => useSubscribe(startHook(...args) as any)
+              } else if(command === "subscribeOne"){
+                dboTable.useSubscribeOne = (...args) => useSubscribeOne(startHook(...args) as any)
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {

@@ -10,6 +10,8 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     sync?: Sync<T>;
     syncOne?: SyncOne<T>;
     _sync?: any;
+    useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+    useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false> | undefined;
     subscribeHook: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => {
         start: ((onChange: (items: GetSelectReturnType<S, SubParams, T, false>[]) => any) => Promise<SubscriptionHandler>);
         args: [
