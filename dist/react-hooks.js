@@ -78,6 +78,10 @@ const useAsyncEffectQueue = (effect, deps) => {
             if (!queue.current.activeEffect)
                 return;
             const run = await queue.current.activeEffect.effect();
+            if (!queue.current.activeEffect) {
+                await (run === null || run === void 0 ? void 0 : run());
+                return;
+            }
             queue.current.activeEffect.resolvedCleanup = { run };
             if (queue.current.activeEffect.didCleanup) {
                 cleanupActiveEffect();

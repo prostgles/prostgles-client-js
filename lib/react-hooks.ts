@@ -96,6 +96,10 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
        */
       if(!queue.current.activeEffect) return;
       const run = await queue.current.activeEffect.effect();
+      if(!queue.current.activeEffect) {
+        await run?.();
+        return;
+      }
       queue.current.activeEffect.resolvedCleanup = { run };
       if(queue.current.activeEffect.didCleanup){
         cleanupActiveEffect();
