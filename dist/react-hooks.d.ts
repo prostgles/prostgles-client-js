@@ -14,16 +14,9 @@ type PromiseFunc = () => Promise<any>;
 type NamedResult = Record<string, PromiseFunc>;
 export declare const usePromise: <F extends PromiseFunc | NamedResult>(f: F, deps?: any[]) => F extends NamedResult ? { [key in keyof F]: Awaited<ReturnType<F[key]>>; } : F extends PromiseFunc ? Awaited<ReturnType<F>> | undefined : undefined;
 export declare const useSubscribe: <SubHook extends {
-    start: (onChange: any) => Promise<SubscriptionHandler>;
+    start: (newData: any) => Promise<SubscriptionHandler>;
     args: any[];
-}>(subHok: SubHook) => Parameters<Parameters<SubHook["start"]>[0]>[0] | undefined;
-type SubOneHook = {
-    args: any[];
-    start: ((data: any) => Promise<({
-        unsubscribe: VoidFunction;
-    })>);
-};
-export declare const useSubscribeOne: <S extends SubOneHook>(subHook: S) => Parameters<Parameters<S["start"]>[0]>[0] | undefined;
+}>(subHook: SubHook) => Parameters<Parameters<SubHook["start"]>[0]>[0] | undefined;
 export declare const __prglReactInstalled: () => boolean;
 export {};
 //# sourceMappingURL=react-hooks.d.ts.map

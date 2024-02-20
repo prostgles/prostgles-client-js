@@ -1,5 +1,4 @@
 import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
-import { ViewHandlerClient } from "./prostgles";
 let React: typeof import("react") | undefined;
 
 
@@ -212,38 +211,14 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[
 }
 
 type SubHooks = (param1?: {}, param2?: {}, onError?: any) => {
-  start: (onChange: any) => Promise<SubscriptionHandler>;
+  start: (newData: any) => Promise<SubscriptionHandler>;
   args: any[];
 };
 
 export const useSubscribe = <SubHook extends ReturnType<SubHooks>>(
-  subHok: SubHook
+  subHook: SubHook
 ): undefined | Parameters<Parameters<SubHook["start"]>[0]>[0] => {
   const [data, setData] = useState<undefined | Parameters<Parameters<SubHook["start"]>[0]>[0]>();
-
-  const getIsMounted = useIsMounted();
-  useAsyncEffectQueue(async () => {
-    const sub = await subHok.start(newData => {
-      if (!getIsMounted()) return;
-      setData(newData);
-    });
-
-    return sub.unsubscribe;
-  }, subHok.args);
-
-  return data;
-}
-
-type SubOneHook = {
-  args: any[];
-  start: ((data: any) => Promise<({
-    unsubscribe: VoidFunction;
-  })>);
-};
-export const useSubscribeOne = <S extends SubOneHook>(
-  subHook: S
-): undefined | Parameters<Parameters<S["start"]>[0]>[0] => {
-  const [data, setData] = useState<undefined | Parameters<Parameters<S["start"]>[0]>[0]>();
 
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
@@ -257,6 +232,7 @@ export const useSubscribeOne = <S extends SubOneHook>(
 
   return data;
 }
+
 
 export const __prglReactInstalled = () => Boolean(React && useRef);
 

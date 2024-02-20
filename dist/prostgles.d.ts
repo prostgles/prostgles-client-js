@@ -1,4 +1,4 @@
-import { TableHandler, DbJoinMaker, AnyObject, SQLHandler, DBSchemaTable, MethodHandler, ClientSyncHandles, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType } from "prostgles-types";
+import { TableHandler, DbJoinMaker, AnyObject, SQLHandler, DBSchemaTable, MethodHandler, ClientSyncHandles, SQLResult, DBSchema, ViewHandler, asName, FullFilter, SubscribeParams, OnError, GetSelectReturnType, SelectParams } from "prostgles-types";
 import { type Sync, type SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
@@ -26,6 +26,13 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * Will return undefined while loading
      */
     useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false> | undefined;
+    useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, true>;
+    useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, false>;
+    useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => number | undefined;
+    /**
+     * Returns result size in bits
+     */
+    useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => string | undefined;
 };
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
     getJoinedTables: () => string[];

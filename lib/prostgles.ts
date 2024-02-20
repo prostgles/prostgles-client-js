@@ -19,11 +19,12 @@ import {
   getKeys,
   getJoinHandlers,
   SocketSQLStreamClient,
-  SocketSQLStreamServer
+  SocketSQLStreamServer,
+  SelectParams
 } from "prostgles-types";
 
 import { SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable";
-import { getReact, useAsyncEffectQueue, useIsMounted, useSubscribe, useSubscribeOne } from "./react-hooks";
+import { getReact, useAsyncEffectQueue, useIsMounted, usePromise, useSubscribe } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -89,6 +90,13 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     options?: SubParams, 
     onError?: OnError
   ) => GetSelectReturnType<S, SubParams, T, false> | undefined;
+  useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, true>;
+  useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, false>;
+  useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => number | undefined;
+  /**
+   * Returns result size in bits
+   */
+  useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => string | undefined;
 }
 
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
@@ -849,14 +857,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         all_commands
           .sort((a, b) => <never>sub_commands.includes(a as any) - <never>sub_commands.includes(b as any))
           .forEach(command => {
-            if (["find", "findOne"].includes(command)) {
-              dboTable.getJoinedTables = function () {
-                return (joinTables || [])
-                  .filter(tb => Array.isArray(tb) && tb.includes(tableName))
-                  .flat()
-                  .filter(t => t !== tableName);
-              }
-            }
 
             if (command === "sync") {
               dboTable._syncInfo = { ...dboTable[command] };
@@ -911,10 +911,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               /**
                * React hooks 
                */
-              if(command === "subscribe"){
-                dboTable.useSubscribe = (...args) => useSubscribe(startHook(...args) as any)
-              } else if(command === "subscribeOne"){
-                dboTable.useSubscribeOne = (...args) => useSubscribeOne(startHook(...args) as any)
+              const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
+              if(handlerName){
+                dboTable[handlerName] = (...args) => useSubscribe(startHook(...args) as any)
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {
@@ -927,7 +926,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 };
               }
             } else {
-              dboTable[command] = async function (param1, param2, param3) {
+              const method = async function (param1, param2, param3) {
                 await onDebug?.({ type: "table", command: command as any, tableName, data: { param1, param2, param3 } });
                 return new Promise((resolve, reject) => {
                   socket.emit(preffix,
@@ -940,6 +939,20 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                     }
                   );
                 })
+              }
+              dboTable[command] = method;
+
+              const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
+              if(methodName){
+                dboTable[methodName] = (param1, param2, param3?) => usePromise(() => method(param1, param2, param3) as any, [param1, param2, param3]);
+              }
+              if (["find", "findOne"].includes(command)) {
+                dboTable.getJoinedTables = function () {
+                  return (joinTables || [])
+                    .filter(tb => Array.isArray(tb) && tb.includes(tableName))
+                    .flat()
+                    .filter(t => t !== tableName);
+                }
               }
             }
           })

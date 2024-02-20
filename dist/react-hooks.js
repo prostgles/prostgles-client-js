@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useSubscribeOne = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
+exports.__prglReactInstalled = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
 const alertNoReact = (...args) => { throw "Must install react"; };
@@ -191,21 +191,7 @@ const usePromise = (f, deps = []) => {
     return result;
 };
 exports.usePromise = usePromise;
-const useSubscribe = (subHok) => {
-    const [data, setData] = useState();
-    const getIsMounted = useIsMounted();
-    (0, exports.useAsyncEffectQueue)(async () => {
-        const sub = await subHok.start(newData => {
-            if (!getIsMounted())
-                return;
-            setData(newData);
-        });
-        return sub.unsubscribe;
-    }, subHok.args);
-    return data;
-};
-exports.useSubscribe = useSubscribe;
-const useSubscribeOne = (subHook) => {
+const useSubscribe = (subHook) => {
     const [data, setData] = useState();
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
@@ -218,6 +204,6 @@ const useSubscribeOne = (subHook) => {
     }, subHook.args);
     return data;
 };
-exports.useSubscribeOne = useSubscribeOne;
+exports.useSubscribe = useSubscribe;
 const __prglReactInstalled = () => Boolean(React && useRef);
 exports.__prglReactInstalled = __prglReactInstalled;

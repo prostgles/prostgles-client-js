@@ -666,14 +666,6 @@ function prostgles(initOpts, syncedTable) {
                 all_commands
                     .sort((a, b) => sub_commands.includes(a) - sub_commands.includes(b))
                     .forEach(command => {
-                    if (["find", "findOne"].includes(command)) {
-                        dboTable.getJoinedTables = function () {
-                            return (joinTables || [])
-                                .filter(tb => Array.isArray(tb) && tb.includes(tableName))
-                                .flat()
-                                .filter(t => t !== tableName);
-                        };
-                    }
                     if (command === "sync") {
                         dboTable._syncInfo = { ...dboTable[command] };
                         if (syncedTable) {
@@ -726,11 +718,9 @@ function prostgles(initOpts, syncedTable) {
                         /**
                          * React hooks
                          */
-                        if (command === "subscribe") {
-                            dboTable.useSubscribe = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
-                        }
-                        else if (command === "subscribeOne") {
-                            dboTable.useSubscribeOne = (...args) => (0, react_hooks_1.useSubscribeOne)(startHook(...args));
+                        const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne" ? "useSubscribeOne" : undefined;
+                        if (handlerName) {
+                            dboTable[handlerName] = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
                         }
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
@@ -742,7 +732,7 @@ function prostgles(initOpts, syncedTable) {
                         }
                     }
                     else {
-                        dboTable[command] = async function (param1, param2, param3) {
+                        const method = async function (param1, param2, param3) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: command, tableName, data: { param1, param2, param3 } }));
                             return new Promise((resolve, reject) => {
                                 socket.emit(preffix, { tableName, command, param1, param2, param3 }, 
@@ -755,6 +745,19 @@ function prostgles(initOpts, syncedTable) {
                                 });
                             });
                         };
+                        dboTable[command] = method;
+                        const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
+                        if (methodName) {
+                            dboTable[methodName] = (param1, param2, param3) => (0, react_hooks_1.usePromise)(() => method(param1, param2, param3), [param1, param2, param3]);
+                        }
+                        if (["find", "findOne"].includes(command)) {
+                            dboTable.getJoinedTables = function () {
+                                return (joinTables || [])
+                                    .filter(tb => Array.isArray(tb) && tb.includes(tableName))
+                                    .flat()
+                                    .filter(t => t !== tableName);
+                            };
+                        }
                     }
                 });
             });
