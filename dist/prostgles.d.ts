@@ -10,7 +10,8 @@ type OnReadyParams<DBSchema> = {
     auth: Auth | undefined;
     isReconnect: boolean;
 };
-export declare const useProstglesClient: <DBSchema_1>(initOpts: InitOptions<DBSchema_1>) => OnReadyParams<DBSchema_1> | undefined;
+type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady"> & Pick<Partial<InitOptions<DBSchema>>, "onReady">;
+export declare const useProstglesClient: <DBSchema_1>(initOpts: HookInitOpts) => OnReadyParams<DBSchema_1> | undefined;
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;

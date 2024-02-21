@@ -25,13 +25,19 @@ CDN
 ```
 
 ## Usage
+### Vanilla js
 ```js
 prostgles({
-    socket: io(), 
-    onReady: async (db) => {
-        const latest_posts = await db.posts.find({ }, { orderBy: { created: -1 } });
-    }
+  socket: io(), 
+  onReady: async (db) => {
+    const latest_posts = await db.posts.find({ }, { orderBy: { created: -1 } });
+  }
 });
+```
+### React hooks
+```tsx
+const latest_posts = dbo.posts.useFind({ }, { orderBy: { created: -1 } });
+const user = dbo.users.useSubscribeOne({ id: 1 });
 ```
 [Examples](https://github.com/prostgles/prostgles-server-js/tree/master/examples)
 

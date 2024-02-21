@@ -1,7 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const prostgles_1 = require("./prostgles");
 (async () => {
     var _a, _b, _c, _d;
+    const client = (0, prostgles_1.useProstglesClient)({ socket: 1 });
+    const t1 = client === null || client === void 0 ? void 0 : client.dbo.table1.useFind({}, { orderBy: { col1: 1 } });
     const dbo = 1;
     const filter = {};
     const filterCheck = (f) => { };

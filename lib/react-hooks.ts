@@ -14,12 +14,12 @@ export const getReact = (throwError?: boolean): typeof import("react") => {
   return React as any;
 };
 getReact();
-const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React ?? {};
+const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = React! ?? {};
 
 export const isEqual = function (x, y) {
   if (x === y) {
     return true;
-
+    
   } else if ((typeof x == "object" && x != null) && (typeof y == "object" && y != null)) {
     if (Object.keys(x).length != Object.keys(y).length){
       return false;
@@ -106,7 +106,7 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
     }
   }
   const cleanupActiveEffect = async () => {
-    await queue.current.activeEffect.resolvedCleanup.run?.();
+    await queue.current.activeEffect?.resolvedCleanup?.run?.();
     queue.current.activeEffect = undefined;
     runAsyncEffect(queue)
   }

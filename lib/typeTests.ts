@@ -1,5 +1,5 @@
-import { AnyObject, DBSchema, FullFilter, Select, TableHandler } from "prostgles-types";
-import { DBHandlerClient, TableHandlerClient } from "./prostgles";
+import { AnyObject, FullFilter, TableHandler } from "prostgles-types";
+import { DBHandlerClient, useProstglesClient } from "./prostgles";
 
 (async () => {
   // const schema: DBSchema = {
@@ -16,6 +16,8 @@ import { DBHandlerClient, TableHandlerClient } from "./prostgles";
     }
   };
   
+  const client = useProstglesClient<GeneratedSchema>({ socket: 1 as any })
+  const t1 = client?.dbo.table1.useFind({ }, { orderBy: { col1: 1 } });
   const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
   
   const filter: FullFilter<GeneratedSchema["table1"]["columns"], GeneratedSchema> = {  };

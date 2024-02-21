@@ -45,7 +45,8 @@ type OnReadyParams<DBSchema> = {
   auth: Auth | undefined;
   isReconnect: boolean;
 }
-export const useProstglesClient = <DBSchema>(initOpts: InitOptions<DBSchema>): undefined | OnReadyParams<DBSchema> => {
+type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady"> & Pick<Partial<InitOptions<DBSchema>>, "onReady">;
+export const useProstglesClient = <DBSchema>(initOpts: HookInitOpts): undefined | OnReadyParams<DBSchema> => {
   const React = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = React.useState<undefined | OnReadyParams<DBSchema>>();
   const getIsMounted = useIsMounted();

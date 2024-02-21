@@ -1,7 +1,7 @@
 import { SubscriptionHandler } from "prostgles-types";
 export declare const getReact: (throwError?: boolean) => typeof import("react");
 export declare const isEqual: (x: any, y: any) => boolean;
-export declare const useDeepCompareMemoize: (value: any) => any;
+export declare const useDeepCompareMemoize: (value: any) => undefined;
 export declare const useEffectDeep: (callback: any, deps: any) => void;
 /**
  * Debounce with execute first

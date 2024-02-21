@@ -1,4 +1,5 @@
 "use strict";
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.__prglReactInstalled = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
@@ -17,7 +18,7 @@ const getReact = (throwError) => {
 };
 exports.getReact = getReact;
 (0, exports.getReact)();
-const { useEffect = alertNoReact, useCallback = alertNoReact, useRef = alertNoReactT, useState = alertNoReactT } = React !== null && React !== void 0 ? React : {};
+const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = (_a = React) !== null && _a !== void 0 ? _a : {};
 const isEqual = function (x, y) {
     if (x === y) {
         return true;
@@ -89,8 +90,8 @@ const useAsyncEffectQueue = (effect, deps) => {
         }
     };
     const cleanupActiveEffect = async () => {
-        var _a, _b;
-        await ((_b = (_a = queue.current.activeEffect.resolvedCleanup).run) === null || _b === void 0 ? void 0 : _b.call(_a));
+        var _a, _b, _c;
+        await ((_c = (_b = (_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
         queue.current.activeEffect = undefined;
         runAsyncEffect(queue);
     };
