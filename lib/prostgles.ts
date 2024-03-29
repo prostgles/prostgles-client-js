@@ -36,7 +36,8 @@ import {
   ViewHandler,
   asName,
   getJoinHandlers,
-  getKeys
+  getKeys,
+  isObject
 } from "prostgles-types";
 
 import { SyncDataItem, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne, SyncOneOptions } from "./SyncedTable";
@@ -901,9 +902,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       }
 
       /* Building DBO object */
-      const isPojo = (obj: any) => Object.prototype.toString.call(obj) === "[object Object]";
       const checkSubscriptionArgs = (basicFilter: AnyObject, options: AnyObject, onChange: Function, onError?: Function) => {
-        if (!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function") || onError && typeof onError !== "function") {
+        if (basicFilter !== undefined && !isObject(basicFilter) || options !== undefined && !isObject(options) || !(typeof onChange === "function") || onError !== undefined && typeof onError !== "function") {
           throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
         }
       }

@@ -653,9 +653,8 @@ function prostgles(initOpts, syncedTable) {
                 };
             }
             /* Building DBO object */
-            const isPojo = (obj) => Object.prototype.toString.call(obj) === "[object Object]";
             const checkSubscriptionArgs = (basicFilter, options, onChange, onError) => {
-                if (!isPojo(basicFilter) || !isPojo(options) || !(typeof onChange === "function") || onError && typeof onError !== "function") {
+                if (basicFilter !== undefined && !(0, prostgles_types_1.isObject)(basicFilter) || options !== undefined && !(0, prostgles_types_1.isObject)(options) || !(typeof onChange === "function") || onError !== undefined && typeof onError !== "function") {
                     throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
                 }
             };
