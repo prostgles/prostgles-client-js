@@ -148,10 +148,14 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
   useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, true>;
   useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, false>;
   useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => number | undefined;
+  useFindV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, true>; isLoading: boolean; error?: any; };
+  useFindOneV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, false>; isLoading: boolean; error?: any; };
+  useCountV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: number | undefined; isLoading: boolean; error?: any; };
   /**
    * Returns result size in bits
    */
   useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => string | undefined;
+  useSizeV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: string | undefined; isLoading: boolean; error?: any; };
 }
 
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
