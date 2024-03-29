@@ -1,4 +1,5 @@
 import { SubscriptionHandler } from "prostgles-types";
+import { TableHandlerClient } from "./prostgles";
 export declare const getReact: (throwError?: boolean) => typeof import("react");
 export declare const isEqual: (x: any, y: any) => boolean;
 export declare const useDeepCompareMemoize: (value: any) => undefined;
@@ -17,6 +18,16 @@ export declare const useSubscribe: <SubHook extends {
     start: (newData: any) => Promise<SubscriptionHandler>;
     args: any[];
 }>(subHook: SubHook) => Parameters<Parameters<SubHook["start"]>[0]>[0] | undefined;
+export declare const useSubscribeV2: (subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>, filter: any, options: any) => {
+    data: any;
+    error: any;
+    isLoading: any;
+};
+export declare const useSync: (sync: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0], syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1]) => {
+    data: any;
+    error: any;
+    isLoading: any;
+};
 export declare const __prglReactInstalled: () => boolean;
 export {};
 //# sourceMappingURL=react-hooks.d.ts.map

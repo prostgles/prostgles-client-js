@@ -1,4 +1,4 @@
-import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject, TableHandler } from "prostgles-types";
+import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject, TableHandler, EqualityFilter } from "prostgles-types";
 import { DBHandlerClient } from "./prostgles";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -33,7 +33,7 @@ export type Sync<
   OnChangeFunc extends OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any,
   Upsert extends ((newData: T[]) => any) = ((newData: T[]) => any)
 > = (
-  basicFilter: Partial<T>, 
+  basicFilter: EqualityFilter<T>, 
   options: SyncOptions, 
   onChange: OnChangeFunc, 
   onError?: (error: any) => void

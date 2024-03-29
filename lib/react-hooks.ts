@@ -1,4 +1,5 @@
-import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
+import { AnyObject, SubscriptionHandler, getKeys, isObject } from "prostgles-types";
+import { TableHandlerClient } from "./prostgles";
 let React: typeof import("react") | undefined;
 
 
@@ -233,6 +234,63 @@ export const useSubscribe = <SubHook extends ReturnType<SubHooks>>(
   return data;
 }
 
+type HookResult = 
+| { data: any; error?: undefined; isLoading: false; } 
+| { data?: undefined; error: any; isLoading: false; }
+| { data?: undefined; error?: undefined; isLoading: true; };
+
+export const useSubscribeV2 = (
+  subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>,
+  filter: any,
+  options: any
+) => {
+  const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
+
+  const getIsMounted = useIsMounted();
+  useAsyncEffectQueue(async () => {
+    const sub = await subFunc(
+      filter,
+      options,
+      newData => {
+        if (!getIsMounted()) return;
+        setResult({ data: newData, error: undefined });
+      }, 
+      newError => {
+        if (!getIsMounted()) return;
+        setResult({ data: undefined, error: newError });
+      }
+    );
+
+    return sub.unsubscribe;
+  }, [subFunc, filter, options]);
+
+  return { data, error, isLoading };
+}
+
+export const useSync = (
+  sync: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], 
+  basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0],
+  syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1],
+) => {
+  const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
+  const getIsMounted = useIsMounted();
+  useAsyncEffectQueue(async () => {
+    const syncHandlers = await sync(
+      basicFilter, 
+      syncOptions, 
+      newData => {
+        if (!getIsMounted()) return;
+        setResult({ data: newData, error: undefined, isLoading: false });
+      }, 
+      newError => {
+        if (!getIsMounted()) return;
+        setResult({ data: undefined, error: newError, isLoading: false });
+      }
+    );
+    return syncHandlers.$unsync();
+  }, [sync, basicFilter, syncOptions]);
+  return { data, error, isLoading };
+}
 
 export const __prglReactInstalled = () => Boolean(React && useRef);
 

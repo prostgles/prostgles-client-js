@@ -1,7 +1,7 @@
 "use strict";
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
+exports.__prglReactInstalled = exports.useSync = exports.useSubscribeV2 = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
 const alertNoReact = (...args) => { throw "Must install react"; };
@@ -206,5 +206,41 @@ const useSubscribe = (subHook) => {
     return data;
 };
 exports.useSubscribe = useSubscribe;
+const useSubscribeV2 = (subFunc, filter, options) => {
+    const [{ data, error, isLoading }, setResult] = useState({ data: undefined, error: undefined, isLoading: true });
+    const getIsMounted = useIsMounted();
+    (0, exports.useAsyncEffectQueue)(async () => {
+        const sub = await subFunc(filter, options, newData => {
+            if (!getIsMounted())
+                return;
+            setResult({ data: newData, error: undefined });
+        }, newError => {
+            if (!getIsMounted())
+                return;
+            setResult({ data: undefined, error: newError });
+        });
+        return sub.unsubscribe;
+    }, [subFunc, filter, options]);
+    return { data, error, isLoading };
+};
+exports.useSubscribeV2 = useSubscribeV2;
+const useSync = (sync, basicFilter, syncOptions) => {
+    const [{ data, error, isLoading }, setResult] = useState({ data: undefined, error: undefined, isLoading: true });
+    const getIsMounted = useIsMounted();
+    (0, exports.useAsyncEffectQueue)(async () => {
+        const syncHandlers = await sync(basicFilter, syncOptions, newData => {
+            if (!getIsMounted())
+                return;
+            setResult({ data: newData, error: undefined, isLoading: false });
+        }, newError => {
+            if (!getIsMounted())
+                return;
+            setResult({ data: undefined, error: newError, isLoading: false });
+        });
+        return syncHandlers.$unsync();
+    }, [sync, basicFilter, syncOptions]);
+    return { data, error, isLoading };
+};
+exports.useSync = useSync;
 const __prglReactInstalled = () => Boolean(React && useRef);
 exports.__prglReactInstalled = __prglReactInstalled;

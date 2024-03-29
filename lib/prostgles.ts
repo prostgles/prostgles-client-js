@@ -5,26 +5,42 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-  TableHandler, DbJoinMaker,
-  CHANNELS, DBNotifConfig,
-  DBNoticeConfig, AnyObject, SubscriptionHandler,
-  SQLHandler, DBEventHandles, AuthGuardLocation, DBSchemaTable,
-  AuthGuardLocationResponse, MethodHandler, ClientSyncHandles, UpdateParams, DeleteParams, ClientSchema, SQLResult, DBSchema, ViewHandler,
-  asName, 
-  SubscriptionChannels,
+  AnyObject,
+  AuthGuardLocation,
+  AuthGuardLocationResponse,
+  CHANNELS,
+  ClientSchema,
+  ClientSyncHandles,
+  DBEventHandles,
+  DBNoticeConfig,
+  DBNotifConfig,
+  DBSchema,
+  DBSchemaTable,
+  DbJoinMaker,
+  DeleteParams,
+  EqualityFilter,
   FullFilter,
-  SubscribeParams,
-  OnError,
   GetSelectReturnType,
-  getKeys,
-  getJoinHandlers,
+  MethodHandler,
+  OnError,
+  SQLHandler,
+  SQLResult,
+  SelectParams,
   SocketSQLStreamClient,
   SocketSQLStreamServer,
-  SelectParams
+  SubscribeParams,
+  SubscriptionChannels,
+  SubscriptionHandler,
+  TableHandler,
+  UpdateParams,
+  ViewHandler,
+  asName,
+  getJoinHandlers,
+  getKeys
 } from "prostgles-types";
 
-import { SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable";
-import { getReact, useAsyncEffectQueue, useIsMounted, usePromise, useSubscribe } from "./react-hooks";
+import { SyncDataItem, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne, SyncOneOptions } from "./SyncedTable";
+import { getReact, useAsyncEffectQueue, useIsMounted, usePromise, useSubscribe, useSubscribeV2, useSync } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -36,7 +52,7 @@ export const debug: any = function (...args: any[]) {
 
 export { MethodHandler, SQLResult, asName };
 
-export * from "./react-hooks";
+  export * from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;
@@ -73,7 +89,23 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
   _syncInfo?: any;
   getSync?: any;
   sync?: Sync<T>;
+  useSync?: (
+    basicFilter: EqualityFilter<T>, 
+    syncOptions: SyncOptions, 
+  ) => { 
+    data: undefined | SyncDataItem<Required<T>>[];
+    isLoading: boolean;
+    error?: any;
+  };
   syncOne?: SyncOne<T>;
+  useSyncOne?: (
+    basicFilter: EqualityFilter<T>, 
+    syncOptions: SyncOneOptions, 
+  ) => {
+    data: undefined | SyncDataItem<Required<T>>;
+    isLoading: boolean;
+    error?: any;
+  };
   _sync?: any;
   /**
    * Will return undefined while loading
@@ -91,6 +123,28 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     options?: SubParams, 
     onError?: OnError
   ) => GetSelectReturnType<S, SubParams, T, false> | undefined;
+  /**
+   * Will return undefined while loading
+   */
+  useSubscribeV2: <SubParams extends SubscribeParams<T, S>>(
+    filter?: FullFilter<T, S>, 
+    options?: SubParams, 
+  ) => {
+    data: GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+    error?: any;
+    isLoading: boolean;
+  }
+  /**
+   * Will return undefined while loading
+   */
+  useSubscribeOneV2: <SubParams extends SubscribeParams<T, S>>(
+    filter?: FullFilter<T, S>, 
+    options?: SubParams, 
+  ) => {
+    data: GetSelectReturnType<S, SubParams, T, false> | undefined;
+    error?: any;
+    isLoading: boolean;
+  };
   useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, true>;
   useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, false>;
   useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => number | undefined;
@@ -108,7 +162,6 @@ export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSche
   syncOne?: SyncOne<T>;
   _sync?: any;
 }
-
 
 export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
   [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
@@ -873,18 +926,21 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                   }
                   return syncedTables[syncName]
                 }
-                dboTable.sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
+                const sync: Sync<AnyObject> = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                   await onDebug?.({ type: "table", command: "sync", tableName, data: { basicFilter, options } });
                   checkSubscriptionArgs(basicFilter, options, onChange, onError);
                   const s = await upsertSTable(basicFilter, options, onError);
                   return await s.sync(onChange, options.handlesOnData);
                 }
-                dboTable.syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
+                const syncOne: SyncOne<AnyObject> = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
                   await onDebug?.({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } });
                   checkSubscriptionArgs(basicFilter, options, onChange, onError);
                   const s = await upsertSTable(basicFilter, options, onError);
                   return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                 }
+                dboTable.sync = sync;
+                dboTable.syncOne = syncOne;
+                dboTable.useSync = (basicFilter, options) => useSync(dboTable.sync!, basicFilter, options) as any;
               }
 
               dboTable._sync = async function (param1, param2, syncHandles) {
@@ -915,6 +971,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
               if(handlerName){
                 dboTable[handlerName] = (...args) => useSubscribe(startHook(...args) as any)
+                dboTable[handlerName + "v2"] = (filter, options) => useSubscribeV2(subFunc, filter, options)
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {

@@ -1,4 +1,4 @@
-import { FieldFilter, WAL, AnyObject, ClientSyncHandles, SyncBatchParams } from "prostgles-types";
+import { FieldFilter, WAL, AnyObject, ClientSyncHandles, SyncBatchParams, EqualityFilter } from "prostgles-types";
 import { DBHandlerClient } from "./prostgles";
 export declare const debug: any;
 export type SyncOptions = Partial<SyncedTableOptions> & {
@@ -18,7 +18,7 @@ type SyncDebugEvent = {
  * Creates a local synchronized table
  */
 type OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any;
-export type Sync<T extends AnyObject, OnChangeFunc extends OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any, Upsert extends ((newData: T[]) => any) = ((newData: T[]) => any)> = (basicFilter: Partial<T>, options: SyncOptions, onChange: OnChangeFunc, onError?: (error: any) => void) => Promise<{
+export type Sync<T extends AnyObject, OnChangeFunc extends OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any, Upsert extends ((newData: T[]) => any) = ((newData: T[]) => any)> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChangeFunc, onError?: (error: any) => void) => Promise<{
     $unsync: () => void;
     $upsert: Upsert;
     getItems: () => T[];

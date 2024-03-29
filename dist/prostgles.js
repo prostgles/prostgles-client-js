@@ -680,18 +680,21 @@ function prostgles(initOpts, syncedTable) {
                                 }
                                 return syncedTables[syncName];
                             };
-                            dboTable.sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
+                            const sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "sync", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.sync(onChange, options.handlesOnData);
                             };
-                            dboTable.syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
+                            const syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
                                 const s = await upsertSTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
+                            dboTable.sync = sync;
+                            dboTable.syncOne = syncOne;
+                            dboTable.useSync = (basicFilter, options) => (0, react_hooks_1.useSync)(dboTable.sync, basicFilter, options);
                         }
                         dboTable._sync = async function (param1, param2, syncHandles) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "_sync", tableName, data: { param1, param2, syncHandles } }));
@@ -721,6 +724,7 @@ function prostgles(initOpts, syncedTable) {
                         const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne" ? "useSubscribeOne" : undefined;
                         if (handlerName) {
                             dboTable[handlerName] = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
+                            dboTable[handlerName + "v2"] = (filter, options) => (0, react_hooks_1.useSubscribeV2)(subFunc, filter, options);
                         }
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
