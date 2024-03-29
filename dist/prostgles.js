@@ -724,7 +724,7 @@ function prostgles(initOpts, syncedTable) {
                         const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne" ? "useSubscribeOne" : undefined;
                         if (handlerName) {
                             dboTable[handlerName] = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
-                            dboTable[handlerName + "v2"] = (filter, options) => (0, react_hooks_1.useSubscribeV2)(subFunc, filter, options);
+                            dboTable[handlerName + "V2"] = (filter, options) => (0, react_hooks_1.useSubscribeV2)(subFunc, filter, options);
                         }
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
@@ -753,6 +753,7 @@ function prostgles(initOpts, syncedTable) {
                         const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
                         if (methodName) {
                             dboTable[methodName] = (param1, param2, param3) => (0, react_hooks_1.usePromise)(() => method(param1, param2, param3), [param1, param2, param3]);
+                            dboTable[methodName + "V2"] = (param1, param2, param3) => (0, react_hooks_1.useFetch)(method, [param1, param2, param3]);
                         }
                         if (["find", "findOne"].includes(command)) {
                             dboTable.getJoinedTables = function () {

@@ -292,5 +292,21 @@ export const useSync = (
   return { data, error, isLoading };
 }
 
+export const useFetch = (fetchFunc: (...args: any) => Promise<any>, args: any[] = []) => {
+  const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
+  const getIsMounted = useIsMounted();
+  useAsyncEffectQueue(async () => {
+    try {
+      const newData = await fetchFunc(...args);
+      if (!getIsMounted()) return;
+      setResult({ data: newData, error: undefined, isLoading: false });
+    } catch (error) {
+      if (!getIsMounted()) return;
+      setResult({ data: undefined, error, isLoading: false });
+    }
+  }, args);
+  return { data, error, isLoading };
+}
+
 export const __prglReactInstalled = () => Boolean(React && useRef);
 

@@ -28,6 +28,11 @@ export declare const useSync: (sync: Required<TableHandlerClient>["sync"] | Requ
     error: any;
     isLoading: any;
 };
+export declare const useFetch: (fetchFunc: (...args: any) => Promise<any>, args?: any[]) => {
+    data: any;
+    error: any;
+    isLoading: any;
+};
 export declare const __prglReactInstalled: () => boolean;
 export {};
 //# sourceMappingURL=react-hooks.d.ts.map

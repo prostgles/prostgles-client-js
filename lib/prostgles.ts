@@ -40,7 +40,7 @@ import {
 } from "prostgles-types";
 
 import { SyncDataItem, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne, SyncOneOptions } from "./SyncedTable";
-import { getReact, useAsyncEffectQueue, useIsMounted, usePromise, useSubscribe, useSubscribeV2, useSync } from "./react-hooks";
+import { getReact, useAsyncEffectQueue, useFetch, useIsMounted, usePromise, useSubscribe, useSubscribeV2, useSync } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -971,7 +971,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
               if(handlerName){
                 dboTable[handlerName] = (...args) => useSubscribe(startHook(...args) as any)
-                dboTable[handlerName + "v2"] = (filter, options) => useSubscribeV2(subFunc, filter, options)
+                dboTable[handlerName + "V2"] = (filter, options) => useSubscribeV2(subFunc, filter, options)
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {
@@ -1003,6 +1003,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
               if(methodName){
                 dboTable[methodName] = (param1, param2, param3?) => usePromise(() => method(param1, param2, param3) as any, [param1, param2, param3]);
+                dboTable[methodName + "V2"] = (param1, param2, param3?) => useFetch(method, [param1, param2, param3]);
               }
               if (["find", "findOne"].includes(command)) {
                 dboTable.getJoinedTables = function () {
