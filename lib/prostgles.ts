@@ -952,7 +952,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 return addSync({ tableName, command, param1, param2 }, syncHandles);
               }
             } else if (sub_commands.includes(command as any)) {
-              const subFunc = async function (param1, param2, onChange, onError) {
+              const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {
                 await onDebug?.({ type: "table", command: command as typeof sub_commands[number], tableName, data: { param1, param2, onChange, onError } });
                 checkSubscriptionArgs(param1, param2, onChange, onError);
                 return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);

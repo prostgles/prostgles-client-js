@@ -701,7 +701,7 @@ function prostgles(initOpts, syncedTable) {
                         };
                     }
                     else if (sub_commands.includes(command)) {
-                        const subFunc = async function (param1, param2, onChange, onError) {
+                        const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: command, tableName, data: { param1, param2, onChange, onError } }));
                             checkSubscriptionArgs(param1, param2, onChange, onError);
                             return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
