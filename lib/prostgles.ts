@@ -111,7 +111,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
   ) => {
-    data: GetSelectReturnType<S, SubParams, T, true>[] | undefined;
+    data: GetSelectReturnType<S, SubParams, T, true> | undefined;
     error?: any;
     isLoading: boolean;
   }
