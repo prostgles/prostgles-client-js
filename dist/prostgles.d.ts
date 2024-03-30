@@ -60,7 +60,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     /**
      * Returns result size in bits
      */
-    useSizeV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
+    useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: string | undefined;
         isLoading: boolean;
         error?: any;
