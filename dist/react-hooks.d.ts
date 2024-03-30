@@ -18,7 +18,7 @@ export declare const useSubscribe: <SubHook extends {
     start: (newData: any) => Promise<SubscriptionHandler>;
     args: any[];
 }>(subHook: SubHook) => Parameters<Parameters<SubHook["start"]>[0]>[0] | undefined;
-export declare const useSubscribeV2: (subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>, filter: any, options: any) => {
+export declare const useSubscribeV2: (subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>, expectsOne: boolean, filter: any, options: any) => {
     data: any;
     error: any;
     isLoading: any;

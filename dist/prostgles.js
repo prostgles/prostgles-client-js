@@ -723,7 +723,7 @@ function prostgles(initOpts, syncedTable) {
                         const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne" ? "useSubscribeOne" : undefined;
                         if (handlerName) {
                             dboTable[handlerName] = (...args) => (0, react_hooks_1.useSubscribe)(startHook(...args));
-                            dboTable[handlerName + "V2"] = (filter, options) => (0, react_hooks_1.useSubscribeV2)(subFunc, filter, options);
+                            dboTable[handlerName + "V2"] = (filter, options) => (0, react_hooks_1.useSubscribeV2)(subFunc, command === SUBONE, filter, options);
                         }
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {

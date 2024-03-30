@@ -241,11 +241,11 @@ type HookResult =
 
 export const useSubscribeV2 = (
   subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>,
+  expectsOne: boolean,
   filter: any,
   options: any
 ) => {
   const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
-
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
     const sub = await subFunc(
@@ -253,8 +253,8 @@ export const useSubscribeV2 = (
       options,
       newData => {
         if (!getIsMounted()) return;
-        setResult({ data: newData, error: undefined });
-      }, 
+        setResult({ data: expectsOne? newData[0] : newData, error: undefined });
+      },
       newError => {
         if (!getIsMounted()) return;
         setResult({ data: undefined, error: newError });

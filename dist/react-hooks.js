@@ -206,14 +206,14 @@ const useSubscribe = (subHook) => {
     return data;
 };
 exports.useSubscribe = useSubscribe;
-const useSubscribeV2 = (subFunc, filter, options) => {
+const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
     const [{ data, error, isLoading }, setResult] = useState({ data: undefined, error: undefined, isLoading: true });
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
         const sub = await subFunc(filter, options, newData => {
             if (!getIsMounted())
                 return;
-            setResult({ data: newData, error: undefined });
+            setResult({ data: expectsOne ? newData[0] : newData, error: undefined });
         }, newError => {
             if (!getIsMounted())
                 return;

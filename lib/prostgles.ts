@@ -975,7 +975,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
               if(handlerName){
                 dboTable[handlerName] = (...args) => useSubscribe(startHook(...args) as any)
-                dboTable[handlerName + "V2"] = (filter, options) => useSubscribeV2(subFunc, filter, options)
+                dboTable[handlerName + "V2"] = (filter, options) => useSubscribeV2(subFunc, command === SUBONE, filter, options)
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {
