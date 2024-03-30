@@ -255,11 +255,11 @@ export const useSubscribeV2 = (
       options,
       newData => {
         if (!getIsMounted()) return;
-        setResult({ data: expectsOne? newData[0] : newData, error: undefined });
+        setResult({ data: expectsOne? newData[0] : newData, error: undefined, isLoading: false });
       },
       newError => {
         if (!getIsMounted()) return;
-        setResult({ data: undefined, error: newError });
+        setResult({ data: undefined, error: newError, isLoading: false });
       }
     );
 

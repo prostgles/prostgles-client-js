@@ -215,11 +215,11 @@ const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
         const sub = await subFunc(filter, options, newData => {
             if (!getIsMounted())
                 return;
-            setResult({ data: expectsOne ? newData[0] : newData, error: undefined });
+            setResult({ data: expectsOne ? newData[0] : newData, error: undefined, isLoading: false });
         }, newError => {
             if (!getIsMounted())
                 return;
-            setResult({ data: undefined, error: newError });
+            setResult({ data: undefined, error: newError, isLoading: false });
         });
         return sub.unsubscribe;
     }, [subFunc, filter, options]);
