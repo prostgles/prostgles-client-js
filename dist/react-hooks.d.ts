@@ -19,7 +19,7 @@ export declare const useSubscribe: (subFunc: (filter: any, options: any, onData:
     error: any;
     isLoading: any;
 };
-export declare const useSync: (sync: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0], syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1]) => {
+export declare const useSync: (syncFunc: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0], syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1]) => {
     data: any;
     error: any;
     isLoading: any;

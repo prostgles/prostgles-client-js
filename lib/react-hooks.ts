@@ -253,7 +253,7 @@ export const useSubscribe = (
 }
 
 export const useSync = (
-  sync: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], 
+  syncFunc: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], 
   basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0],
   syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1],
 ) => {
@@ -268,7 +268,7 @@ export const useSync = (
       setResult({ data: undefined, error: newError, isLoading: false });
     }
     try {
-      const syncHandlers = await sync(
+      const syncHandlers = await syncFunc(
         basicFilter, 
         syncOptions, 
         newData => {
@@ -277,11 +277,11 @@ export const useSync = (
         }, 
         setError
       );
-      return syncHandlers.$unsync();
+      return syncHandlers.$unsync;
     } catch (error) {
       setError(error);
     }
-  }, [sync, basicFilter, syncOptions]);
+  }, [syncFunc, basicFilter, syncOptions]);
   return { data, error, isLoading };
 }
 

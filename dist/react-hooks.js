@@ -220,7 +220,7 @@ const useSubscribe = (subFunc, expectsOne, filter, options) => {
     return { data, error, isLoading };
 };
 exports.useSubscribe = useSubscribe;
-const useSync = (sync, basicFilter, syncOptions) => {
+const useSync = (syncFunc, basicFilter, syncOptions) => {
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
@@ -234,17 +234,17 @@ const useSync = (sync, basicFilter, syncOptions) => {
             setResult({ data: undefined, error: newError, isLoading: false });
         };
         try {
-            const syncHandlers = await sync(basicFilter, syncOptions, newData => {
+            const syncHandlers = await syncFunc(basicFilter, syncOptions, newData => {
                 if (!getIsMounted())
                     return;
                 setResult({ data: newData, error: undefined, isLoading: false });
             }, setError);
-            return syncHandlers.$unsync();
+            return syncHandlers.$unsync;
         }
         catch (error) {
             setError(error);
         }
-    }, [sync, basicFilter, syncOptions]);
+    }, [syncFunc, basicFilter, syncOptions]);
     return { data, error, isLoading };
 };
 exports.useSync = useSync;

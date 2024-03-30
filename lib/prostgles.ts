@@ -115,9 +115,6 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     error?: any;
     isLoading: boolean;
   }
-  /**
-   * Will return undefined while loading
-   */
   useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
@@ -128,9 +125,12 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
   };
   useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, true>; isLoading: boolean; error?: any; };
   useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, false>; isLoading: boolean; error?: any; };
+  /**
+   * Returns the total number of rows matching the filter
+   */
   useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: number | undefined; isLoading: boolean; error?: any; };
   /**
-   * Returns result size in bits
+   * Returns result size in bits matching the filter and selectParams
    */
   useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: string | undefined; isLoading: boolean; error?: any; };
 }
