@@ -249,11 +249,11 @@ export const useSubscribeV2 = (
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
+    if (!getIsMounted()) return;
     setResult(defaultLoadingResult);
     const setError = (newError) => {
       if (!getIsMounted()) return;
       setResult({ data: undefined, error: newError, isLoading: false });
-
     }
     try {
       const sub = await subFunc(
@@ -284,6 +284,7 @@ export const useSync = (
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
+    if (!getIsMounted()) return;
     setResult(defaultLoadingResult);
     const setError = newError => {
       if (!getIsMounted()) return;
@@ -312,6 +313,7 @@ export const useFetch = (fetchFunc: (...args: any) => Promise<any>, args: any[] 
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
+    if (!getIsMounted()) return;
     setResult(defaultLoadingResult);
     try {
       const newData = await fetchFunc(...args);

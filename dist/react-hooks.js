@@ -211,6 +211,8 @@ const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
+        if (!getIsMounted())
+            return;
         setResult(defaultLoadingResult);
         const setError = (newError) => {
             if (!getIsMounted())
@@ -237,6 +239,8 @@ const useSync = (sync, basicFilter, syncOptions) => {
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
+        if (!getIsMounted())
+            return;
         setResult(defaultLoadingResult);
         const setError = newError => {
             if (!getIsMounted())
@@ -263,6 +267,8 @@ const useFetch = (fetchFunc, args = []) => {
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
+        if (!getIsMounted())
+            return;
         setResult(defaultLoadingResult);
         try {
             const newData = await fetchFunc(...args);
