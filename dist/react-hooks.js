@@ -1,7 +1,7 @@
 "use strict";
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribeV2 = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
+exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
 const alertNoReact = (...args) => { throw "Must install react"; };
@@ -192,21 +192,7 @@ const usePromise = (f, deps = []) => {
     return result;
 };
 exports.usePromise = usePromise;
-const useSubscribe = (subHook) => {
-    const [data, setData] = useState();
-    const getIsMounted = useIsMounted();
-    (0, exports.useAsyncEffectQueue)(async () => {
-        const sub = await subHook.start(newData => {
-            if (!getIsMounted())
-                return;
-            setData(newData);
-        });
-        return sub.unsubscribe;
-    }, subHook.args);
-    return data;
-};
-exports.useSubscribe = useSubscribe;
-const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
+const useSubscribe = (subFunc, expectsOne, filter, options) => {
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
@@ -233,7 +219,7 @@ const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
     }, [subFunc, filter, options]);
     return { data, error, isLoading };
 };
-exports.useSubscribeV2 = useSubscribeV2;
+exports.useSubscribe = useSubscribe;
 const useSync = (sync, basicFilter, syncOptions) => {
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);

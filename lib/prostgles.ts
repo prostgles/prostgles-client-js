@@ -22,7 +22,6 @@ import {
   FullFilter,
   GetSelectReturnType,
   MethodHandler,
-  OnError,
   SQLHandler,
   SQLResult,
   SelectParams,
@@ -40,8 +39,8 @@ import {
   isObject
 } from "prostgles-types";
 
-import { SyncDataItem, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne, SyncOneOptions } from "./SyncedTable";
-import { getReact, useAsyncEffectQueue, useFetch, useIsMounted, usePromise, useSubscribe, useSubscribeV2, useSync } from "./react-hooks";
+import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable";
+import { getReact, useAsyncEffectQueue, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -108,37 +107,18 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     error?: any;
   };
   _sync?: any;
-  /**
-   * Will return undefined while loading
-   */
   useSubscribe: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
-    onError?: OnError
-  ) => GetSelectReturnType<S, SubParams, T, false>[] | undefined;
-  /**
-   * Will return undefined while loading
-   */
-  useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
-    filter?: FullFilter<T, S>, 
-    options?: SubParams, 
-    onError?: OnError
-  ) => GetSelectReturnType<S, SubParams, T, false> | undefined;
-  /**
-   * Will return undefined while loading
-   */
-  useSubscribeV2: <SubParams extends SubscribeParams<T, S>>(
-    filter?: FullFilter<T, S>, 
-    options?: SubParams, 
   ) => {
-    data: GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+    data: GetSelectReturnType<S, SubParams, T, true>[] | undefined;
     error?: any;
     isLoading: boolean;
   }
   /**
    * Will return undefined while loading
    */
-  useSubscribeOneV2: <SubParams extends SubscribeParams<T, S>>(
+  useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>, 
     options?: SubParams, 
   ) => {
@@ -146,16 +126,12 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     error?: any;
     isLoading: boolean;
   };
-  useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, true>;
-  useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, false>;
-  useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => number | undefined;
-  useFindV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, true>; isLoading: boolean; error?: any; };
-  useFindOneV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, false>; isLoading: boolean; error?: any; };
-  useCountV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: number | undefined; isLoading: boolean; error?: any; };
+  useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, true>; isLoading: boolean; error?: any; };
+  useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: undefined | GetSelectReturnType<S, P, T, false>; isLoading: boolean; error?: any; };
+  useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: number | undefined; isLoading: boolean; error?: any; };
   /**
    * Returns result size in bits
    */
-  useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => string | undefined;
   useSizeV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => { data: string | undefined; isLoading: boolean; error?: any; };
 }
 
@@ -959,23 +935,13 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               };
               dboTable[command] = subFunc;
               const SUBONE = "subscribeOne";
-              const startHook = function (param1 = {}, param2 = {}, onError?) {
-                return { 
-                  start: (onChange: any) => {
-                    const changeFunc = command !== SUBONE? onChange : (rows) => { onChange(rows[0]); }; 
-                    return subFunc(param1, param2, changeFunc, onError);
-                  },
-                  args: [param1, param2, onError]
-                }
-              }
-              
+
               /**
                * React hooks 
                */
               const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
               if(handlerName){
-                dboTable[handlerName] = (...args) => useSubscribe(startHook(...args) as any)
-                dboTable[handlerName + "V2"] = (filter, options) => useSubscribeV2(subFunc, command === SUBONE, filter, options)
+                dboTable[handlerName] = (filter, options) => useSubscribe(subFunc, command === SUBONE, filter, options)
               }
 
               if (command === SUBONE || !sub_commands.includes(SUBONE)) {
@@ -1006,8 +972,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
               const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
               if(methodName){
-                dboTable[methodName] = (param1, param2, param3?) => usePromise(() => method(param1, param2, param3) as any, [param1, param2, param3]);
-                dboTable[methodName + "V2"] = (param1, param2, param3?) => useFetch(method, [param1, param2, param3]);
+                dboTable[methodName] = (param1, param2, param3?) => useFetch(method, [param1, param2, param3]);
               }
               if (["find", "findOne"].includes(command)) {
                 dboTable.getJoinedTables = function () {

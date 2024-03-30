@@ -1,5 +1,5 @@
-import { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, OnError, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, asName } from "prostgles-types";
-import { SyncDataItem, SyncOptions, type Sync, type SyncOne, SyncOneOptions } from "./SyncedTable";
+import { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, asName } from "prostgles-types";
+import { SyncDataItem, SyncOneOptions, SyncOptions, type Sync, type SyncOne } from "./SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
@@ -29,44 +29,30 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
         error?: any;
     };
     _sync?: any;
-    /**
-     * Will return undefined while loading
-     */
-    useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false>[] | undefined;
-    /**
-     * Will return undefined while loading
-     */
-    useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, onError?: OnError) => GetSelectReturnType<S, SubParams, T, false> | undefined;
-    /**
-     * Will return undefined while loading
-     */
-    useSubscribeV2: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
-        data: GetSelectReturnType<S, SubParams, T, false>[] | undefined;
+    useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
+        data: GetSelectReturnType<S, SubParams, T, true>[] | undefined;
         error?: any;
         isLoading: boolean;
     };
     /**
      * Will return undefined while loading
      */
-    useSubscribeOneV2: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
+    useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
         data: GetSelectReturnType<S, SubParams, T, false> | undefined;
         error?: any;
         isLoading: boolean;
     };
-    useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, true>;
-    useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => undefined | GetSelectReturnType<S, P, T, false>;
-    useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => number | undefined;
-    useFindV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
+    useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: undefined | GetSelectReturnType<S, P, T, true>;
         isLoading: boolean;
         error?: any;
     };
-    useFindOneV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
+    useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: undefined | GetSelectReturnType<S, P, T, false>;
         isLoading: boolean;
         error?: any;
     };
-    useCountV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
+    useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: number | undefined;
         isLoading: boolean;
         error?: any;
@@ -74,7 +60,6 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     /**
      * Returns result size in bits
      */
-    useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => string | undefined;
     useSizeV2: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: string | undefined;
         isLoading: boolean;

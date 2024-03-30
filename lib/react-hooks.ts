@@ -211,35 +211,12 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[
   return result as any;
 }
 
-type SubHooks = (param1?: {}, param2?: {}, onError?: any) => {
-  start: (newData: any) => Promise<SubscriptionHandler>;
-  args: any[];
-};
-
-export const useSubscribe = <SubHook extends ReturnType<SubHooks>>(
-  subHook: SubHook
-): undefined | Parameters<Parameters<SubHook["start"]>[0]>[0] => {
-  const [data, setData] = useState<undefined | Parameters<Parameters<SubHook["start"]>[0]>[0]>();
-
-  const getIsMounted = useIsMounted();
-  useAsyncEffectQueue(async () => {
-    const sub = await subHook.start(newData => {
-      if (!getIsMounted()) return;
-      setData(newData);
-    });
-
-    return sub.unsubscribe;
-  }, subHook.args);
-
-  return data;
-}
-
 type HookResult = 
 | { data: any; error?: undefined; isLoading: false; } 
 | { data?: undefined; error: any; isLoading: false; }
 | { data?: undefined; error?: undefined; isLoading: true; };
 
-export const useSubscribeV2 = (
+export const useSubscribe = (
   subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>,
   expectsOne: boolean,
   filter: any,
