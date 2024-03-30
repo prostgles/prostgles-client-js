@@ -207,9 +207,11 @@ const useSubscribe = (subHook) => {
 };
 exports.useSubscribe = useSubscribe;
 const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
-    const [{ data, error, isLoading }, setResult] = useState({ data: undefined, error: undefined, isLoading: true });
+    const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
+    const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
+        setResult(defaultLoadingResult);
         const sub = await subFunc(filter, options, newData => {
             if (!getIsMounted())
                 return;
@@ -225,9 +227,11 @@ const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
 };
 exports.useSubscribeV2 = useSubscribeV2;
 const useSync = (sync, basicFilter, syncOptions) => {
-    const [{ data, error, isLoading }, setResult] = useState({ data: undefined, error: undefined, isLoading: true });
+    const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
+    const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
+        setResult(defaultLoadingResult);
         const syncHandlers = await sync(basicFilter, syncOptions, newData => {
             if (!getIsMounted())
                 return;
@@ -243,9 +247,11 @@ const useSync = (sync, basicFilter, syncOptions) => {
 };
 exports.useSync = useSync;
 const useFetch = (fetchFunc, args = []) => {
-    const [{ data, error, isLoading }, setResult] = useState({ data: undefined, error: undefined, isLoading: true });
+    const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
+    const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
+        setResult(defaultLoadingResult);
         try {
             const newData = await fetchFunc(...args);
             if (!getIsMounted())

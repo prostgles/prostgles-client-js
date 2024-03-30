@@ -245,9 +245,11 @@ export const useSubscribeV2 = (
   filter: any,
   options: any
 ) => {
-  const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
+  const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
+  const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
+    setResult(defaultLoadingResult);
     const sub = await subFunc(
       filter,
       options,
@@ -272,9 +274,11 @@ export const useSync = (
   basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0],
   syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1],
 ) => {
-  const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
+  const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
+  const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
+    setResult(defaultLoadingResult);
     const syncHandlers = await sync(
       basicFilter, 
       syncOptions, 
@@ -293,9 +297,11 @@ export const useSync = (
 }
 
 export const useFetch = (fetchFunc: (...args: any) => Promise<any>, args: any[] = []) => {
-  const [{ data, error, isLoading }, setResult] = useState<HookResult>({ data: undefined, error: undefined, isLoading: true });
+  const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
+  const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
+    setResult(defaultLoadingResult);
     try {
       const newData = await fetchFunc(...args);
       if (!getIsMounted()) return;
