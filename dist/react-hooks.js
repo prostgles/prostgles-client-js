@@ -212,16 +212,22 @@ const useSubscribeV2 = (subFunc, expectsOne, filter, options) => {
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
         setResult(defaultLoadingResult);
-        const sub = await subFunc(filter, options, newData => {
-            if (!getIsMounted())
-                return;
-            setResult({ data: expectsOne ? newData[0] : newData, error: undefined, isLoading: false });
-        }, newError => {
+        const setError = (newError) => {
             if (!getIsMounted())
                 return;
             setResult({ data: undefined, error: newError, isLoading: false });
-        });
-        return sub.unsubscribe;
+        };
+        try {
+            const sub = await subFunc(filter, options, newData => {
+                if (!getIsMounted())
+                    return;
+                setResult({ data: expectsOne ? newData[0] : newData, error: undefined, isLoading: false });
+            }, setError);
+            return sub.unsubscribe;
+        }
+        catch (error) {
+            setError(error);
+        }
     }, [subFunc, filter, options]);
     return { data, error, isLoading };
 };
@@ -232,16 +238,22 @@ const useSync = (sync, basicFilter, syncOptions) => {
     const getIsMounted = useIsMounted();
     (0, exports.useAsyncEffectQueue)(async () => {
         setResult(defaultLoadingResult);
-        const syncHandlers = await sync(basicFilter, syncOptions, newData => {
-            if (!getIsMounted())
-                return;
-            setResult({ data: newData, error: undefined, isLoading: false });
-        }, newError => {
+        const setError = newError => {
             if (!getIsMounted())
                 return;
             setResult({ data: undefined, error: newError, isLoading: false });
-        });
-        return syncHandlers.$unsync();
+        };
+        try {
+            const syncHandlers = await sync(basicFilter, syncOptions, newData => {
+                if (!getIsMounted())
+                    return;
+                setResult({ data: newData, error: undefined, isLoading: false });
+            }, setError);
+            return syncHandlers.$unsync();
+        }
+        catch (error) {
+            setError(error);
+        }
     }, [sync, basicFilter, syncOptions]);
     return { data, error, isLoading };
 };
