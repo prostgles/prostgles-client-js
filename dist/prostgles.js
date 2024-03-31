@@ -693,7 +693,8 @@ function prostgles(initOpts, syncedTable) {
                             };
                             dboTable.sync = sync;
                             dboTable.syncOne = syncOne;
-                            dboTable.useSync = (basicFilter, options) => (0, react_hooks_1.useSync)(dboTable.sync, basicFilter, options);
+                            dboTable.useSync = (basicFilter, options) => (0, react_hooks_1.useSync)(sync, basicFilter, options);
+                            dboTable.useSyncOne = (basicFilter, options) => (0, react_hooks_1.useSync)(syncOne, basicFilter, options);
                         }
                         dboTable._sync = async function (param1, param2, syncHandles) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "_sync", tableName, data: { param1, param2, syncHandles } }));

@@ -920,7 +920,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 }
                 dboTable.sync = sync;
                 dboTable.syncOne = syncOne;
-                dboTable.useSync = (basicFilter, options) => useSync(dboTable.sync!, basicFilter, options) as any;
+                dboTable.useSync = (basicFilter, options) => useSync(sync, basicFilter, options) as any;
+                dboTable.useSyncOne = (basicFilter, options) => useSync(syncOne, basicFilter, options) as any;
               }
 
               dboTable._sync = async function (param1, param2, syncHandles) {

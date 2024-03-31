@@ -640,6 +640,13 @@ class SyncedTable {
                 this.upsert([{ idObj, delta: newData, opts }]);
             },
             $cloneSync: (onChange) => this.syncOne(idObj, onChange),
+            // TODO: add clone sync hook
+            // $useCloneSync: () => {
+            //   const handles = this.syncOne<T, Full>(idObj, item => {
+            //     setItem()
+            //   });
+            //   return handles.$unsync;
+            // },
             $cloneMultiSync: (onChange) => this.sync(onChange, true),
         };
         return handles;
