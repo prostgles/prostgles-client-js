@@ -262,7 +262,6 @@ export const useSync = (
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
     if (!getIsMounted()) return;
-    setResult(defaultLoadingResult);
     const setError = newError => {
       if (!getIsMounted()) return;
       setResult({ data: undefined, error: newError, isLoading: false });

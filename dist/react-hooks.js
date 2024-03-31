@@ -227,7 +227,6 @@ const useSync = (syncFunc, basicFilter, syncOptions) => {
     (0, exports.useAsyncEffectQueue)(async () => {
         if (!getIsMounted())
             return;
-        setResult(defaultLoadingResult);
         const setError = newError => {
             if (!getIsMounted())
                 return;
