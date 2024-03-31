@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.quickClone = exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
+const getMultiSyncSubscription_1 = require("./getMultiSyncSubscription");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
@@ -560,56 +561,10 @@ class SyncedTable {
      * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
     sync(onChange, handlesOnData = true) {
-        const handles = {
-            $unsync: () => {
-                return this.unsubscribe(onChange);
-            },
-            getItems: () => { return this.getItems(); },
-            $upsert: (newData) => {
-                if (newData) {
-                    const prepareOne = (d) => {
-                        return ({
-                            idObj: this.getIdObj(d),
-                            delta: d
-                        });
-                    };
-                    if (Array.isArray(newData)) {
-                        this.upsert(newData.map(d => prepareOne(d)));
-                    }
-                    else {
-                        this.upsert([prepareOne(newData)]);
-                    }
-                }
-                // this.upsert(newData, newData)
-            }
-        }, sub = {
-            _onChange: onChange,
-            handlesOnData,
-            handles,
-            notify: (_allItems, _allDeltas) => {
-                let allItems = [..._allItems], allDeltas = [..._allDeltas];
-                if (handlesOnData) {
-                    allItems = allItems.map((item, i) => {
-                        const getItem = (d, idObj) => ({
-                            ...d,
-                            ...this.makeSingleSyncHandles(idObj, onChange),
-                            $get: () => getItem(this.getItem(idObj).data, idObj),
-                            $find: (idObject) => getItem(this.getItem(idObject).data, idObject),
-                            $update: (newData, opts) => {
-                                return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
-                            },
-                            $delete: async () => {
-                                return this.delete(idObj);
-                            },
-                            $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData)
-                        });
-                        const idObj = this.getIdObj(item);
-                        return getItem(item, idObj);
-                    });
-                }
-                return onChange(allItems, allDeltas);
-            }
-        };
+        const { sub, handles } = getMultiSyncSubscription_1.getMultiSyncSubscription.bind(this)({
+            onChange: onChange,
+            handlesOnData
+        });
         this.multiSubscriptions.push(sub);
         if (!this.skipFirstTrigger) {
             setTimeout(() => {
@@ -713,7 +668,7 @@ class SyncedTable {
         return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
     }
     // TODO: offline-first deletes if allow_delete = true
-    // private setDeleted(idObj, fullArray){
+    // setDeleted(idObj, fullArray){
     //     let deleted: object[] = [];
     //     if(fullArray) deleted = fullArray;
     //     else {
@@ -722,11 +677,11 @@ class SyncedTable {
     //     }
     //     if(hasWnd) window.localStorage.setItem(this.name + "_$$psql$$_deleted", <any>deleted);
     // }
-    // private getDeleted(){
+    // getDeleted(){
     //     const delStr = if(hasWnd) window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
     //     return JSON.parse(delStr);
     // }
-    // private syncDeleted = async () => {
+    // syncDeleted = async () => {
     //     try {
     //         await Promise.all(this.getDeleted().map(async idObj => {
     //             return this.db[this.name].delete(idObj);

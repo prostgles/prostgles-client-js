@@ -1,5 +1,6 @@
 import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject, TableHandler, EqualityFilter } from "prostgles-types";
-import { DBHandlerClient } from "./prostgles";
+import { DBHandlerClient } from "../prostgles";
+import { getMultiSyncSubscription } from "./getMultiSyncSubscription";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -77,7 +78,7 @@ export type CloneMultiSync<T extends AnyObject> = (
   onError?: (error: any) => void
 ) => MultiSyncHandles<T>;
 
-type $UpdateOpts = {
+export type $UpdateOpts = {
   deepMerge: boolean
 }
 type DeepPartial<T> = T extends Array<any> ? T : T extends object ? {
@@ -128,7 +129,7 @@ const STORAGE_TYPES = {
 
 export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
 export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
-
+type StorageType = keyof typeof STORAGE_TYPES;
 export type SyncedTableOptions = {
   name: string;
   filter?: AnyObject;
@@ -138,11 +139,11 @@ export type SyncedTableOptions = {
   pushDebounce?: number;
   skipFirstTrigger?: boolean;
   select?: "*" | {};
-  storageType: keyof typeof STORAGE_TYPES;
+  storageType?: StorageType;
 
   /* If true then only the delta of text field is sent to server */
-  patchText: boolean;
-  patchJSON: boolean;
+  patchText?: boolean;
+  patchJSON?: boolean;
   onReady: () => any;
   skipIncomingDeltaCheck?: boolean;
   onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
@@ -196,7 +197,7 @@ export class SyncedTable {
 
   dbSync?: DbTableSync;
   items: AnyObject[] = [];
-  storageType: string;
+  storageType?: StorageType;
   itemsObj: AnyObject = {};
   patchText: boolean;
   patchJSON: boolean;
@@ -371,7 +372,7 @@ export class SyncedTable {
    * This will send less data to server
    * @param walData 
    */
-  private updatePatches = async (walData: WALItem[]) => {
+  updatePatches = async (walData: WALItem[]) => {
     let remaining: any[] = walData.map(d => d.current);
     let patched: [any, any][] = [],
       patchedItems: any[] = [];
@@ -430,7 +431,7 @@ export class SyncedTable {
     return remaining.filter(d => d);
   }
 
-  static create(opts: SyncedTableOptions): Promise<SyncedTable> {
+  static create(opts: Omit<SyncedTableOptions, "onReady">): Promise<SyncedTable> {
     return new Promise((resolve, reject) => {
       try {
         const res = new SyncedTable({
@@ -453,60 +454,10 @@ export class SyncedTable {
    * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
    */
   sync<T extends AnyObject = AnyObject>(onChange: MultiChangeListener<T>, handlesOnData = true): MultiSyncHandles<T> {
-    const handles: MultiSyncHandles<T> = {
-      $unsync: () => {
-        return this.unsubscribe(onChange)
-      },
-      getItems: () => { return this.getItems(); },
-      $upsert: (newData) => {
-        if (newData) {
-          const prepareOne = (d: AnyObject) => {
-            return ({
-              idObj: this.getIdObj(d),
-              delta: d
-            });
-          }
-
-          if (Array.isArray(newData)) {
-            this.upsert(newData.map(d => prepareOne(d)));
-          } else {
-            this.upsert([prepareOne(newData)]);
-          }
-        }
-
-        // this.upsert(newData, newData)
-      }
-    },
-      sub: SubscriptionMulti<T> = {
-        _onChange: onChange,
-        handlesOnData,
-        handles,
-        notify: (_allItems, _allDeltas) => {
-          let allItems = [..._allItems],
-            allDeltas = [..._allDeltas];
-          if (handlesOnData) {
-            allItems = allItems.map((item, i) => {
-
-              const getItem = (d: AnyObject, idObj: Partial<T>) => ({
-                ...d,
-                ...this.makeSingleSyncHandles(idObj, onChange),
-                $get: () => getItem(this.getItem(idObj).data!, idObj),
-                $find: (idObject: Partial<T>) => getItem(this.getItem(idObject).data!, idObject),
-                $update: (newData: AnyObject, opts: $UpdateOpts): Promise<boolean> => {
-                  return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
-                },
-                $delete: async (): Promise<boolean> => {
-                  return this.delete(idObj);
-                },
-                $cloneMultiSync: (onChange: MultiChangeListener) => this.sync(onChange, handlesOnData)
-              })
-              const idObj = this.getIdObj(item) as Partial<T>;
-              return getItem(item, idObj);
-            }) as any;
-          }
-          return onChange(allItems, allDeltas)
-        }
-      };
+    const { sub, handles } = getMultiSyncSubscription.bind(this)({ 
+      onChange: onChange as MultiChangeListener<AnyObject>, 
+      handlesOnData 
+    });
 
     this.multiSubscriptions.push(sub as any);
     if (!this.skipFirstTrigger) {
@@ -518,7 +469,7 @@ export class SyncedTable {
     return Object.freeze({ ...handles });
   }
 
-  private makeSingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
+  makeSingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
     if (!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
     const handles: SingleSyncHandles<T, Full> = {
@@ -598,7 +549,7 @@ export class SyncedTable {
    * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
    * @param newData -> updates. Must include id_fields + updates
    */
-  private _notifySubscribers = (changes: Pick<ItemUpdated, "idObj" | "newItem" | "delta">[] = []) => {
+  _notifySubscribers = (changes: Pick<ItemUpdated, "idObj" | "newItem" | "delta">[] = []) => {
     if (!this.isSynced) return;
 
     /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
@@ -662,17 +613,17 @@ export class SyncedTable {
     return "ok";
   }
 
-  private getIdStr(d: AnyObject) {
+  getIdStr(d: AnyObject) {
     return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
   }
-  private getIdObj(d: AnyObject) {
+  getIdObj(d: AnyObject) {
     let res: AnyObject = {};
     this.id_fields.sort().map(key => {
       res[key] = d[key];
     });
     return res;
   }
-  private getRowSyncObj(d: AnyObject): AnyObject {
+  getRowSyncObj(d: AnyObject): AnyObject {
     let res: AnyObject = {};
     [this.synced_field, ...this.id_fields].sort().map(key => {
       res[key] = d[key];
@@ -693,7 +644,7 @@ export class SyncedTable {
     this.onChange = undefined;
   }
 
-  private matchesFilter(item: AnyObject) {
+  matchesFilter(item: AnyObject) {
     return Boolean(
       item &&
       (
@@ -703,12 +654,12 @@ export class SyncedTable {
       )
     );
   }
-  private matchesIdObj(a: AnyObject, b: AnyObject) {
+  matchesIdObj(a: AnyObject, b: AnyObject) {
     return Boolean(a && b && !this.id_fields.sort().find(k => a[k] !== b[k]));
   }
 
   // TODO: offline-first deletes if allow_delete = true
-  // private setDeleted(idObj, fullArray){
+  // setDeleted(idObj, fullArray){
   //     let deleted: object[] = [];
 
   //     if(fullArray) deleted = fullArray;
@@ -718,11 +669,11 @@ export class SyncedTable {
   //     }
   //     if(hasWnd) window.localStorage.setItem(this.name + "_$$psql$$_deleted", <any>deleted);
   // }
-  // private getDeleted(){
+  // getDeleted(){
   //     const delStr = if(hasWnd) window.localStorage.getItem(this.name + "_$$psql$$_deleted") || '[]';
   //     return JSON.parse(delStr);
   // }
-  // private syncDeleted = async () => {
+  // syncDeleted = async () => {
   //     try {
   //         await Promise.all(this.getDeleted().map(async idObj => {
   //             return this.db[this.name].delete(idObj);
@@ -739,7 +690,7 @@ export class SyncedTable {
    * @param o current full data item
    * @param n new data item
    */
-  private getDelta(o: AnyObject, n: AnyObject): AnyObject {
+  getDelta(o: AnyObject, n: AnyObject): AnyObject {
     if (isEmpty(o)) return { ...n };
     return Object.keys({ ...o, ...n })
       .filter(k => !this.id_fields.includes(k))
@@ -765,7 +716,7 @@ export class SyncedTable {
     this.getItems().map(d => this.delete(d));
   }
 
-  private get tableHandler(): Pick<TableHandler, "update" | "updateBatch" | "delete"> | undefined {
+  get tableHandler(): Pick<TableHandler, "update" | "updateBatch" | "delete"> | undefined {
     const tblHandler = this.db[this.name];
     if(tblHandler?.update && tblHandler.updateBatch){
       return tblHandler as any;
@@ -774,7 +725,7 @@ export class SyncedTable {
     return undefined;
   }
 
-  private delete = async (item: AnyObject, from_server = false) => {
+  delete = async (item: AnyObject, from_server = false) => {
 
     const idObj = this.getIdObj(item);
     this.setItem(idObj, undefined, true, true);
@@ -788,7 +739,7 @@ export class SyncedTable {
   /** 
    * Ensures that all object keys match valid column names 
    */
-  private checkItemCols = (item: AnyObject) => {
+  checkItemCols = (item: AnyObject) => {
     if (this.columns && this.columns.length) {
       const badCols = Object.keys({ ...item })
         .filter(k =>

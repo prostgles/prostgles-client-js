@@ -1,5 +1,5 @@
-import { FieldFilter, WAL, AnyObject, ClientSyncHandles, SyncBatchParams, EqualityFilter } from "prostgles-types";
-import { DBHandlerClient } from "./prostgles";
+import { FieldFilter, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter } from "prostgles-types";
+import { DBHandlerClient } from "../prostgles";
 export declare const debug: any;
 export type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;
@@ -46,7 +46,7 @@ export type ItemUpdated = ItemUpdate & {
 };
 export type CloneSync<T extends AnyObject, Full extends boolean> = (onChange: SingleChangeListener<T, Full>, onError?: (error: any) => void) => SingleSyncHandles<T, Full>;
 export type CloneMultiSync<T extends AnyObject> = (onChange: MultiChangeListener<T>, onError?: (error: any) => void) => MultiSyncHandles<T>;
-type $UpdateOpts = {
+export type $UpdateOpts = {
     deepMerge: boolean;
 };
 type DeepPartial<T> = T extends Array<any> ? T : T extends object ? {
@@ -93,6 +93,7 @@ declare const STORAGE_TYPES: {
 };
 export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
 export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
+type StorageType = keyof typeof STORAGE_TYPES;
 export type SyncedTableOptions = {
     name: string;
     filter?: AnyObject;
@@ -102,9 +103,9 @@ export type SyncedTableOptions = {
     pushDebounce?: number;
     skipFirstTrigger?: boolean;
     select?: "*" | {};
-    storageType: keyof typeof STORAGE_TYPES;
-    patchText: boolean;
-    patchJSON: boolean;
+    storageType?: StorageType;
+    patchText?: boolean;
+    patchJSON?: boolean;
     onReady: () => any;
     skipIncomingDeltaCheck?: boolean;
     onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
@@ -141,7 +142,7 @@ export declare class SyncedTable {
     get singleSubscriptions(): SubscriptionSingle[];
     dbSync?: DbTableSync;
     items: AnyObject[];
-    storageType: string;
+    storageType?: StorageType;
     itemsObj: AnyObject;
     patchText: boolean;
     patchJSON: boolean;
@@ -154,15 +155,15 @@ export declare class SyncedTable {
      * This will send less data to server
      * @param walData
      */
-    private updatePatches;
-    static create(opts: SyncedTableOptions): Promise<SyncedTable>;
+    updatePatches: (walData: WALItem[]) => Promise<any[]>;
+    static create(opts: Omit<SyncedTableOptions, "onReady">): Promise<SyncedTable>;
     /**
      * Returns a sync handler to all records within the SyncedTable instance
      * @param onChange change listener <(items: object[], delta: object[]) => any >
      * @param handlesOnData If true then $upsert and $unsync handles will be added on each data item. True by default;
      */
     sync<T extends AnyObject = AnyObject>(onChange: MultiChangeListener<T>, handlesOnData?: boolean): MultiSyncHandles<T>;
-    private makeSingleSyncHandles;
+    makeSingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full>;
     /**
      * Returns a sync handler to a specific record within the SyncedTable instance
      * @param idObj object containing the target id_fields properties
@@ -174,28 +175,28 @@ export declare class SyncedTable {
      * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
      * @param newData -> updates. Must include id_fields + updates
      */
-    private _notifySubscribers;
+    _notifySubscribers: (changes?: Pick<ItemUpdated, "idObj" | "newItem" | "delta">[]) => void;
     unsubscribe: (onChange: Function) => string;
-    private getIdStr;
-    private getIdObj;
-    private getRowSyncObj;
+    getIdStr(d: AnyObject): string;
+    getIdObj(d: AnyObject): AnyObject;
+    getRowSyncObj(d: AnyObject): AnyObject;
     unsync: () => void;
     destroy: () => void;
-    private matchesFilter;
-    private matchesIdObj;
+    matchesFilter(item: AnyObject): boolean;
+    matchesIdObj(a: AnyObject, b: AnyObject): boolean;
     /**
      * Returns properties that are present in {n} and are different to {o}
      * @param o current full data item
      * @param n new data item
      */
-    private getDelta;
+    getDelta(o: AnyObject, n: AnyObject): AnyObject;
     deleteAll(): void;
-    private get tableHandler();
-    private delete;
+    get tableHandler(): Pick<TableHandler, "update" | "updateBatch" | "delete"> | undefined;
+    delete: (item: AnyObject, from_server?: boolean) => Promise<boolean>;
     /**
      * Ensures that all object keys match valid column names
      */
-    private checkItemCols;
+    checkItemCols: (item: AnyObject) => void;
     /**
      * Upserts data locally -> notify subs -> sends to server if required
      * synced_field is populated if data is not from server

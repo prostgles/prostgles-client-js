@@ -1,5 +1,5 @@
 import { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, asName } from "prostgles-types";
-import { SyncDataItem, SyncOneOptions, SyncOptions, type Sync, type SyncOne } from "./SyncedTable";
+import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
@@ -130,5 +130,5 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: any): Promise<unknown>;
+export declare function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map

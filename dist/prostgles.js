@@ -21,7 +21,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = exports.useProstglesClient = exports.asName = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
-const SyncedTable_1 = require("./SyncedTable");
+const SyncedTable_1 = require("./SyncedTable/SyncedTable");
 const react_hooks_1 = require("./react-hooks");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -259,8 +259,10 @@ function prostgles(initOpts, syncedTable) {
             return (s &&
                 s.tableName === tableName &&
                 s.command === command &&
-                JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
-                JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
+                (0, react_hooks_1.isEqual)(s.param1, param1) &&
+                (0, react_hooks_1.isEqual)(s.param2, param2)
+            // JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
+            // JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
             // s.triggers.find(tr => (
             //     tr.onPullRequest === triggers.onPullRequest &&
             //     tr.onSyncRequest === triggers.onSyncRequest &&
@@ -274,7 +276,7 @@ function prostgles(initOpts, syncedTable) {
         }
         else {
             const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
-            const { channelName, synced_field, id_fields } = sync_info;
+            const { channelName } = sync_info;
             function onCall(data, cb) {
                 /*
                     Client will:
@@ -670,25 +672,38 @@ function prostgles(initOpts, syncedTable) {
                         if (syncedTable) {
                             dboTable.getSync = async (filter, params = {}) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { filter, params } }));
-                                return syncedTable.create({ name: tableName, onDebug, filter, db: dbo, ...params });
+                                return syncedTable.create({
+                                    name: tableName,
+                                    onDebug: onDebug,
+                                    filter,
+                                    db: dbo,
+                                    ...params
+                                });
                             };
-                            const upsertSTable = async (basicFilter = {}, options = {}, onError) => {
-                                const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`;
+                            const upsertSyncTable = async (basicFilter = {}, options = {}, onError) => {
+                                const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify((0, prostgles_types_1.omitKeys)(options, ["handlesOnData"]))}`;
                                 if (!syncedTables[syncName]) {
-                                    syncedTables[syncName] = await syncedTable.create({ ...options, onDebug, name: tableName, filter: basicFilter, db: dbo, onError });
+                                    syncedTables[syncName] = await syncedTable.create({
+                                        ...options,
+                                        onDebug: onDebug,
+                                        name: tableName,
+                                        filter: basicFilter,
+                                        db: dbo,
+                                        onError
+                                    });
                                 }
                                 return syncedTables[syncName];
                             };
                             const sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "sync", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
-                                const s = await upsertSTable(basicFilter, options, onError);
+                                const s = await upsertSyncTable(basicFilter, options, onError);
                                 return await s.sync(onChange, options.handlesOnData);
                             };
                             const syncOne = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } }));
                                 checkSubscriptionArgs(basicFilter, options, onChange, onError);
-                                const s = await upsertSTable(basicFilter, options, onError);
+                                const s = await upsertSyncTable(basicFilter, options, onError);
                                 return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                             };
                             dboTable.sync = sync;

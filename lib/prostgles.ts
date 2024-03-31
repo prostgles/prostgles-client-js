@@ -36,11 +36,12 @@ import {
   asName,
   getJoinHandlers,
   getKeys,
-  isObject
+  isObject,
+  omitKeys
 } from "prostgles-types";
 
-import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable";
-import { getReact, useAsyncEffectQueue, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
+import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
+import { getReact, isEqual, useAsyncEffectQueue, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -245,7 +246,7 @@ type SyncConfig = CoreParams & {
 type Syncs = {
   [channelName: string]: SyncConfig;
 };
-export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: any) {
+export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable) {
   const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
   let schemaAge: { origin: "onReady" | "onReconnect"; date: Date; } | undefined;
   debug("prostgles", { initOpts })
@@ -472,8 +473,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         s &&
         s.tableName === tableName &&
         s.command === command &&
-        JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
-        JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
+        isEqual(s.param1, param1) &&
+        isEqual(s.param2, param2) 
+        // JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
+        // JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
         // s.triggers.find(tr => (
         //     tr.onPullRequest === triggers.onPullRequest &&
         //     tr.onSyncRequest === triggers.onSyncRequest &&
@@ -487,7 +490,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       return makeHandler(existingChannel);
     } else {
       const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
-      const { channelName, synced_field, id_fields } = sync_info;
+      const { channelName } = sync_info;
       function onCall(data: any | undefined, cb: Function) {
         /*               
             Client will:
@@ -897,25 +900,38 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
               if (syncedTable) {
                 dboTable.getSync = async (filter, params = {}) => {
                   await onDebug?.({ type: "table", command: "getSync", tableName, data: { filter, params } });
-                  return syncedTable.create({ name: tableName, onDebug, filter, db: dbo, ...params });
+                  return syncedTable.create({ 
+                    name: tableName, 
+                    onDebug: onDebug as any, 
+                    filter, 
+                    db: dbo, 
+                    ...params 
+                  });
                 }
-                const upsertSTable = async (basicFilter = {}, options = {}, onError) => {
-                  const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(options)}`
+                const upsertSyncTable = async (basicFilter = {}, options: SyncOptions = {}, onError) => {
+                  const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(omitKeys(options, ["handlesOnData"]))}`
                   if (!syncedTables[syncName]) {
-                    syncedTables[syncName] = await syncedTable.create({ ...options, onDebug, name: tableName, filter: basicFilter, db: dbo, onError });
+                    syncedTables[syncName] = await syncedTable.create({ 
+                      ...options, 
+                      onDebug: onDebug as any, 
+                      name: tableName, 
+                      filter: basicFilter, 
+                      db: dbo, 
+                      onError 
+                    });
                   }
                   return syncedTables[syncName]
                 }
                 const sync: Sync<AnyObject> = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                   await onDebug?.({ type: "table", command: "sync", tableName, data: { basicFilter, options } });
                   checkSubscriptionArgs(basicFilter, options, onChange, onError);
-                  const s = await upsertSTable(basicFilter, options, onError);
+                  const s = await upsertSyncTable(basicFilter, options, onError);
                   return await s.sync(onChange, options.handlesOnData);
                 }
                 const syncOne: SyncOne<AnyObject> = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
                   await onDebug?.({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } });
                   checkSubscriptionArgs(basicFilter, options, onChange, onError);
-                  const s = await upsertSTable(basicFilter, options, onError);
+                  const s = await upsertSyncTable(basicFilter, options, onError);
                   return await s.syncOne(basicFilter, onChange, options.handlesOnData);
                 }
                 dboTable.sync = sync;
