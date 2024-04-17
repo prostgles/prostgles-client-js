@@ -18,10 +18,9 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = exports.useProstglesClient = exports.asName = exports.debug = void 0;
+exports.prostgles = exports.asName = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
-const SyncedTable_1 = require("./SyncedTable/SyncedTable");
 const react_hooks_1 = require("./react-hooks");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -32,52 +31,7 @@ const debug = function (...args) {
 };
 exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
-const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
-    const { useRef, useState } = (0, react_hooks_1.getReact)(true);
-    const [onReadyArgs, setOnReadyArgs] = useState({
-        isLoading: true
-    });
-    const getIsMounted = (0, react_hooks_1.useIsMounted)();
-    const socketRef = useRef();
-    const socket = (0, react_hooks_1.useMemoDeep)(() => {
-        var _a;
-        if (skip)
-            return undefined;
-        (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
-        const io = (0, react_hooks_1.getIO)();
-        const opts = {
-            reconnectionDelay: 1000,
-            reconnection: true,
-            ...(0, prostgles_types_1.omitKeys)(socketOptions !== null && socketOptions !== void 0 ? socketOptions : {}, ["uri"]),
-        };
-        const socket = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
-        socketRef.current = socket;
-        return socket;
-    }, [socketOptions, skip]);
-    (0, react_hooks_1.useAsyncEffectQueue)(async () => {
-        if (!socket || skip)
-            return;
-        //@ts-ignore
-        const prgl = await prostgles({
-            socket,
-            ...initOpts,
-            onReady: (...args) => {
-                if (!getIsMounted())
-                    return;
-                const [dbo, methods, tableSchema, auth, isReconnect] = args;
-                const onReadyArgs = { dbo, methods, tableSchema, auth, isReconnect };
-                setOnReadyArgs({ ...onReadyArgs, isLoading: false });
-            }
-        }, SyncedTable_1.SyncedTable)
-            .catch(error => {
-            if (!getIsMounted())
-                return;
-            setOnReadyArgs({ isLoading: false, error });
-        });
-    }, [initOpts, socket]);
-    return onReadyArgs;
-};
-exports.useProstglesClient = useProstglesClient;
+__exportStar(require("./useProstglesClient"), exports);
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
     let schemaAge;
@@ -92,15 +46,15 @@ function prostgles(initOpts, syncedTable) {
             socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
     }
     const preffix = prostgles_types_1.CHANNELS._preffix;
-    let subscriptions = {};
+    const subscriptions = {};
     let syncedTables = {};
     let syncs = {};
-    let notifSubs = {};
+    const notifSubs = {};
     const removeNotifListener = (listener, conf) => {
         const channelSubs = notifSubs[conf.notifChannel];
         if (channelSubs) {
             channelSubs.listeners = channelSubs.listeners.filter(nl => nl !== listener);
-            if (!channelSubs.listeners.length && channelSubs.config && channelSubs.config.socketUnsubChannel && socket) {
+            if (!channelSubs.listeners.length && channelSubs.config.socketUnsubChannel && socket) {
                 socket.emit(channelSubs.config.socketUnsubChannel, {});
                 delete notifSubs[conf.notifChannel];
             }
@@ -108,7 +62,6 @@ function prostgles(initOpts, syncedTable) {
     };
     const addNotifListener = (listener, conf) => {
         var _a;
-        notifSubs = notifSubs || {};
         const channelSubs = notifSubs[conf.notifChannel];
         if (!channelSubs) {
             notifSubs[conf.notifChannel] = {
@@ -136,20 +89,20 @@ function prostgles(initOpts, syncedTable) {
     const removeNoticeListener = (listener) => {
         if (noticeSubs) {
             noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
-            if (!noticeSubs.listeners.length && noticeSubs.config && noticeSubs.config.socketUnsubChannel && socket) {
+            if (!noticeSubs.listeners.length && noticeSubs.config.socketUnsubChannel && socket) {
                 socket.emit(noticeSubs.config.socketUnsubChannel, {});
             }
         }
     };
     const addNoticeListener = (listener, conf) => {
-        noticeSubs = noticeSubs || {
+        noticeSubs !== null && noticeSubs !== void 0 ? noticeSubs : (noticeSubs = {
             config: conf,
             listeners: []
-        };
+        });
         if (!noticeSubs.listeners.length) {
             socket.removeAllListeners(conf.socketChannel);
             socket.on(conf.socketChannel, (notice) => {
-                if (noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length) {
+                if (noticeSubs && noticeSubs.listeners.length) {
                     noticeSubs.listeners.map(l => {
                         l(notice);
                     });
@@ -262,15 +215,15 @@ function prostgles(initOpts, syncedTable) {
     async function _addSync({ tableName, command, param1, param2 }, triggers) {
         const { onSyncRequest } = triggers;
         function makeHandler(channelName) {
-            let unsync = function () {
+            const unsync = function () {
                 _unsync(channelName, triggers);
             };
-            let syncData = function (data, deleted, cb) {
+            const syncData = function (data, deleted, cb) {
                 socket.emit(channelName, {
                     onSyncRequest: {
                         ...onSyncRequest({}),
-                        ...({ data } || {}),
-                        ...({ deleted } || {})
+                        ...({ data }),
+                        ...({ deleted })
                     },
                 }, !cb ? null : (response) => {
                     cb(response);
@@ -279,7 +232,7 @@ function prostgles(initOpts, syncedTable) {
             return Object.freeze({ unsync, syncData });
         }
         const existingChannel = Object.keys(syncs).find(ch => {
-            let s = syncs[ch];
+            const s = syncs[ch];
             return (s &&
                 s.tableName === tableName &&
                 s.command === command &&
@@ -301,7 +254,7 @@ function prostgles(initOpts, syncedTable) {
         else {
             const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
             const { channelName } = sync_info;
-            function onCall(data, cb) {
+            const onCall = function (data, cb) {
                 /*
                     Client will:
                     1. Send last_synced     on(onSyncRequest)
@@ -318,16 +271,10 @@ function prostgles(initOpts, syncedTable) {
                     if (data.data) {
                         Promise.resolve(onUpdates(data))
                             .then(() => {
-                            if (cb)
-                                cb({ ok: true });
+                            cb({ ok: true });
                         })
                             .catch(err => {
-                            if (cb) {
-                                cb({ err });
-                            }
-                            else {
-                                console.error(tableName + " onUpdates error", err);
-                            }
+                            cb({ err });
                         });
                     }
                     else if (data.onSyncRequest) {
@@ -335,12 +282,7 @@ function prostgles(initOpts, syncedTable) {
                         Promise.resolve(onSyncRequest(data.onSyncRequest))
                             .then(res => cb({ onSyncRequest: res }))
                             .catch(err => {
-                            if (cb) {
-                                cb({ err });
-                            }
-                            else {
-                                console.error(tableName + " onSyncRequest error", err);
-                            }
+                            cb({ err });
                         });
                     }
                     else if (data.onPullRequest) {
@@ -349,12 +291,7 @@ function prostgles(initOpts, syncedTable) {
                             cb({ data: arr });
                         })
                             .catch(err => {
-                            if (cb) {
-                                cb({ err });
-                            }
-                            else {
-                                console.error(tableName + " onPullRequest error", err);
-                            }
+                            cb({ err });
                         });
                     }
                     else {
@@ -363,7 +300,7 @@ function prostgles(initOpts, syncedTable) {
                     /* Cache */
                     // window.localStorage.setItem(channelName, JSON.stringify(data))
                 });
-            }
+            };
             syncs[channelName] = {
                 tableName,
                 command,
@@ -413,7 +350,7 @@ function prostgles(initOpts, syncedTable) {
             return Object.freeze(res);
         }
         const existing = Object.entries(subscriptions).find(([ch]) => {
-            let s = subscriptions[ch];
+            const s = subscriptions[ch];
             return (s &&
                 s.tableName === tableName &&
                 s.command === command &&
@@ -430,8 +367,8 @@ function prostgles(initOpts, syncedTable) {
             // }
             setTimeout(() => {
                 var _a, _b;
-                if (onChange && ((_a = subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existingCh]) === null || _a === void 0 ? void 0 : _a.lastData)) {
-                    onChange((_b = subscriptions === null || subscriptions === void 0 ? void 0 : subscriptions[existingCh]) === null || _b === void 0 ? void 0 : _b.lastData);
+                if ((_a = subscriptions[existingCh]) === null || _a === void 0 ? void 0 : _a.lastData) {
+                    onChange((_b = subscriptions[existingCh]) === null || _b === void 0 ? void 0 : _b.lastData);
                 }
             }, 10);
             return makeHandler(existingCh, existing[1].unsubChannel);
@@ -523,44 +460,43 @@ function prostgles(initOpts, syncedTable) {
             }
             const isReconnect = state === "reconnected";
             state = "connected";
-            let dbo = JSON.parse(JSON.stringify(schema));
-            let _methods = JSON.parse(JSON.stringify(methods)), methodsObj = {}, _auth = {};
-            if (auth) {
-                if (auth.pathGuard && hasWnd) {
-                    const doReload = (res) => {
-                        var _a, _b;
-                        if (res === null || res === void 0 ? void 0 : res.shouldReload) {
-                            if (onReload)
-                                onReload();
-                            else if (typeof window !== "undefined") {
-                                (_b = (_a = window === null || window === void 0 ? void 0 : window.location) === null || _a === void 0 ? void 0 : _a.reload) === null || _b === void 0 ? void 0 : _b.call(_a);
-                            }
+            const dbo = JSON.parse(JSON.stringify(schema));
+            const _methods = JSON.parse(JSON.stringify(methods));
+            let methodsObj = {};
+            let _auth = {};
+            if (auth.pathGuard && hasWnd) {
+                const doReload = (res) => {
+                    if (res === null || res === void 0 ? void 0 : res.shouldReload) {
+                        if (onReload)
+                            onReload();
+                        else if (typeof window !== "undefined") {
+                            window.location.reload();
                         }
-                    };
-                    socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
-                        doReload(res);
-                    });
-                    socket.removeAllListeners(prostgles_types_1.CHANNELS.AUTHGUARD);
-                    socket.on(prostgles_types_1.CHANNELS.AUTHGUARD, (res) => {
-                        doReload(res);
-                    });
-                }
-                _auth = { ...auth };
-                [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
-                    if (auth[funcName]) {
-                        _auth[funcName] = function (params) {
-                            return new Promise((resolve, reject) => {
-                                socket.emit(preffix + funcName, params, (err, res) => {
-                                    if (err)
-                                        reject(err);
-                                    else
-                                        resolve(res);
-                                });
-                            });
-                        };
                     }
+                };
+                socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
+                    doReload(res);
+                });
+                socket.removeAllListeners(prostgles_types_1.CHANNELS.AUTHGUARD);
+                socket.on(prostgles_types_1.CHANNELS.AUTHGUARD, (res) => {
+                    doReload(res);
                 });
             }
+            _auth = { ...auth };
+            [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
+                if (auth[funcName]) {
+                    _auth[funcName] = function (params) {
+                        return new Promise((resolve, reject) => {
+                            socket.emit(preffix + funcName, params, (err, res) => {
+                                if (err)
+                                    reject(err);
+                                else
+                                    resolve(res);
+                            });
+                        });
+                    };
+                }
+            });
             _methods.map(method => {
                 /** New method def */
                 const isBasic = typeof method === "string";
@@ -732,7 +668,9 @@ function prostgles(initOpts, syncedTable) {
                             };
                             dboTable.sync = sync;
                             dboTable.syncOne = syncOne;
+                            // eslint-disable-next-line react-hooks/rules-of-hooks
                             dboTable.useSync = (basicFilter, options) => (0, react_hooks_1.useSync)(sync, basicFilter, options);
+                            // eslint-disable-next-line react-hooks/rules-of-hooks
                             dboTable.useSyncOne = (basicFilter, options) => (0, react_hooks_1.useSync)(syncOne, basicFilter, options);
                         }
                         dboTable._sync = async function (param1, param2, syncHandles) {
@@ -753,13 +691,14 @@ function prostgles(initOpts, syncedTable) {
                          */
                         const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne" ? "useSubscribeOne" : undefined;
                         if (handlerName) {
+                            // eslint-disable-next-line react-hooks/rules-of-hooks
                             dboTable[handlerName] = (filter, options) => (0, react_hooks_1.useSubscribe)(subFunc, command === SUBONE, filter, options);
                         }
                         if (command === SUBONE || !sub_commands.includes(SUBONE)) {
                             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } }));
                                 checkSubscriptionArgs(param1, param2, onChange, onError);
-                                let onChangeOne = (rows) => { onChange(rows[0]); };
+                                const onChangeOne = (rows) => { onChange(rows[0]); };
                                 return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
                             };
                         }
@@ -781,11 +720,12 @@ function prostgles(initOpts, syncedTable) {
                         dboTable[command] = method;
                         const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
                         if (methodName) {
+                            // eslint-disable-next-line react-hooks/rules-of-hooks
                             dboTable[methodName] = (param1, param2, param3) => (0, react_hooks_1.useFetch)(method, [param1, param2, param3]);
                         }
                         if (["find", "findOne"].includes(command)) {
                             dboTable.getJoinedTables = function () {
-                                return (joinTables || [])
+                                return joinTables
                                     .filter(tb => Array.isArray(tb) && tb.includes(tableName))
                                     .flat()
                                     .filter(t => t !== tableName);
@@ -795,10 +735,10 @@ function prostgles(initOpts, syncedTable) {
                 });
             });
             // Re-attach listeners
-            if (subscriptions && Object.keys(subscriptions).length) {
+            if (Object.keys(subscriptions).length) {
                 Object.keys(subscriptions).map(async (ch) => {
                     try {
-                        let s = subscriptions[ch];
+                        const s = subscriptions[ch];
                         await addServerSub(s);
                         socket.on(ch, s.onCall);
                     }
@@ -807,13 +747,13 @@ function prostgles(initOpts, syncedTable) {
                     }
                 });
             }
-            if (syncs && Object.keys(syncs).length) {
+            if (Object.keys(syncs).length) {
                 (0, prostgles_types_1.getKeys)(syncs).filter(ch => {
                     var _a;
                     return (_a = syncs[ch]) === null || _a === void 0 ? void 0 : _a.triggers.length;
                 }).map(async (ch) => {
                     try {
-                        let s = syncs[ch];
+                        const s = syncs[ch];
                         await addServerSync(s, s.triggers[0].onSyncRequest);
                         socket.on(ch, s.onCall);
                     }
@@ -823,10 +763,11 @@ function prostgles(initOpts, syncedTable) {
                 });
             }
             joinTables.flat().map(table => {
-                dbo.innerJoin = dbo.innerJoin || {};
-                dbo.leftJoin = dbo.leftJoin || {};
-                dbo.innerJoinOne = dbo.innerJoinOne || {};
-                dbo.leftJoinOne = dbo.leftJoinOne || {};
+                var _a, _b, _c, _d;
+                (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});
+                (_b = dbo.leftJoin) !== null && _b !== void 0 ? _b : (dbo.leftJoin = {});
+                (_c = dbo.innerJoinOne) !== null && _c !== void 0 ? _c : (dbo.innerJoinOne = {});
+                (_d = dbo.leftJoinOne) !== null && _d !== void 0 ? _d : (dbo.leftJoinOne = {});
                 const joinHandlers = (0, prostgles_types_1.getJoinHandlers)(table);
                 //@ts-ignore
                 dbo.leftJoin[table] = joinHandlers.leftJoin;
@@ -848,7 +789,6 @@ function prostgles(initOpts, syncedTable) {
     });
 }
 exports.prostgles = prostgles;
-;
 class FunctionQueuer {
     constructor(func, groupBy) {
         this.queue = [];

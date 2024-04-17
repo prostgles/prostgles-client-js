@@ -1,33 +1,10 @@
-import { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, asName } from "prostgles-types";
-import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
-import type { ManagerOptions, SocketOptions } from "socket.io-client";
+import type { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
+import { asName } from "prostgles-types";
+import type { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, Sync, SyncOne } from "./SyncedTable/SyncedTable";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
-type OnReadyParams<DBSchema> = {
-    dbo: DBHandlerClient<DBSchema>;
-    methods: MethodHandler | undefined;
-    tableSchema: DBSchemaTable[] | undefined;
-    auth: Auth | undefined;
-    isReconnect: boolean;
-};
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
-    socketOptions?: Partial<ManagerOptions & SocketOptions> & {
-        uri?: string;
-    };
-    skip?: boolean;
-};
-type ProstglesClientState<PGC> = {
-    isLoading: true;
-    error?: undefined;
-} | {
-    isLoading: false;
-    error?: undefined;
-} & PGC | {
-    isLoading: false;
-    error: any;
-};
-export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions, ...initOpts }?: HookInitOpts) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
+export * from "./useProstglesClient";
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
@@ -146,5 +123,5 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable): Promise<unknown>;
+export declare function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map

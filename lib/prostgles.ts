@@ -4,11 +4,10 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
+import type {
   AnyObject,
   AuthGuardLocation,
   AuthGuardLocationResponse,
-  CHANNELS,
   ClientSchema,
   ClientSyncHandles,
   DBEventHandles,
@@ -33,17 +32,19 @@ import {
   TableHandler,
   UpdateParams,
   ViewHandler,
+} from "prostgles-types";
+
+import {
   asName,
   getJoinHandlers,
   getKeys,
   isObject,
-  omitKeys
+  omitKeys,
+  CHANNELS,
 } from "prostgles-types";
 
-import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
-import { getIO, getReact, isEqual, useAsyncEffectQueue, useEffectDeep, useFetch, useIsMounted, useMemoDeep, useSubscribe, useSync } from "./react-hooks";
-import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import { useMemo } from "react";
+import type { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, DbTableSync, Sync, SyncOne } from "./SyncedTable/SyncedTable";
+import { isEqual, useFetch, useSubscribe, useSync } from "./react-hooks";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -56,68 +57,8 @@ export const debug: any = function (...args: any[]) {
 export { MethodHandler, SQLResult, asName };
 
 export * from "./react-hooks";
+export * from "./useProstglesClient";
 
-type OnReadyParams<DBSchema> = {
-  dbo: DBHandlerClient<DBSchema>;
-  methods: MethodHandler | undefined; 
-  tableSchema: DBSchemaTable[] | undefined; 
-  auth: Auth | undefined;
-  isReconnect: boolean;
-}
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
-  socketOptions?: Partial<ManagerOptions & SocketOptions> & { uri?: string; };
-  skip?: boolean;
-};
-type ProstglesClientState<PGC> = 
-| { isLoading: true; error?: undefined; }
-| { isLoading: false; error?: undefined; } & PGC 
-| { isLoading: false; error: any; };
-
-export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: HookInitOpts = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
-  const { useRef, useState } = getReact(true);
-  const [onReadyArgs, setOnReadyArgs] = useState<ProstglesClientState<OnReadyParams<DBSchema>>>({
-    isLoading: true
-  });
-  const getIsMounted = useIsMounted();
-
-  const socketRef = useRef<Socket>();
-  const socket = useMemoDeep(() => {
-    if(skip) return undefined;
-    socketRef.current?.disconnect();
-    const io = getIO();
-    const opts = {
-      reconnectionDelay: 1000,
-      reconnection: true,
-      ...omitKeys(socketOptions ?? {}, ["uri"]),
-    }
-    const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
-    socketRef.current = socket;
-    return socket;
-  }, [socketOptions, skip]);
-
-  useAsyncEffectQueue(async () => {
-    if(!socket || skip) return;
-
-    //@ts-ignore
-    const prgl = await prostgles({
-      socket,
-      ...initOpts, 
-      onReady: (...args) => {
-        if (!getIsMounted()) return;
-        const [dbo, methods, tableSchema, auth, isReconnect] = args;
-        const onReadyArgs = { dbo, methods,tableSchema, auth, isReconnect } as OnReadyParams<DBSchema>;
-        setOnReadyArgs({ ...onReadyArgs, isLoading: false  } satisfies ProstglesClientState<OnReadyParams<DBSchema>>);
-      }
-    }, SyncedTable)
-    .catch(error => {
-      if (!getIsMounted()) return;
-      setOnReadyArgs({ isLoading: false, error });
-    });
-    
-  }, [initOpts, socket]);
-
-  return onReadyArgs;
-}
 
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
   getJoinedTables: () => string[];
@@ -274,7 +215,7 @@ type SyncConfig = CoreParams & {
 type Syncs = {
   [channelName: string]: SyncConfig;
 };
-export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable) {
+export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable | undefined) {
   const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
   let schemaAge: { origin: "onReady" | "onReconnect"; date: Date; } | undefined;
   debug("prostgles", { initOpts })
@@ -288,13 +229,13 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   }
 
   const preffix = CHANNELS._preffix;
-  let subscriptions: Subscriptions = {};
+  const subscriptions: Subscriptions = {};
 
   let syncedTables: Record<string, any> = {};
 
   let syncs: Syncs = {};
 
-  let notifSubs: {
+  const notifSubs: {
     [key: string]: {
       config: DBNotifConfig
       listeners: ((notif: any) => void)[]
@@ -304,14 +245,13 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     const channelSubs = notifSubs[conf.notifChannel]
     if (channelSubs) {
       channelSubs.listeners = channelSubs.listeners.filter(nl => nl !== listener);
-      if (!channelSubs.listeners.length && channelSubs.config && channelSubs.config.socketUnsubChannel && socket) {
+      if (!channelSubs.listeners.length && channelSubs.config.socketUnsubChannel && socket) {
         socket.emit(channelSubs.config.socketUnsubChannel, {});
         delete notifSubs[conf.notifChannel];
       }
     }
   };
   const addNotifListener = (listener: any, conf: DBNotifConfig) => {
-    notifSubs = notifSubs || {};
 
     const channelSubs = notifSubs[conf.notifChannel]
     if (!channelSubs) {
@@ -339,17 +279,17 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   let noticeSubs: {
     listeners: ((notice: any) => void)[];
     config: DBNoticeConfig;
-  };
+  } | undefined;
   const removeNoticeListener = (listener: any) => {
     if (noticeSubs) {
       noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
-      if (!noticeSubs.listeners.length && noticeSubs.config && noticeSubs.config.socketUnsubChannel && socket) {
+      if (!noticeSubs.listeners.length && noticeSubs.config.socketUnsubChannel && socket) {
         socket.emit(noticeSubs.config.socketUnsubChannel, {});
       }
     }
   };
   const addNoticeListener = (listener: any, conf: DBNoticeConfig) => {
-    noticeSubs = noticeSubs || {
+    noticeSubs ??= {
       config: conf,
       listeners: []
     };
@@ -357,7 +297,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     if (!noticeSubs.listeners.length) {
       socket.removeAllListeners(conf.socketChannel);
       socket.on(conf.socketChannel, (notice: any) => {
-        if (noticeSubs && noticeSubs.listeners && noticeSubs.listeners.length) {
+        if (noticeSubs && noticeSubs.listeners.length) {
           noticeSubs.listeners.map(l => {
             l(notice);
           })
@@ -437,7 +377,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         if (err) {
           console.error(err);
           reject(err);
-        } else if (res) {
+        } else if (res as any) {
           const { id_fields, synced_field, channelName } = res;
 
           socket.emit(channelName, { onSyncRequest: onSyncRequest({}) }, (response: any) => {
@@ -472,17 +412,17 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     const { onSyncRequest } = triggers;
 
     function makeHandler(channelName: string) {
-      let unsync = function () {
+      const unsync = function () {
         _unsync(channelName, triggers);
       }
 
-      let syncData: DbTableSync["syncData"] = function (data, deleted, cb) {
+      const syncData: DbTableSync["syncData"] = function (data, deleted, cb) {
         socket.emit(channelName,
           {
             onSyncRequest: {
               ...onSyncRequest({}),
-              ...({ data } || {}),
-              ...({ deleted } || {})
+              ...({ data }),
+              ...({ deleted })
             },
           },
           !cb ? null : (response?: any) => {
@@ -495,7 +435,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
 
     const existingChannel = Object.keys(syncs).find(ch => {
-      let s = syncs[ch];
+      const s = syncs[ch];
       return (
         s &&
         s.tableName === tableName &&
@@ -518,7 +458,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     } else {
       const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
       const { channelName } = sync_info;
-      function onCall(data: any | undefined, cb: Function) {
+      const onCall = function (data: any | undefined, cb: Function) {
         /*               
             Client will:
             1. Send last_synced     on(onSyncRequest)
@@ -535,25 +475,17 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           if (data.data) {
             Promise.resolve(onUpdates(data))
               .then(() => {
-                if (cb) cb({ ok: true })
+                cb({ ok: true })
               })
               .catch(err => {
-                if (cb) {
-                  cb({ err })
-                } else {
-                  console.error(tableName + " onUpdates error", err)
-                }
+                cb({ err });
               });
           } else if (data.onSyncRequest) {
             // cb(onSyncRequest());
             Promise.resolve(onSyncRequest(data.onSyncRequest))
               .then(res => cb({ onSyncRequest: res }))
               .catch(err => {
-                if (cb) {
-                  cb({ err })
-                } else {
-                  console.error(tableName + " onSyncRequest error", err)
-                }
+                cb({ err });
               })
 
           } else if (data.onPullRequest) {
@@ -562,11 +494,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 cb({ data: arr });
               })
               .catch(err => {
-                if (cb) {
-                  cb({ err })
-                } else {
-                  console.error(tableName + " onPullRequest error", err)
-                }
+                cb({ err });
               })
           } else {
             console.log("unexpected response")
@@ -634,7 +562,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
 
     const existing = Object.entries(subscriptions).find(([ch]) => {
-      let s = subscriptions[ch];
+      const s = subscriptions[ch];
       return (
         s &&
         s.tableName === tableName &&
@@ -653,8 +581,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
       // }
       setTimeout(() => {
-        if (onChange && subscriptions?.[existingCh]?.lastData) {
-          onChange(subscriptions?.[existingCh]?.lastData)
+        if (subscriptions[existingCh]?.lastData) {
+          onChange(subscriptions[existingCh]?.lastData)
         }
       }, 10)
       return makeHandler(existingCh, existing[1].unsubChannel);
@@ -752,45 +680,43 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       const isReconnect = state === "reconnected";
       state = "connected";
 
-      let dbo: DBHandlerClient = JSON.parse(JSON.stringify(schema));
-      let _methods: typeof methods = JSON.parse(JSON.stringify(methods)),
-        methodsObj: MethodHandler = {},
-        _auth = {};
-
-      if (auth) {
-        if (auth.pathGuard && hasWnd) {
-          const doReload = (res?: AuthGuardLocationResponse) => {
-            if (res?.shouldReload) {
-              if (onReload) onReload();
-              else if (typeof window !== "undefined") {
-                window?.location?.reload?.();
-              }
+      const dbo: Partial<DBHandlerClient> = JSON.parse(JSON.stringify(schema));
+      const _methods: typeof methods = JSON.parse(JSON.stringify(methods));
+      let methodsObj: MethodHandler = {};
+      let _auth = {};
+ 
+      if (auth.pathGuard && hasWnd) {
+        const doReload = (res?: AuthGuardLocationResponse) => {
+          if (res?.shouldReload) {
+            if (onReload) onReload();
+            else if (typeof window !== "undefined") {
+              window.location.reload();
             }
           }
-          socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any, res: AuthGuardLocationResponse) => {
-            doReload(res)
-          });
-
-          socket.removeAllListeners(CHANNELS.AUTHGUARD);
-          socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse) => {
-            doReload(res);
-          });
         }
+        socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any, res: AuthGuardLocationResponse) => {
+          doReload(res)
+        });
 
-        _auth = { ...auth };
-        [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
-          if (auth[funcName]) {
-            _auth[funcName] = function (params) {
-              return new Promise((resolve, reject) => {
-                socket.emit(preffix + funcName, params, (err, res) => {
-                  if (err) reject(err);
-                  else resolve(res);
-                });
-              });
-            }
-          }
+        socket.removeAllListeners(CHANNELS.AUTHGUARD);
+        socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse) => {
+          doReload(res);
         });
       }
+
+      _auth = { ...auth };
+      [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
+        if (auth[funcName]) {
+          _auth[funcName] = function (params) {
+            return new Promise((resolve, reject) => {
+              socket.emit(preffix + funcName, params, (err, res) => {
+                if (err) reject(err);
+                else resolve(res);
+              });
+            });
+          }
+        }
+      });
 
       _methods.map(method => {
         /** New method def */
@@ -908,7 +834,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       }
 
       /* Building DBO object */
-      const checkSubscriptionArgs = (basicFilter: AnyObject, options: AnyObject, onChange: Function, onError?: Function) => {
+      const checkSubscriptionArgs = (basicFilter: AnyObject | undefined, options: AnyObject | undefined, onChange: Function, onError?: Function) => {
         if (basicFilter !== undefined && !isObject(basicFilter) || options !== undefined && !isObject(options) || !(typeof onChange === "function") || onError !== undefined && typeof onError !== "function") {
           throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
         }
@@ -963,7 +889,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 }
                 dboTable.sync = sync;
                 dboTable.syncOne = syncOne;
+                // eslint-disable-next-line react-hooks/rules-of-hooks
                 dboTable.useSync = (basicFilter, options) => useSync(sync, basicFilter, options) as any;
+                // eslint-disable-next-line react-hooks/rules-of-hooks
                 dboTable.useSyncOne = (basicFilter, options) => useSync(syncOne, basicFilter, options) as any;
               }
 
@@ -985,6 +913,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                */
               const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
               if(handlerName){
+                // eslint-disable-next-line react-hooks/rules-of-hooks
                 dboTable[handlerName] = (filter, options) => useSubscribe(subFunc, command === SUBONE, filter, options)
               }
 
@@ -993,7 +922,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                   await onDebug?.({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } });
                   checkSubscriptionArgs(param1, param2, onChange, onError);
 
-                  let onChangeOne = (rows) => { onChange(rows[0]) };
+                  const onChangeOne = (rows) => { onChange(rows[0]) };
                   return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
                 };
               }
@@ -1016,11 +945,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
               const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
               if(methodName){
+                // eslint-disable-next-line react-hooks/rules-of-hooks
                 dboTable[methodName] = (param1, param2, param3?) => useFetch(method, [param1, param2, param3]);
               }
               if (["find", "findOne"].includes(command)) {
                 dboTable.getJoinedTables = function () {
-                  return (joinTables || [])
+                  return joinTables
                     .filter(tb => Array.isArray(tb) && tb.includes(tableName))
                     .flat()
                     .filter(t => t !== tableName);
@@ -1032,10 +962,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
 
       // Re-attach listeners
-      if (subscriptions && Object.keys(subscriptions).length) {
+      if (Object.keys(subscriptions).length) {
         Object.keys(subscriptions).map(async ch => {
           try {
-            let s = subscriptions[ch]!;
+            const s = subscriptions[ch]!;
             await addServerSub(s);
             socket.on(ch, s.onCall);
           } catch (err) {
@@ -1043,12 +973,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           }
         });
       }
-      if (syncs && Object.keys(syncs).length) {
+      if (Object.keys(syncs).length) {
         getKeys(syncs).filter(ch => {
           return syncs[ch]?.triggers.length
         }).map(async ch => {
           try {
-            let s = syncs[ch]!;
+            const s = syncs[ch]!;
             await addServerSync(s, s.triggers[0]!.onSyncRequest);
             socket.on(ch, s.onCall);
           } catch (err) {
@@ -1059,10 +989,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
 
       joinTables.flat().map(table => {
-        dbo.innerJoin = dbo.innerJoin || {};
-        dbo.leftJoin = dbo.leftJoin || {};
-        dbo.innerJoinOne = dbo.innerJoinOne || {};
-        dbo.leftJoinOne = dbo.leftJoinOne || {};
+        dbo.innerJoin ??= {};
+        dbo.leftJoin ??= {};
+        dbo.innerJoinOne ??= {};
+        dbo.leftJoinOne ??= {};
         const joinHandlers = getJoinHandlers(table);
         //@ts-ignore
         dbo.leftJoin[table] = joinHandlers.leftJoin;
@@ -1084,7 +1014,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       })();
     });
   })
-};
+}
 
 type Func = (...args: any[]) => any;
 class FunctionQueuer<F extends Func> {

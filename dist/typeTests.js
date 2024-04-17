@@ -6,7 +6,7 @@ const prostgles_1 = require("./prostgles");
     const client = (0, prostgles_1.useProstglesClient)();
     if (client.isLoading || "error" in client)
         return;
-    const t1 = client === null || client === void 0 ? void 0 : client.dbo.table1.useFind({}, { orderBy: { col1: 1 } });
+    const t1 = client.dbo.table1.useFind({}, { orderBy: { col1: 1 } });
     const dbo = 1;
     const client2 = (0, prostgles_1.useProstglesClient)();
     if (client2.isLoading || "error" in client2)

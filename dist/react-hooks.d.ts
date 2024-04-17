@@ -1,6 +1,6 @@
 /// <reference types="react" />
-import { SubscriptionHandler } from "prostgles-types";
-import { TableHandlerClient } from "./prostgles";
+import { type SubscriptionHandler } from "prostgles-types";
+import type { TableHandlerClient } from "./prostgles";
 type ReactT = typeof import("react");
 export declare const getReact: (throwError?: boolean) => ReactT;
 export declare const getIO: (throwError?: boolean) => typeof import("socket.io-client").io;

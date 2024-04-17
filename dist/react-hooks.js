@@ -8,16 +8,19 @@ const alertNoReact = (...args) => { throw "Must install react"; };
 const alertNoReactT = (...args) => { throw "Must install react"; };
 const getReact = (throwError) => {
     try {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         React !== null && React !== void 0 ? React : (React = require("react"));
     }
     catch (err) {
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (throwError && !React)
         throw new Error("Must install react");
     return React;
 };
 exports.getReact = getReact;
 (0, exports.getReact)();
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = (_a = React) !== null && _a !== void 0 ? _a : {};
 const getIO = (throwError = false) => {
     try {
@@ -40,6 +43,7 @@ const isEqual = function (x, y) {
             return false;
         }
         for (const prop in x) {
+            // eslint-disable-next-line no-prototype-builtins
             if (y.hasOwnProperty(prop)) {
                 if (!(0, exports.isEqual)(x[prop], y[prop])) {
                     return false;
@@ -64,9 +68,11 @@ const useDeepCompareMemoize = (value) => {
 };
 exports.useDeepCompareMemoize = useDeepCompareMemoize;
 exports.useMemoDeep = ((callback, deps) => {
-    React.useMemo(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return React.useMemo(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
 });
 exports.useEffectDeep = ((callback, deps) => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
 });
 /**
@@ -84,6 +90,7 @@ const useAsyncEffectQueue = (effect, deps) => {
         var _a, _b, _c;
         if (queue.current.latestEffect &&
             (!queue.current.activeEffect || queue.current.activeEffect.resolvedCleanup)) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             await ((_c = (_b = (_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
             queue.current.activeEffect = queue.current.latestEffect;
             queue.current.latestEffect = undefined;
@@ -93,6 +100,7 @@ const useAsyncEffectQueue = (effect, deps) => {
             if (!queue.current.activeEffect)
                 return;
             const run = await queue.current.activeEffect.effect();
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!queue.current.activeEffect) {
                 await (run === null || run === void 0 ? void 0 : run());
                 return;
@@ -105,6 +113,7 @@ const useAsyncEffectQueue = (effect, deps) => {
     };
     const cleanupActiveEffect = async () => {
         var _a, _b, _c;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         await ((_c = (_b = (_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
         queue.current.activeEffect = undefined;
         runAsyncEffect(queue);

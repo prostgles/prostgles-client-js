@@ -1,5 +1,5 @@
-import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
-import { TableHandlerClient } from "./prostgles";
+import { type SubscriptionHandler, getKeys, isObject } from "prostgles-types";
+import type { TableHandlerClient } from "./prostgles";
 type ReactT = typeof import("react");
 let React: ReactT;
 
@@ -7,14 +7,17 @@ const alertNoReact = (...args: any[]): any => { throw "Must install react" }
 const alertNoReactT = <T>(...args: any[]): any => { throw "Must install react" }
 export const getReact = (throwError?: boolean): ReactT => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     React ??= require("react");
   } catch(err){
   
   }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if(throwError && !React) throw new Error("Must install react");
   return React as any;
 };
 getReact();
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = React! ?? {};
 
 type IO = typeof import("socket.io-client").default;
@@ -37,6 +40,7 @@ export const isEqual = function (x, y) {
     }
 
     for (const prop in x) {
+      // eslint-disable-next-line no-prototype-builtins
       if (y.hasOwnProperty(prop)){  
         if (! isEqual(x[prop], y[prop])){
           return false;
@@ -61,18 +65,20 @@ export const useDeepCompareMemoize = (value: any) => {
 }
 
 export const useMemoDeep = ((callback, deps) => {
-  React.useMemo(
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return React.useMemo(
     callback,
     deps?.map(useDeepCompareMemoize)
-  )
-}) as ReactT["useMemo"]
+  );
+}) as ReactT["useMemo"];
 
 export const useEffectDeep = ((callback, deps) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(
     callback,
     deps?.map(useDeepCompareMemoize)
   )
-}) as ReactT["useEffect"]
+}) as ReactT["useEffect"];
 
 type AsyncCleanup = void | (() => void | Promise<void>)
 type AsyncActiveEffect = {
@@ -105,6 +111,7 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
       queue.current.latestEffect && 
       (!queue.current.activeEffect || queue.current.activeEffect.resolvedCleanup)
     ){
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       await queue.current.activeEffect?.resolvedCleanup?.run?.();
       queue.current.activeEffect = queue.current.latestEffect as AsyncActiveEffect | undefined;
       queue.current.latestEffect = undefined;
@@ -113,6 +120,7 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
        */
       if(!queue.current.activeEffect) return;
       const run = await queue.current.activeEffect.effect();
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if(!queue.current.activeEffect) {
         await run?.();
         return;
@@ -124,6 +132,7 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
     }
   }
   const cleanupActiveEffect = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     await queue.current.activeEffect?.resolvedCleanup?.run?.();
     queue.current.activeEffect = undefined;
     runAsyncEffect(queue)
@@ -320,5 +329,5 @@ export const useFetch = (fetchFunc: (...args: any) => Promise<any>, args: any[] 
   return { data, error, isLoading };
 }
 
-export const __prglReactInstalled = () => Boolean(React && useRef);
+export const __prglReactInstalled = () => Boolean(React as any && useRef);
 
