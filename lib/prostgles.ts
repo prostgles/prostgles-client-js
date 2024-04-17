@@ -685,38 +685,40 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       let methodsObj: MethodHandler = {};
       let _auth = {};
  
-      if (auth.pathGuard && hasWnd) {
-        const doReload = (res?: AuthGuardLocationResponse) => {
-          if (res?.shouldReload) {
-            if (onReload) onReload();
-            else if (typeof window !== "undefined") {
-              window.location.reload();
+      if(auth){
+        if (auth.pathGuard && hasWnd) {
+          const doReload = (res?: AuthGuardLocationResponse) => {
+            if (res?.shouldReload) {
+              if (onReload) onReload();
+              else if (typeof window !== "undefined") {
+                window.location.reload();
+              }
             }
           }
+          socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any, res: AuthGuardLocationResponse) => {
+            doReload(res)
+          });
+  
+          socket.removeAllListeners(CHANNELS.AUTHGUARD);
+          socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse) => {
+            doReload(res);
+          });
         }
-        socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any, res: AuthGuardLocationResponse) => {
-          doReload(res)
-        });
-
-        socket.removeAllListeners(CHANNELS.AUTHGUARD);
-        socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse) => {
-          doReload(res);
+  
+        _auth = { ...auth };
+        [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
+          if (auth[funcName]) {
+            _auth[funcName] = function (params) {
+              return new Promise((resolve, reject) => {
+                socket.emit(preffix + funcName, params, (err, res) => {
+                  if (err) reject(err);
+                  else resolve(res);
+                });
+              });
+            }
+          }
         });
       }
-
-      _auth = { ...auth };
-      [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
-        if (auth[funcName]) {
-          _auth[funcName] = function (params) {
-            return new Promise((resolve, reject) => {
-              socket.emit(preffix + funcName, params, (err, res) => {
-                if (err) reject(err);
-                else resolve(res);
-              });
-            });
-          }
-        }
-      });
 
       _methods.map(method => {
         /** New method def */

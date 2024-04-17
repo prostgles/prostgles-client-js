@@ -464,39 +464,41 @@ function prostgles(initOpts, syncedTable) {
             const _methods = JSON.parse(JSON.stringify(methods));
             let methodsObj = {};
             let _auth = {};
-            if (auth.pathGuard && hasWnd) {
-                const doReload = (res) => {
-                    if (res === null || res === void 0 ? void 0 : res.shouldReload) {
-                        if (onReload)
-                            onReload();
-                        else if (typeof window !== "undefined") {
-                            window.location.reload();
+            if (auth) {
+                if (auth.pathGuard && hasWnd) {
+                    const doReload = (res) => {
+                        if (res === null || res === void 0 ? void 0 : res.shouldReload) {
+                            if (onReload)
+                                onReload();
+                            else if (typeof window !== "undefined") {
+                                window.location.reload();
+                            }
                         }
+                    };
+                    socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
+                        doReload(res);
+                    });
+                    socket.removeAllListeners(prostgles_types_1.CHANNELS.AUTHGUARD);
+                    socket.on(prostgles_types_1.CHANNELS.AUTHGUARD, (res) => {
+                        doReload(res);
+                    });
+                }
+                _auth = { ...auth };
+                [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
+                    if (auth[funcName]) {
+                        _auth[funcName] = function (params) {
+                            return new Promise((resolve, reject) => {
+                                socket.emit(preffix + funcName, params, (err, res) => {
+                                    if (err)
+                                        reject(err);
+                                    else
+                                        resolve(res);
+                                });
+                            });
+                        };
                     }
-                };
-                socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
-                    doReload(res);
-                });
-                socket.removeAllListeners(prostgles_types_1.CHANNELS.AUTHGUARD);
-                socket.on(prostgles_types_1.CHANNELS.AUTHGUARD, (res) => {
-                    doReload(res);
                 });
             }
-            _auth = { ...auth };
-            [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
-                if (auth[funcName]) {
-                    _auth[funcName] = function (params) {
-                        return new Promise((resolve, reject) => {
-                            socket.emit(preffix + funcName, params, (err, res) => {
-                                if (err)
-                                    reject(err);
-                                else
-                                    resolve(res);
-                            });
-                        });
-                    };
-                }
-            });
             _methods.map(method => {
                 /** New method def */
                 const isBasic = typeof method === "string";
