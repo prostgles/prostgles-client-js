@@ -41,8 +41,9 @@ import {
 } from "prostgles-types";
 
 import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
-import { getIO, getReact, isEqual, useAsyncEffectQueue, useEffectDeep, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
+import { getIO, getReact, isEqual, useAsyncEffectQueue, useEffectDeep, useFetch, useIsMounted, useMemoDeep, useSubscribe, useSync } from "./react-hooks";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
+import { useMemo } from "react";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -78,11 +79,10 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     isLoading: true
   });
   const getIsMounted = useIsMounted();
-  const socketRef = useRef<Socket>();
-  const [socket, setSocket] = useState<Socket>();
 
-  useEffectDeep(() => {
-    if(skip) return;
+  const socketRef = useRef<Socket>();
+  const socket = useMemoDeep(() => {
+    if(skip) return undefined;
     socketRef.current?.disconnect();
     const io = getIO();
     const opts = {
@@ -90,8 +90,9 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       reconnection: true,
       ...omitKeys(socketOptions ?? {}, ["uri"]),
     }
-    socketRef.current = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
-    setSocket(socketRef.current);
+    const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
+    socketRef.current = socket;
+    return socket;
   }, [socketOptions]);
 
   useAsyncEffectQueue(async () => {

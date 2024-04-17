@@ -1,7 +1,7 @@
 "use strict";
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getIO = exports.getReact = void 0;
+exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useMemoDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getIO = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
 const alertNoReact = (...args) => { throw "Must install react"; };
@@ -63,10 +63,12 @@ const useDeepCompareMemoize = (value) => {
     return ref.current;
 };
 exports.useDeepCompareMemoize = useDeepCompareMemoize;
-const useEffectDeep = (callback, deps) => {
-    useEffect(callback, deps.map(exports.useDeepCompareMemoize));
-};
-exports.useEffectDeep = useEffectDeep;
+exports.useMemoDeep = ((callback, deps) => {
+    React.useMemo(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
+});
+exports.useEffectDeep = ((callback, deps) => {
+    useEffect(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
+});
 /**
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up

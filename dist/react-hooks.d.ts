@@ -1,10 +1,13 @@
+/// <reference types="react" />
 import { SubscriptionHandler } from "prostgles-types";
 import { TableHandlerClient } from "./prostgles";
-export declare const getReact: (throwError?: boolean) => typeof import("react");
+type ReactT = typeof import("react");
+export declare const getReact: (throwError?: boolean) => ReactT;
 export declare const getIO: (throwError?: boolean) => typeof import("socket.io-client").io;
 export declare const isEqual: (x: any, y: any) => boolean;
 export declare const useDeepCompareMemoize: (value: any) => undefined;
-export declare const useEffectDeep: (callback: any, deps: any) => void;
+export declare const useMemoDeep: typeof import("react").useMemo;
+export declare const useEffectDeep: typeof import("react").useEffect;
 /**
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up

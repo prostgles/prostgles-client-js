@@ -1,10 +1,11 @@
 import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
 import { TableHandlerClient } from "./prostgles";
-let React: typeof import("react") | undefined;
+type ReactT = typeof import("react");
+let React: ReactT;
 
 const alertNoReact = (...args: any[]): any => { throw "Must install react" }
 const alertNoReactT = <T>(...args: any[]): any => { throw "Must install react" }
-export const getReact = (throwError?: boolean): typeof import("react") => {
+export const getReact = (throwError?: boolean): ReactT => {
   try {
     React ??= require("react");
   } catch(err){
@@ -59,12 +60,19 @@ export const useDeepCompareMemoize = (value: any) => {
   return ref.current
 }
 
-export const useEffectDeep = (callback, deps) => {
+export const useMemoDeep = ((callback, deps) => {
+  React.useMemo(
+    callback,
+    deps?.map(useDeepCompareMemoize)
+  )
+}) as ReactT["useMemo"]
+
+export const useEffectDeep = ((callback, deps) => {
   useEffect(
     callback,
-    deps.map(useDeepCompareMemoize)
+    deps?.map(useDeepCompareMemoize)
   )
-}
+}) as ReactT["useEffect"]
 
 type AsyncCleanup = void | (() => void | Promise<void>)
 type AsyncActiveEffect = {

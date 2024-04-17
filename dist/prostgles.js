@@ -39,11 +39,10 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
     });
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
     const socketRef = useRef();
-    const [socket, setSocket] = useState();
-    (0, react_hooks_1.useEffectDeep)(() => {
+    const socket = (0, react_hooks_1.useMemoDeep)(() => {
         var _a;
         if (skip)
-            return;
+            return undefined;
         (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
         const io = (0, react_hooks_1.getIO)();
         const opts = {
@@ -51,8 +50,9 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
             reconnection: true,
             ...(0, prostgles_types_1.omitKeys)(socketOptions !== null && socketOptions !== void 0 ? socketOptions : {}, ["uri"]),
         };
-        socketRef.current = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
-        setSocket(socketRef.current);
+        const socket = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
+        socketRef.current = socket;
+        return socket;
     }, [socketOptions]);
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
         if (!socket || skip)
