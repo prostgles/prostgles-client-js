@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.useProstglesClient = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const SyncedTable_1 = require("./SyncedTable/SyncedTable");
+const prostgles_1 = require("./prostgles");
 const react_hooks_1 = require("./react-hooks");
 const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
     const { useRef, useState } = (0, react_hooks_1.getReact)(true);
@@ -34,7 +35,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         if (!socket || skip)
             return;
         //@ts-ignore
-        const prgl = await prostgles({
+        const prgl = await (0, prostgles_1.prostgles)({
             socket,
             ...initOpts,
             onReady: (...args) => {
