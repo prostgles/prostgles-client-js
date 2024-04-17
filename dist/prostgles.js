@@ -53,7 +53,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         const socket = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
         socketRef.current = socket;
         return socket;
-    }, [socketOptions]);
+    }, [socketOptions, skip]);
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
         if (!socket || skip)
             return;

@@ -93,7 +93,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
     socketRef.current = socket;
     return socket;
-  }, [socketOptions]);
+  }, [socketOptions, skip]);
 
   useAsyncEffectQueue(async () => {
     if(!socket || skip) return;

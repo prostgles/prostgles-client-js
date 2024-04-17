@@ -1,6 +1,6 @@
 {
   "name": "prostgles-client",
-  "version": "4.0.102",
+  "version": "4.0.103",
   "description": "Reactive client for Postgres",
   "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
@@ -37,7 +37,11 @@
     "tsconfig-paths-webpack-plugin": "^4.0.0",
     "typescript": "^5.3.3",
     "webpack": "^5.76.2",
-    "webpack-cli": "^4.9.2"
+    "webpack-cli": "^4.9.2",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0"
   },
   "peerDependencies": {
     "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
