@@ -19,14 +19,17 @@ const getReact = (throwError) => {
 exports.getReact = getReact;
 (0, exports.getReact)();
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = (_a = React) !== null && _a !== void 0 ? _a : {};
-const getIO = () => {
+const getIO = (throwError = false) => {
+    var _a;
     try {
-        const io = require("socket.io-client");
+        const io = (_a = require("socket.io-client")) === null || _a === void 0 ? void 0 : _a.default;
         return io;
     }
     catch (err) {
-        return null;
     }
+    if (throwError)
+        throw new Error("Must install socket.io-client");
+    return ({});
 };
 exports.getIO = getIO;
 const isEqual = function (x, y) {

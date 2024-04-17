@@ -2,7 +2,6 @@ import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
 import { TableHandlerClient } from "./prostgles";
 let React: typeof import("react") | undefined;
 
-
 const alertNoReact = (...args: any[]): any => { throw "Must install react" }
 const alertNoReactT = <T>(...args: any[]): any => { throw "Must install react" }
 export const getReact = (throwError?: boolean): typeof import("react") => {
@@ -16,13 +15,16 @@ export const getReact = (throwError?: boolean): typeof import("react") => {
 };
 getReact();
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = React! ?? {};
-export const getIO = () => {
+
+type IO = typeof import("socket.io-client").default;
+export const getIO = (throwError = false) => {
   try {
-    const io = require("socket.io-client") as typeof import("socket.io-client");
-    return io!;
+    const io = require("socket.io-client")?.default as IO;
+    return io;
   } catch(err){
-    return null as any;
   }
+  if(throwError) throw new Error("Must install socket.io-client");
+  return ({}) as IO;
 }
 export const isEqual = function (x, y) {
   if (x === y) {
