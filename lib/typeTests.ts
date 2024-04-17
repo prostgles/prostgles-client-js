@@ -21,6 +21,10 @@ import { DBHandlerClient, useProstglesClient } from "./prostgles";
   const t1 = client?.dbo.table1.useFind({ }, { orderBy: { col1: 1 } });
   const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
   
+  const client2 = useProstglesClient();
+  if(client2.isLoading || "error" in client2) return;
+  client2.dbo.dwada?.find?.();
+
   const filter: FullFilter<GeneratedSchema["table1"]["columns"], GeneratedSchema> = {  };
   
   const filterCheck = <F extends FullFilter<void, void> | undefined>(f: F) => {};

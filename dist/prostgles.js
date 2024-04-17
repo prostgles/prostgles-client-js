@@ -33,31 +33,33 @@ const debug = function (...args) {
 exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
 const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
-    const { useEffect, useRef, useState } = (0, react_hooks_1.getReact)(true);
+    const { useRef, useState } = (0, react_hooks_1.getReact)(true);
     const [onReadyArgs, setOnReadyArgs] = useState({
         isLoading: true
     });
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
-    const socket = useRef();
-    useEffect(() => {
+    const socketRef = useRef();
+    const [socket, setSocket] = useState();
+    (0, react_hooks_1.useEffectDeep)(() => {
         var _a;
         if (skip)
             return;
-        (_a = socket.current) === null || _a === void 0 ? void 0 : _a.disconnect();
+        (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
         const io = (0, react_hooks_1.getIO)();
         const opts = {
             reconnectionDelay: 1000,
             reconnection: true,
             ...(0, prostgles_types_1.omitKeys)(socketOptions !== null && socketOptions !== void 0 ? socketOptions : {}, ["uri"]),
         };
-        socket.current = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
-    }, [socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.path]);
+        socketRef.current = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
+        setSocket(socketRef.current);
+    }, [socketOptions]);
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
-        if (!socket.current || skip)
+        if (!socket || skip)
             return;
         //@ts-ignore
         const prgl = await prostgles({
-            socket: socket.current,
+            socket,
             ...initOpts,
             onReady: (...args) => {
                 if (!getIsMounted())

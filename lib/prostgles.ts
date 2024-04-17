@@ -41,7 +41,7 @@ import {
 } from "prostgles-types";
 
 import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
-import { getIO, getReact, isEqual, useAsyncEffectQueue, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
+import { getIO, getReact, isEqual, useAsyncEffectQueue, useEffectDeep, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -73,30 +73,33 @@ type ProstglesClientState<PGC> =
 | { isLoading: false; error: any; };
 
 export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: HookInitOpts = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
-  const { useEffect, useRef, useState } = getReact(true);
+  const { useRef, useState } = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = useState<ProstglesClientState<OnReadyParams<DBSchema>>>({
     isLoading: true
   });
   const getIsMounted = useIsMounted();
-  const socket = useRef<Socket>()
-  useEffect(() => {
+  const socketRef = useRef<Socket>();
+  const [socket, setSocket] = useState<Socket>();
+
+  useEffectDeep(() => {
     if(skip) return;
-    socket.current?.disconnect();
+    socketRef.current?.disconnect();
     const io = getIO();
     const opts = {
       reconnectionDelay: 1000,
       reconnection: true,
       ...omitKeys(socketOptions ?? {}, ["uri"]),
     }
-    socket.current = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
-  }, [socketOptions?.path]);
+    socketRef.current = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
+    setSocket(socketRef.current);
+  }, [socketOptions]);
 
   useAsyncEffectQueue(async () => {
-    if(!socket.current || skip) return;
+    if(!socket || skip) return;
 
     //@ts-ignore
     const prgl = await prostgles({
-      socket: socket.current,
+      socket,
       ...initOpts, 
       onReady: (...args) => {
         if (!getIsMounted()) return;
