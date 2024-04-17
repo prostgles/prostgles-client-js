@@ -72,6 +72,10 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       if (!getIsMounted()) return;
       setOnReadyArgs({ isLoading: false, error });
     });
+
+    return () => {
+      socket.disconnect();
+    }
     
   }, [initOpts, socket]);
 

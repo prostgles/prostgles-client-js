@@ -51,6 +51,9 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                 return;
             setOnReadyArgs({ isLoading: false, error });
         });
+        return () => {
+            socket.disconnect();
+        };
     }, [initOpts, socket]);
     return onReadyArgs;
 };
