@@ -58,7 +58,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     if(!socket || skip) return;
 
     //@ts-ignore
-    const prgl = await prostgles({
+    await prostgles({
       socket,
       ...initOpts, 
       onReady: (...args) => {

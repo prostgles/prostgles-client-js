@@ -35,7 +35,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         if (!socket || skip)
             return;
         //@ts-ignore
-        const prgl = await (0, prostgles_1.prostgles)({
+        await (0, prostgles_1.prostgles)({
             socket,
             ...initOpts,
             onReady: (...args) => {
