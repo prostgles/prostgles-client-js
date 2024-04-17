@@ -13,7 +13,7 @@ import {
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
-import type { Auth, DBHandlerClient, InitOptions } from "./prostgles";
+import { prostgles, type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
 import { getIO, getReact, useAsyncEffectQueue, useIsMounted, useMemoDeep } from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
