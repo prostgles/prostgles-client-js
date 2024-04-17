@@ -19,7 +19,7 @@ const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState =
 type IO = typeof import("socket.io-client").default;
 export const getIO = (throwError = false) => {
   try {
-    const io = require("socket.io-client")?.default as IO;
+    const io = require("socket.io-client") as IO;
     return io;
   } catch(err){
   }
