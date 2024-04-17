@@ -32,13 +32,30 @@ const debug = function (...args) {
 };
 exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
-const useProstglesClient = (initOpts) => {
-    const React = (0, react_hooks_1.getReact)(true);
-    const [onReadyArgs, setOnReadyArgs] = React.useState();
+const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
+    const { useEffect, useRef, useState } = (0, react_hooks_1.getReact)(true);
+    const [onReadyArgs, setOnReadyArgs] = useState({
+        isLoading: true
+    });
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
+    const socket = useRef();
+    useEffect(() => {
+        var _a;
+        if (skip)
+            return;
+        (_a = socket.current) === null || _a === void 0 ? void 0 : _a.disconnect();
+        socket.current = (0, react_hooks_1.getIO)()({
+            reconnectionDelay: 1000,
+            reconnection: true,
+            ...socketOptions,
+        });
+    }, [socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.path]);
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
+        if (!socket || skip)
+            return;
         //@ts-ignore
         const prgl = await prostgles({
+            socket,
             ...initOpts,
             onReady: (...args) => {
                 if (!getIsMounted())
@@ -46,10 +63,16 @@ const useProstglesClient = (initOpts) => {
                 //@ts-ignore
                 initOpts.onReady(...args);
                 const [dbo, methods, tableSchema, auth, isReconnect] = args;
-                setOnReadyArgs({ dbo, methods, tableSchema, auth, isReconnect });
+                const onReadyArgs = { dbo, methods, tableSchema, auth, isReconnect };
+                setOnReadyArgs({ ...onReadyArgs, isLoading: false });
             }
-        }, SyncedTable_1.SyncedTable);
-    }, [initOpts]);
+        }, SyncedTable_1.SyncedTable)
+            .catch(error => {
+            if (!getIsMounted())
+                return;
+            setOnReadyArgs({ isLoading: false, error });
+        });
+    }, [initOpts, socket]);
     return onReadyArgs;
 };
 exports.useProstglesClient = useProstglesClient;
@@ -68,7 +91,6 @@ function prostgles(initOpts, syncedTable) {
     }
     const preffix = prostgles_types_1.CHANNELS._preffix;
     let subscriptions = {};
-    // window["subscriptions"] = subscriptions;
     let syncedTables = {};
     let syncs = {};
     let notifSubs = {};

@@ -41,7 +41,8 @@ import {
 } from "prostgles-types";
 
 import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type DbTableSync, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
-import { getReact, isEqual, useAsyncEffectQueue, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
+import { getIO, getReact, isEqual, useAsyncEffectQueue, useFetch, useIsMounted, useSubscribe, useSync } from "./react-hooks";
+import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -53,7 +54,7 @@ export const debug: any = function (...args: any[]) {
 
 export { MethodHandler, SQLResult, asName };
 
-  export * from "./react-hooks";
+export * from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;
@@ -62,25 +63,56 @@ type OnReadyParams<DBSchema> = {
   auth: Auth | undefined;
   isReconnect: boolean;
 }
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady"> & Pick<Partial<InitOptions<DBSchema>>, "onReady">;
-export const useProstglesClient = <DBSchema>(initOpts: HookInitOpts): undefined | OnReadyParams<DBSchema> => {
-  const React = getReact(true);
-  const [onReadyArgs, setOnReadyArgs] = React.useState<undefined | OnReadyParams<DBSchema>>();
+type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & Pick<Partial<InitOptions<DBSchema>>, "onReady"> & {
+  socketOptions?: Partial<ManagerOptions & SocketOptions>;
+  skip?: boolean;
+};
+type ProstglesClientState<PGC> = 
+| { isLoading: true; error?: undefined; }
+| { isLoading: false; error?: undefined; } & PGC 
+| { isLoading: false; error: any; };
+
+export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: HookInitOpts = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
+  const { useEffect, useRef, useState } = getReact(true);
+  const [onReadyArgs, setOnReadyArgs] = useState<ProstglesClientState<OnReadyParams<DBSchema>>>({
+    isLoading: true
+  });
   const getIsMounted = useIsMounted();
+  const socket = useRef<Socket>()
+  useEffect(() => {
+    if(skip) return;
+    socket.current?.disconnect();
+    socket.current = getIO()(
+      {
+        reconnectionDelay: 1000,
+        reconnection: true,
+        ...socketOptions,
+      }
+    );
+  }, [socketOptions?.path]);
+
   useAsyncEffectQueue(async () => {
+    if(!socket || skip) return;
+
     //@ts-ignore
-    const prgl = await prostgles({ 
+    const prgl = await prostgles({
+      socket,
       ...initOpts, 
       onReady: (...args) => {
         if (!getIsMounted()) return;
         //@ts-ignore
         initOpts.onReady(...args);
-        const [dbo, methods,tableSchema, auth, isReconnect] = args;
-        setOnReadyArgs({ dbo, methods,tableSchema, auth, isReconnect } as OnReadyParams<DBSchema>);
+        const [dbo, methods, tableSchema, auth, isReconnect] = args;
+        const onReadyArgs = { dbo, methods,tableSchema, auth, isReconnect } as OnReadyParams<DBSchema>;
+        setOnReadyArgs({ ...onReadyArgs, isLoading: false  } satisfies ProstglesClientState<OnReadyParams<DBSchema>>);
       }
-    }, SyncedTable);
-
-  }, [initOpts]);
+    }, SyncedTable)
+    .catch(error => {
+      if (!getIsMounted()) return;
+      setOnReadyArgs({ isLoading: false, error });
+    });
+    
+  }, [initOpts, socket]);
 
   return onReadyArgs;
 }
@@ -227,12 +259,6 @@ type Subscriptions = {
 
 export type onUpdatesParams = { data: object[]; isSynced: boolean }
 
-// export type SyncTriggers = {
-//     onSyncRequest: (params, sync_info) => { c_fr: object, c_lr: object, c_count: number }, 
-//     onPullRequest: ({ from_synced, offset, limit }, sync_info) => object[], 
-//     onUpdates: (params: onUpdatesParams, sync_info) => any | void;
-// };
-
 export type SyncInfo = {
   id_fields: string[],
   synced_field: string,
@@ -261,7 +287,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
   const preffix = CHANNELS._preffix;
   let subscriptions: Subscriptions = {};
-  // window["subscriptions"] = subscriptions;
 
   let syncedTables: Record<string, any> = {};
 

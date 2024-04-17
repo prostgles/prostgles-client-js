@@ -1,6 +1,6 @@
 {
   "name": "prostgles-client",
-  "version": "4.0.94",
+  "version": "4.0.95",
   "description": "Reactive client for Postgres",
   "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
@@ -40,10 +40,14 @@
     "webpack-cli": "^4.9.2"
   },
   "peerDependencies": {
-    "react": "^16.8.0 || ^17.0.0 || ^18.0.0"
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
+    "socket.io-client": "^4.7.0 || ^4.7.5"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "socket.io-client": {
       "optional": true
     }
   }

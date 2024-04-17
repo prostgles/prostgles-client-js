@@ -1,5 +1,6 @@
 import { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, asName } from "prostgles-types";
 import { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, type Sync, type SyncOne } from "./SyncedTable/SyncedTable";
+import type { ManagerOptions, SocketOptions } from "socket.io-client";
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
@@ -10,8 +11,21 @@ type OnReadyParams<DBSchema> = {
     auth: Auth | undefined;
     isReconnect: boolean;
 };
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady"> & Pick<Partial<InitOptions<DBSchema>>, "onReady">;
-export declare const useProstglesClient: <DBSchema_1>(initOpts: HookInitOpts) => OnReadyParams<DBSchema_1> | undefined;
+type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & Pick<Partial<InitOptions<DBSchema>>, "onReady"> & {
+    socketOptions?: Partial<ManagerOptions & SocketOptions>;
+    skip?: boolean;
+};
+type ProstglesClientState<PGC> = {
+    isLoading: true;
+    error?: undefined;
+} | {
+    isLoading: false;
+    error?: undefined;
+} & PGC | {
+    isLoading: false;
+    error: any;
+};
+export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions, ...initOpts }?: HookInitOpts) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;

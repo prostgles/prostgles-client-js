@@ -16,7 +16,8 @@ import { DBHandlerClient, useProstglesClient } from "./prostgles";
     }
   };
   
-  const client = useProstglesClient<GeneratedSchema>({ socket: 1 as any })
+  const client = useProstglesClient<GeneratedSchema>();
+  if(client.isLoading || "error" in client) return;
   const t1 = client?.dbo.table1.useFind({ }, { orderBy: { col1: 1 } });
   const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
   

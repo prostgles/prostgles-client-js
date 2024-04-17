@@ -1,4 +1,4 @@
-import { AnyObject, SubscriptionHandler, getKeys, isObject } from "prostgles-types";
+import { SubscriptionHandler, getKeys, isObject } from "prostgles-types";
 import { TableHandlerClient } from "./prostgles";
 let React: typeof import("react") | undefined;
 
@@ -16,7 +16,14 @@ export const getReact = (throwError?: boolean): typeof import("react") => {
 };
 getReact();
 const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = React! ?? {};
-
+export const getIO = () => {
+  try {
+    const io = require("socket.io-client") as typeof import("socket.io-client");
+    return io!;
+  } catch(err){
+    return null as any;
+  }
+}
 export const isEqual = function (x, y) {
   if (x === y) {
     return true;
