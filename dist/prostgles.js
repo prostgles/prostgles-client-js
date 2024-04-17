@@ -44,11 +44,13 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         if (skip)
             return;
         (_a = socket.current) === null || _a === void 0 ? void 0 : _a.disconnect();
-        socket.current = (0, react_hooks_1.getIO)()({
+        const io = (0, react_hooks_1.getIO)();
+        const opts = {
             reconnectionDelay: 1000,
             reconnection: true,
-            ...socketOptions,
-        });
+            ...(0, prostgles_types_1.omitKeys)(socketOptions !== null && socketOptions !== void 0 ? socketOptions : {}, ["uri"]),
+        };
+        socket.current = "uri" in (socketOptions !== null && socketOptions !== void 0 ? socketOptions : {}) && socketOptions ? io(socketOptions.uri, opts) : io(opts);
     }, [socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.path]);
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
         if (!socket || skip)

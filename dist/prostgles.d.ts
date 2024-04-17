@@ -12,7 +12,9 @@ type OnReadyParams<DBSchema> = {
     isReconnect: boolean;
 };
 type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & Pick<Partial<InitOptions<DBSchema>>, "onReady"> & {
-    socketOptions?: Partial<ManagerOptions & SocketOptions>;
+    socketOptions?: Partial<ManagerOptions & SocketOptions> & {
+        uri?: string;
+    };
     skip?: boolean;
 };
 type ProstglesClientState<PGC> = {

@@ -64,7 +64,7 @@ type OnReadyParams<DBSchema> = {
   isReconnect: boolean;
 }
 type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & Pick<Partial<InitOptions<DBSchema>>, "onReady"> & {
-  socketOptions?: Partial<ManagerOptions & SocketOptions>;
+  socketOptions?: Partial<ManagerOptions & SocketOptions> & { uri?: string; };
   skip?: boolean;
 };
 type ProstglesClientState<PGC> = 
@@ -82,13 +82,13 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
   useEffect(() => {
     if(skip) return;
     socket.current?.disconnect();
-    socket.current = getIO()(
-      {
-        reconnectionDelay: 1000,
-        reconnection: true,
-        ...socketOptions,
-      }
-    );
+    const io = getIO();
+    const opts = {
+      reconnectionDelay: 1000,
+      reconnection: true,
+      ...omitKeys(socketOptions ?? {}, ["uri"]),
+    }
+    socket.current = "uri" in (socketOptions ?? {}) && socketOptions ? io(socketOptions.uri, opts) : io(opts);
   }, [socketOptions?.path]);
 
   useAsyncEffectQueue(async () => {
