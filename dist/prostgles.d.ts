@@ -11,7 +11,7 @@ type OnReadyParams<DBSchema> = {
     auth: Auth | undefined;
     isReconnect: boolean;
 };
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & Pick<Partial<InitOptions<DBSchema>>, "onReady"> & {
+type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
     socketOptions?: Partial<ManagerOptions & SocketOptions> & {
         uri?: string;
     };

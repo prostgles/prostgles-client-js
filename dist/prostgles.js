@@ -62,8 +62,6 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
             onReady: (...args) => {
                 if (!getIsMounted())
                     return;
-                //@ts-ignore
-                initOpts.onReady(...args);
                 const [dbo, methods, tableSchema, auth, isReconnect] = args;
                 const onReadyArgs = { dbo, methods, tableSchema, auth, isReconnect };
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });

@@ -63,7 +63,7 @@ type OnReadyParams<DBSchema> = {
   auth: Auth | undefined;
   isReconnect: boolean;
 }
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & Pick<Partial<InitOptions<DBSchema>>, "onReady"> & {
+type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
   socketOptions?: Partial<ManagerOptions & SocketOptions> & { uri?: string; };
   skip?: boolean;
 };
@@ -100,8 +100,6 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       ...initOpts, 
       onReady: (...args) => {
         if (!getIsMounted()) return;
-        //@ts-ignore
-        initOpts.onReady(...args);
         const [dbo, methods, tableSchema, auth, isReconnect] = args;
         const onReadyArgs = { dbo, methods,tableSchema, auth, isReconnect } as OnReadyParams<DBSchema>;
         setOnReadyArgs({ ...onReadyArgs, isLoading: false  } satisfies ProstglesClientState<OnReadyParams<DBSchema>>);
