@@ -53,11 +53,11 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         socket.current = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
     }, [socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.path]);
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
-        if (!socket || skip)
+        if (!socket.current || skip)
             return;
         //@ts-ignore
         const prgl = await prostgles({
-            socket,
+            socket: socket.current,
             ...initOpts,
             onReady: (...args) => {
                 if (!getIsMounted())

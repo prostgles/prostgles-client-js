@@ -92,11 +92,11 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
   }, [socketOptions?.path]);
 
   useAsyncEffectQueue(async () => {
-    if(!socket || skip) return;
+    if(!socket.current || skip) return;
 
     //@ts-ignore
     const prgl = await prostgles({
-      socket,
+      socket: socket.current,
       ...initOpts, 
       onReady: (...args) => {
         if (!getIsMounted()) return;
