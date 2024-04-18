@@ -75,64 +75,59 @@ exports.useEffectDeep = ((callback, deps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
 });
+// class CEffect {
+//   private effect: EffectFunc;
+//   constructor(effect: EffectFunc) {
+//     this.effect = effect;
+//   }
+//   private cleanupFunc: VoidFunction | void;
+//   run = async () => {
+//     this.cleanupFunc = await this.effect();
+//   }
+//   cleanup = async () => {
+//     await this.cleanupFunc?.();
+//   }
+// }
 /**
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up
  */
 const useAsyncEffectQueue = (effect, deps) => {
-    const latestEffect = { effect, deps, didCleanup: false };
+    // const newEffect = { effect, deps, didCleanup: false }
     const queue = useRef({
         activeEffect: undefined,
-        latestEffect,
+        newEffect: undefined,
         history: []
     });
-    const runAsyncEffect = async (queue) => {
-        var _a, _b, _c;
-        if (queue.current.latestEffect &&
-            (!queue.current.activeEffect || queue.current.activeEffect.resolvedCleanup)) {
+    const onCleanup = async (effectFunc) => {
+        var _a, _b, _c, _d;
+        /** New effect did not start. Just remove */
+        if (((_a = queue.current.newEffect) === null || _a === void 0 ? void 0 : _a.effect) === effectFunc) {
+            queue.current.newEffect = undefined;
+            /** Very likely it's an unmount */
+        }
+        else if (((_b = queue.current.activeEffect) === null || _b === void 0 ? void 0 : _b.effect) === effectFunc) {
+            queue.current.activeEffect.didCleanup = true;
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            await ((_c = (_b = (_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
-            queue.current.activeEffect = queue.current.latestEffect;
-            queue.current.latestEffect = undefined;
-            /**
-             * latestEffect might have since been cleaned up
-             */
-            if (!queue.current.activeEffect)
-                return;
-            const run = await queue.current.activeEffect.effect();
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (!queue.current.activeEffect) {
-                await (run === null || run === void 0 ? void 0 : run());
-                return;
-            }
-            queue.current.activeEffect.resolvedCleanup = { run };
-            if (queue.current.activeEffect.didCleanup) {
-                cleanupActiveEffect();
-            }
+            await ((_d = (_c = (await queue.current.activeEffect.resolvedCleanup)) === null || _c === void 0 ? void 0 : _c.run) === null || _d === void 0 ? void 0 : _d.call(_c));
         }
     };
-    const cleanupActiveEffect = async () => {
+    const onRender = async (newEffect) => {
         var _a, _b, _c;
+        queue.current.newEffect = newEffect;
+        queue.current.history.push(newEffect);
+        /** Need to wait to ensure activeEffect cleanup finished */
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        await ((_c = (_b = (_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
-        queue.current.activeEffect = undefined;
-        runAsyncEffect(queue);
+        await ((_c = (_b = (await ((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup))) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b));
+        queue.current.activeEffect = newEffect;
+        queue.current.activeEffect.resolvedCleanup = queue.current.activeEffect.effect().then(run => ({ run }));
     };
     (0, exports.useEffectDeep)(() => {
-        queue.current.latestEffect = latestEffect;
-        queue.current.history.push({ effect, deps });
-        runAsyncEffect(queue);
+        const newEffect = { effect, deps, didCleanup: false };
+        onRender(newEffect);
         return () => {
-            var _a, _b;
-            if (((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.effect) === effect) {
-                queue.current.activeEffect.didCleanup = true;
-                cleanupActiveEffect();
-            }
-            if (((_b = queue.current.latestEffect) === null || _b === void 0 ? void 0 : _b.effect) === effect) {
-                queue.current.latestEffect = undefined;
-            }
+            onCleanup(effect);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, deps);
 };
 exports.useAsyncEffectQueue = useAsyncEffectQueue;

@@ -8,11 +8,12 @@ export declare const isEqual: (x: any, y: any) => boolean;
 export declare const useDeepCompareMemoize: (value: any) => undefined;
 export declare const useMemoDeep: typeof import("react").useMemo;
 export declare const useEffectDeep: typeof import("react").useEffect;
+type EffectFunc = () => Promise<void | (() => void)>;
 /**
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up
  */
-export declare const useAsyncEffectQueue: (effect: () => Promise<void | (() => void)>, deps: any[]) => void;
+export declare const useAsyncEffectQueue: (effect: EffectFunc, deps: any[]) => void;
 export declare const useEffectAsync: (effect: () => Promise<void | (() => void)>, inputs: any[]) => void;
 export declare function useIsMounted(): any;
 type PromiseFunc = () => Promise<any>;
