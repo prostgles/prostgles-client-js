@@ -86,7 +86,6 @@ const useAsyncEffectQueue = (effect, deps) => {
         latestEffect,
         history: []
     });
-    queue.current.latestEffect = latestEffect;
     const runAsyncEffect = async (queue) => {
         var _a, _b, _c;
         if (queue.current.latestEffect &&
@@ -120,6 +119,7 @@ const useAsyncEffectQueue = (effect, deps) => {
         runAsyncEffect(queue);
     };
     (0, exports.useEffectDeep)(() => {
+        queue.current.latestEffect = latestEffect;
         queue.current.history.push({ effect, deps });
         runAsyncEffect(queue);
         return () => {

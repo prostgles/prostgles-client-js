@@ -106,7 +106,6 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
     latestEffect,
     history: []
   });
-  queue.current.latestEffect = latestEffect;
 
   const runAsyncEffect = async (queue: React.MutableRefObject<AsyncEffectQueue>) => {
     if(
@@ -141,6 +140,7 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
   }
 
   useEffectDeep(() => {
+    queue.current.latestEffect = latestEffect;
     queue.current.history.push({ effect, deps });
     runAsyncEffect(queue);
     return () => { 
