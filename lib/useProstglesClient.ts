@@ -40,8 +40,10 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
   const getIsMounted = useIsMounted();
 
   const socketRef = useRef<Socket>();
-  const socket = useMemoDeep(() => {
+
+  useAsyncEffectQueue(async () => {
     if(skip) return undefined;
+
     socketRef.current?.disconnect();
     const io = getIO();
     const opts = {
@@ -51,12 +53,6 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     }
     const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
     socketRef.current = socket;
-    return socket;
-  }, [socketOptions, skip]);
-
-  useAsyncEffectQueue(async () => {
-    if(!socket || skip) return;
-
     //@ts-ignore
     await prostgles({
       socket,
@@ -77,7 +73,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       socket.disconnect();
     }
     
-  }, [initOpts, socket]);
+  }, [initOpts, socketOptions, skip]);
 
   return onReadyArgs;
 }
