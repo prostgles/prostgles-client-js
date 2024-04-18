@@ -92,6 +92,7 @@ type AsyncActiveEffect = {
 type AsyncEffectQueue = {
   latestEffect: undefined | AsyncActiveEffect;
   activeEffect: undefined | AsyncActiveEffect;
+  history: Pick<AsyncActiveEffect, "effect" | "deps">[];
 }
 
 /**
@@ -102,9 +103,11 @@ export const useAsyncEffectQueue = (effect: () => Promise<void | (() => void)>, 
   const latestEffect = { effect, deps, didCleanup: false }
   const queue = useRef<AsyncEffectQueue>({
     activeEffect: undefined,
-    latestEffect
+    latestEffect,
+    history: []
   });
   queue.current.latestEffect = latestEffect;
+  queue.current.history.push({ effect, deps });
 
   const runAsyncEffect = async (queue: React.MutableRefObject<AsyncEffectQueue>) => {
     if(

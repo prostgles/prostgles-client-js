@@ -83,9 +83,11 @@ const useAsyncEffectQueue = (effect, deps) => {
     const latestEffect = { effect, deps, didCleanup: false };
     const queue = useRef({
         activeEffect: undefined,
-        latestEffect
+        latestEffect,
+        history: []
     });
     queue.current.latestEffect = latestEffect;
+    queue.current.history.push({ effect, deps });
     const runAsyncEffect = async (queue) => {
         var _a, _b, _c;
         if (queue.current.latestEffect &&
