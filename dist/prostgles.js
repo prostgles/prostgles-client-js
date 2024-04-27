@@ -456,7 +456,7 @@ function prostgles(initOpts, syncedTable) {
             }
             if (err) {
                 reject(err);
-                throw err;
+                return;
             }
             const isReconnect = state === "reconnected";
             state = "connected";

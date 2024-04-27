@@ -641,7 +641,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     socket.on(CHANNELS.CONNECTION, error => {
       reject(error);
       return "ok"
-    })
+    });
 
     if (onDisconnect) {
       socket.on("disconnect", () => {
@@ -673,8 +673,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       }
 
       if (err) {
-        reject(err)
-        throw err;
+        reject(err);
+        return;
       }
 
       const isReconnect = state === "reconnected";
