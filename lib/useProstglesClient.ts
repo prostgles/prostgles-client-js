@@ -14,7 +14,7 @@ import {
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
-import { getIO, getReact, useAsyncEffectQueue, useIsMounted, useMemoDeep } from "./react-hooks";
+import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;
