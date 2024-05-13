@@ -1,4 +1,4 @@
-import { type DBSchema, type DBSchemaTable, type MethodHandler, type AnyObject } from "prostgles-types";
+import { type DBSchema, type DBSchemaTable, type MethodHandler } from "prostgles-types";
 import type { ManagerOptions, SocketOptions } from "socket.io-client";
 import { type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
 type OnReadyParams<DBSchema> = {
@@ -22,7 +22,7 @@ type ProstglesClientState<PGC> = {
     error?: undefined;
 } & PGC | {
     isLoading: false;
-    error: AnyObject | string;
+    error: Error | string;
 };
 export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions, ...initOpts }?: HookInitOpts) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
 export {};

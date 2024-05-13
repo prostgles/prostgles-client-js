@@ -44,7 +44,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
             .catch(error => {
             if (!getIsMounted())
                 return;
-            setOnReadyArgs({ isLoading: false, error });
+            setOnReadyArgs({ isLoading: false, error: error instanceof Error ? error : new Error(error) });
         });
         return () => {
             socket.disconnect();

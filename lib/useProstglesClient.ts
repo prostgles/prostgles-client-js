@@ -31,7 +31,7 @@ type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
 type ProstglesClientState<PGC> = 
 | { isLoading: true; error?: undefined; }
 | { isLoading: false; error?: undefined; } & PGC 
-| { isLoading: false; error: AnyObject | string; };
+| { isLoading: false; error: Error | string; };
 
 export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: HookInitOpts = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
   const { useRef, useState } = getReact(true);
@@ -67,7 +67,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     }, SyncedTable)
     .catch(error => {
       if (!getIsMounted()) return;
-      setOnReadyArgs({ isLoading: false, error });
+      setOnReadyArgs({ isLoading: false, error: error instanceof Error ? error : new Error(error) });
     });
 
     return () => {
