@@ -8,7 +8,8 @@ import {
   type DBSchema,
   type DBSchemaTable,
   type MethodHandler,
-  omitKeys
+  omitKeys,
+  type AnyObject
 } from "prostgles-types";
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
@@ -30,7 +31,7 @@ type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
 type ProstglesClientState<PGC> = 
 | { isLoading: true; error?: undefined; }
 | { isLoading: false; error?: undefined; } & PGC 
-| { isLoading: false; error: any; };
+| { isLoading: false; error: AnyObject | string; };
 
 export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: HookInitOpts = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
   const { useRef, useState } = getReact(true);
