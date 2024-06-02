@@ -20,9 +20,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         var _a;
         if (skip)
             return undefined;
-        if ((_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.connected) {
-            socketRef.current.disconnect();
-        }
+        (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
         const io = (0, react_hooks_1.getIO)();
         const opts = {
             reconnectionDelay: 1000,

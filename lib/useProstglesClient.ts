@@ -45,9 +45,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
   useAsyncEffectQueue(async () => {
     if(skip) return undefined;
 
-    if(socketRef.current?.connected){
-      socketRef.current.disconnect();
-    }
+    socketRef.current?.disconnect();
     const io = getIO();
     const opts = {
       reconnectionDelay: 1000,
