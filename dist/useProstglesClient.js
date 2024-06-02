@@ -29,7 +29,6 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         };
         const socket = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
         socketRef.current = socket;
-        //@ts-ignore
         await (0, prostgles_1.prostgles)({
             socket,
             ...initOpts,
@@ -37,14 +36,15 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                 if (!getIsMounted())
                     return;
                 const [dbo, methods, tableSchema, auth, isReconnect] = args;
-                const onReadyArgs = { dbo, methods, tableSchema, auth, isReconnect };
+                const onReadyArgs = { dbo, methods, tableSchema, auth, isReconnect, socket };
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });
             }
         }, SyncedTable_1.SyncedTable)
-            .catch(error => {
+            .catch(err => {
             if (!getIsMounted())
                 return;
-            setOnReadyArgs({ isLoading: false, error: error instanceof Error ? error : new Error(error) });
+            const error = err instanceof Error ? err : new Error(err);
+            setOnReadyArgs({ isLoading: false, error });
         });
         return () => {
             socket.disconnect();

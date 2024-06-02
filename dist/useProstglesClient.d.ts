@@ -1,5 +1,5 @@
 import { type DBSchema, type DBSchemaTable, type MethodHandler } from "prostgles-types";
-import type { ManagerOptions, SocketOptions } from "socket.io-client";
+import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
 type OnReadyParams<DBSchema> = {
     dbo: DBHandlerClient<DBSchema>;
@@ -7,6 +7,7 @@ type OnReadyParams<DBSchema> = {
     tableSchema: DBSchemaTable[] | undefined;
     auth: Auth | undefined;
     isReconnect: boolean;
+    socket: Socket;
 };
 type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
     socketOptions?: Partial<ManagerOptions & SocketOptions> & {

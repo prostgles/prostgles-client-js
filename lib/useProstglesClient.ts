@@ -5,11 +5,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+  omitKeys,
   type DBSchema,
   type DBSchemaTable,
-  type MethodHandler,
-  omitKeys,
-  type AnyObject
+  type MethodHandler
 } from "prostgles-types";
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
@@ -23,6 +22,7 @@ type OnReadyParams<DBSchema> = {
   tableSchema: DBSchemaTable[] | undefined; 
   auth: Auth | undefined;
   isReconnect: boolean;
+  socket: Socket;
 }
 type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
   socketOptions?: Partial<ManagerOptions & SocketOptions> & { uri?: string; };
@@ -54,20 +54,20 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     }
     const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
     socketRef.current = socket;
-    //@ts-ignore
-    await prostgles({
+    await prostgles<DBSchema>({
       socket,
       ...initOpts, 
       onReady: (...args) => {
         if (!getIsMounted()) return;
         const [dbo, methods, tableSchema, auth, isReconnect] = args;
-        const onReadyArgs = { dbo, methods,tableSchema, auth, isReconnect } as OnReadyParams<DBSchema>;
+        const onReadyArgs = { dbo, methods,tableSchema, auth, isReconnect, socket } satisfies OnReadyParams<DBSchema>;
         setOnReadyArgs({ ...onReadyArgs, isLoading: false  } satisfies ProstglesClientState<OnReadyParams<DBSchema>>);
       }
     }, SyncedTable)
-    .catch(error => {
+    .catch(err => {
       if (!getIsMounted()) return;
-      setOnReadyArgs({ isLoading: false, error: error instanceof Error ? error : new Error(error) });
+      const error = err instanceof Error ? err : new Error(err);
+      setOnReadyArgs({ isLoading: false, error });
     });
 
     return () => {

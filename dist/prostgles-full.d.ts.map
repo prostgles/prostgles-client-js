@@ -1,1 +1,1 @@
-{"version":3,"file":"prostgles-full.d.ts","sourceRoot":"","sources":["../lib/prostgles-full.ts"],"names":[],"mappings":"AAAA,OAAO,EAAqB,WAAW,EAAE,MAAM,aAAa,CAAC;AAE7D,iBAAS,SAAS,CAAC,QAAQ,GAAG,IAAI,EAAE,MAAM,EAAE,WAAW,CAAC,QAAQ,CAAC,oBAEhE;kBAFQ,SAAS;;;AAKlB,SAAS,SAAS,CAAC"}
+{"version":3,"file":"prostgles-full.d.ts","sourceRoot":"","sources":["../lib/prostgles-full.ts"],"names":[],"mappings":"AAAA,OAAO,EAAqB,KAAK,WAAW,EAAE,MAAM,aAAa,CAAC;AAElE,iBAAS,SAAS,CAAC,QAAQ,GAAG,IAAI,EAAE,MAAM,EAAE,WAAW,CAAC,QAAQ,CAAC,oBAEhE;kBAFQ,SAAS;;;AAKlB,SAAS,SAAS,CAAC"}
