@@ -45,7 +45,9 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
   useAsyncEffectQueue(async () => {
     if(skip) return undefined;
 
-    socketRef.current?.disconnect();
+    if(socketRef.current?.connected){
+      socketRef.current.disconnect();
+    }
     const io = getIO();
     const opts = {
       reconnectionDelay: 1000,
@@ -60,8 +62,15 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       onReady: (...args) => {
         if (!getIsMounted()) return;
         const [dbo, methods, tableSchema, auth, isReconnect] = args;
-        const onReadyArgs = { dbo, methods,tableSchema, auth, isReconnect, socket } satisfies OnReadyParams<DBSchema>;
-        setOnReadyArgs({ ...onReadyArgs, isLoading: false  } satisfies ProstglesClientState<OnReadyParams<DBSchema>>);
+        const onReadyArgs: OnReadyParams<DBSchema> = { 
+          dbo, 
+          methods,
+          tableSchema, 
+          auth, 
+          isReconnect, 
+          socket 
+        };
+        setOnReadyArgs({ ...onReadyArgs, isLoading: false });
       }
     }, SyncedTable)
     .catch(err => {

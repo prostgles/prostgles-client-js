@@ -20,7 +20,9 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         var _a;
         if (skip)
             return undefined;
-        (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
+        if ((_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.connected) {
+            socketRef.current.disconnect();
+        }
         const io = (0, react_hooks_1.getIO)();
         const opts = {
             reconnectionDelay: 1000,
@@ -36,7 +38,14 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                 if (!getIsMounted())
                     return;
                 const [dbo, methods, tableSchema, auth, isReconnect] = args;
-                const onReadyArgs = { dbo, methods, tableSchema, auth, isReconnect, socket };
+                const onReadyArgs = {
+                    dbo,
+                    methods,
+                    tableSchema,
+                    auth,
+                    isReconnect,
+                    socket
+                };
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });
             }
         }, SyncedTable_1.SyncedTable)
