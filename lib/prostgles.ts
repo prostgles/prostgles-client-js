@@ -645,10 +645,10 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     socket.on(CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema}: ClientSchema) => {
       const { schema, methods, tableSchema, auth, rawSQL, err } = clientSchema;
       /** Only destroy existing syncs if schema changed */
-      if(schemaAge?.clientSchema  && isEqual(schemaAge.clientSchema, clientSchema)){
-        return
+      const schemaDidNotChange = schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema)
+      if(!schemaDidNotChange){
+        await destroySyncs();
       }
-      await destroySyncs();
       if ((state === "connected" || state === "reconnected") && onReconnect) {
         onReconnect(socket, err);
         if (err) {
@@ -961,17 +961,19 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           console.error("There was an issue reconnecting old subscriptions", err)
         }
       });
-      Object.entries(syncs).forEach(async ([ch, s]) => {
-        const firstTrigger = s.triggers[0];
-        if(firstTrigger){
-          try { 
-            await addServerSync(s, firstTrigger.onSyncRequest);
-            socket.on(ch, s.onCall);
-          } catch (err) {
-            console.error("There was an issue reconnecting olf subscriptions", err)
+      if(!schemaDidNotChange){
+        Object.entries(syncs).forEach(async ([ch, s]) => {
+          const firstTrigger = s.triggers[0];
+          if(firstTrigger){
+            try { 
+              await addServerSync(s, firstTrigger.onSyncRequest);
+              socket.on(ch, s.onCall);
+            } catch (err) {
+              console.error("There was an issue reconnecting olf subscriptions", err)
+            }
           }
-        }
-      });
+        });
+      }
 
 
       joinTables.flat().map(table => {

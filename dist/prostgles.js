@@ -423,10 +423,10 @@ function prostgles(initOpts, syncedTable) {
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }) => {
             const { schema, methods, tableSchema, auth, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
-            if ((schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema)) {
-                return;
+            const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
+            if (!schemaDidNotChange) {
+                await destroySyncs();
             }
-            await destroySyncs();
             if ((state === "connected" || state === "reconnected") && onReconnect) {
                 onReconnect(socket, err);
                 if (err) {
@@ -731,18 +731,20 @@ function prostgles(initOpts, syncedTable) {
                     console.error("There was an issue reconnecting old subscriptions", err);
                 }
             });
-            Object.entries(syncs).forEach(async ([ch, s]) => {
-                const firstTrigger = s.triggers[0];
-                if (firstTrigger) {
-                    try {
-                        await addServerSync(s, firstTrigger.onSyncRequest);
-                        socket.on(ch, s.onCall);
+            if (!schemaDidNotChange) {
+                Object.entries(syncs).forEach(async ([ch, s]) => {
+                    const firstTrigger = s.triggers[0];
+                    if (firstTrigger) {
+                        try {
+                            await addServerSync(s, firstTrigger.onSyncRequest);
+                            socket.on(ch, s.onCall);
+                        }
+                        catch (err) {
+                            console.error("There was an issue reconnecting olf subscriptions", err);
+                        }
                     }
-                    catch (err) {
-                        console.error("There was an issue reconnecting olf subscriptions", err);
-                    }
-                }
-            });
+                });
+            }
             joinTables.flat().map(table => {
                 var _a, _b, _c, _d;
                 (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});
