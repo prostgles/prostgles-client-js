@@ -211,13 +211,18 @@ type SyncConfig = CoreParams & {
   onCall: Function,
   syncInfo: SyncInfo;
   triggers: ClientSyncHandles[]
-}
+};
 type Syncs = {
   [channelName: string]: SyncConfig;
 };
+type CurrentClientSchema = { 
+  origin: "onReady" | "onReconnect"; 
+  date: Date; 
+  clientSchema: Omit<ClientSchema, "joinTables">;
+};
 export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable | undefined) {
   const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
-  let schemaAge: { origin: "onReady" | "onReconnect"; date: Date; } | undefined;
+  let schemaAge: CurrentClientSchema | undefined;
   debug("prostgles", { initOpts })
   if (onSchemaChange) {
     let cb;
@@ -314,7 +319,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   const destroySyncs = async () => {
     debug("destroySyncs", { subscriptions, syncedTables });
     await Promise.all(Object.values(subscriptions).map(s => s.destroy()));
-    // subscriptions = {};
     syncs = {};
     Object.values(syncedTables).map((s: any) => {
       if (s && s.destroy) s.destroy();
@@ -331,10 +335,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         sub.handlers = sub.handlers.filter(h => h !== handler);
         if (!sub.handlers.length) {
           socket.emit(unsubChannel, {}, (err: any, _res: any) => {
-            // console.log("unsubscribed", err, res);
             if (err) console.error(err);
             else reject(err);
-            // else resolve(res);
           });
           socket.removeListener(channelName, sub.onCall);
           delete subscriptions[channelName];
@@ -442,13 +444,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         s.command === command &&
         isEqual(s.param1, param1) &&
         isEqual(s.param2, param2) 
-        // JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
-        // JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {})
-        // s.triggers.find(tr => (
-        //     tr.onPullRequest === triggers.onPullRequest &&
-        //     tr.onSyncRequest === triggers.onSyncRequest &&
-        //     tr.onUpdates === triggers.onUpdates
-        // ))
       );
     });
 
@@ -471,7 +466,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         if (!syncs[channelName]) return;
 
         syncs[channelName]!.triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
-          // onChange(data.data);
           if (data.data) {
             Promise.resolve(onUpdates(data))
               .then(() => {
@@ -481,7 +475,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
                 cb({ err });
               });
           } else if (data.onSyncRequest) {
-            // cb(onSyncRequest());
             Promise.resolve(onSyncRequest(data.onSyncRequest))
               .then(res => cb({ onSyncRequest: res }))
               .catch(err => {
@@ -499,9 +492,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           } else {
             console.log("unexpected response")
           }
-
-          /* Cache */
-          // window.localStorage.setItem(channelName, JSON.stringify(data))
         })
 
 
@@ -561,10 +551,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       return Object.freeze(res);
     }
 
-    const existing = Object.entries(subscriptions).find(([ch]) => {
-      const s = subscriptions[ch];
+    const existing = Object.entries(subscriptions).find(([ch, s]) => {
       return (
-        s &&
         s.tableName === tableName &&
         s.command === command &&
         JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
@@ -576,10 +564,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       const existingCh = existing[0];
       existing[1].handlers.push(onChange);
       existing[1].errorHandlers.push(_onError);
-      /* Reuse existing sub config */
-      // if(subscriptions[existing].handlers.includes(onChange)){
-      //     console.warn("Duplicate subscription handler was added for:", subscriptions[existing])
-      // }
       setTimeout(() => {
         if (subscriptions[existingCh]?.lastData) {
           onChange(subscriptions[existingCh]?.lastData)
@@ -632,7 +616,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
     socket.emit(channelNameReady, { now: Date.now() });
     return makeHandler(channelName, channelNameUnsubscribe);
-
   }
 
   return new Promise((resolve, reject) => {
@@ -659,7 +642,12 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
 
     /* Schema = published schema */
-    socket.on(CHANNELS.SCHEMA, async ({ schema, methods, tableSchema, auth, rawSQL, joinTables = [], err }: ClientSchema) => {
+    socket.on(CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema}: ClientSchema) => {
+      const { schema, methods, tableSchema, auth, rawSQL, err } = clientSchema;
+      /** Only destroy existing syncs if schema changed */
+      if(schemaAge?.clientSchema  && isEqual(schemaAge.clientSchema, clientSchema)){
+        return
+      }
       await destroySyncs();
       if ((state === "connected" || state === "reconnected") && onReconnect) {
         onReconnect(socket, err);
@@ -667,9 +655,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           console.error(err)
           return;
         }
-        schemaAge = { origin: "onReconnect", date: new Date() };
+        schemaAge = { origin: "onReconnect", date: new Date(), clientSchema };
       } else {
-        schemaAge = { origin: "onReady", date: new Date() };
+        schemaAge = { origin: "onReady", date: new Date(), clientSchema };
       }
 
       if (err) {
@@ -965,30 +953,25 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
 
       // Re-attach listeners
-      if (Object.keys(subscriptions).length) {
-        Object.keys(subscriptions).map(async ch => {
-          try {
-            const s = subscriptions[ch]!;
-            await addServerSub(s);
-            socket.on(ch, s.onCall);
-          } catch (err) {
-            console.error("There was an issue reconnecting old subscriptions", err)
-          }
-        });
-      }
-      if (Object.keys(syncs).length) {
-        getKeys(syncs).filter(ch => {
-          return syncs[ch]?.triggers.length
-        }).map(async ch => {
-          try {
-            const s = syncs[ch]!;
-            await addServerSync(s, s.triggers[0]!.onSyncRequest);
+      Object.entries(subscriptions).forEach(async ([ch, s]) => {
+        try {
+          await addServerSub(s);
+          socket.on(ch, s.onCall);
+        } catch (err) {
+          console.error("There was an issue reconnecting old subscriptions", err)
+        }
+      });
+      Object.entries(syncs).forEach(async ([ch, s]) => {
+        const firstTrigger = s.triggers[0];
+        if(firstTrigger){
+          try { 
+            await addServerSync(s, firstTrigger.onSyncRequest);
             socket.on(ch, s.onCall);
           } catch (err) {
             console.error("There was an issue reconnecting olf subscriptions", err)
           }
-        });
-      }
+        }
+      });
 
 
       joinTables.flat().map(table => {
