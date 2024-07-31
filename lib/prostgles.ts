@@ -961,19 +961,17 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           console.error("There was an issue reconnecting old subscriptions", err)
         }
       });
-      if(!schemaDidNotChange){
-        Object.entries(syncs).forEach(async ([ch, s]) => {
-          const firstTrigger = s.triggers[0];
-          if(firstTrigger){
-            try { 
-              await addServerSync(s, firstTrigger.onSyncRequest);
-              socket.on(ch, s.onCall);
-            } catch (err) {
-              console.error("There was an issue reconnecting olf subscriptions", err)
-            }
+      Object.entries(syncs).forEach(async ([ch, s]) => {
+        const firstTrigger = s.triggers[0];
+        if(firstTrigger){
+          try { 
+            await addServerSync(s, firstTrigger.onSyncRequest);
+            socket.on(ch, s.onCall);
+          } catch (err) {
+            console.error("There was an issue reconnecting olf subscriptions", err)
           }
-        });
-      }
+        }
+      });
 
 
       joinTables.flat().map(table => {

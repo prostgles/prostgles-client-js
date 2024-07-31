@@ -731,20 +731,18 @@ function prostgles(initOpts, syncedTable) {
                     console.error("There was an issue reconnecting old subscriptions", err);
                 }
             });
-            if (!schemaDidNotChange) {
-                Object.entries(syncs).forEach(async ([ch, s]) => {
-                    const firstTrigger = s.triggers[0];
-                    if (firstTrigger) {
-                        try {
-                            await addServerSync(s, firstTrigger.onSyncRequest);
-                            socket.on(ch, s.onCall);
-                        }
-                        catch (err) {
-                            console.error("There was an issue reconnecting olf subscriptions", err);
-                        }
+            Object.entries(syncs).forEach(async ([ch, s]) => {
+                const firstTrigger = s.triggers[0];
+                if (firstTrigger) {
+                    try {
+                        await addServerSync(s, firstTrigger.onSyncRequest);
+                        socket.on(ch, s.onCall);
                     }
-                });
-            }
+                    catch (err) {
+                        console.error("There was an issue reconnecting olf subscriptions", err);
+                    }
+                }
+            });
             joinTables.flat().map(table => {
                 var _a, _b, _c, _d;
                 (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});
