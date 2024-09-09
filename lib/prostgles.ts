@@ -642,7 +642,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
 
     /* Schema = published schema */
-    socket.on(CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema}: ClientSchema) => {
+    socket.on(CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }: ClientSchema) => {
       const { schema, methods, tableSchema, auth, rawSQL, err } = clientSchema;
       /** Only destroy existing syncs if schema changed */
       const schemaDidNotChange = schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema)

@@ -3,7 +3,7 @@ import { type DBHandlerClient, useProstglesClient } from "./prostgles";
 
 (async () => {
   // const schema: DBSchema = {
-    type GeneratedSchema = {
+  type GeneratedSchema = {
     table1: {
       columns: {
         col1: string,
@@ -20,7 +20,8 @@ import { type DBHandlerClient, useProstglesClient } from "./prostgles";
   if(client.isLoading || "error" in client) return;
   const t1 = client.dbo.table1.useFind({ }, { orderBy: { col1: 1 } });
   const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
-  
+
+
   const client2 = useProstglesClient();
   if(client2.isLoading || "error" in client2) return;
   client2.dbo.dwada?.find?.();
