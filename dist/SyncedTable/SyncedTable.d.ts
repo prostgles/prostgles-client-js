@@ -1,5 +1,6 @@
-import { FieldFilter, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter } from "prostgles-types";
-import { DBHandlerClient } from "../prostgles";
+import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter } from "prostgles-types";
+import { WAL } from "prostgles-types";
+import type { DBHandlerClient } from "../prostgles";
 export declare const debug: any;
 export type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;

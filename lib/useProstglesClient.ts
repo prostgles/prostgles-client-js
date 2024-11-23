@@ -15,12 +15,13 @@ import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
 import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
+import type { AuthHandler } from "./Auth";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;
   methods: MethodHandler | undefined; 
   tableSchema: DBSchemaTable[] | undefined; 
-  auth: Auth | undefined;
+  auth: AuthHandler | undefined;
   isReconnect: boolean;
   socket: Socket;
 }

@@ -10,9 +10,6 @@ import type {
   AuthGuardLocationResponse,
   ClientSchema,
   ClientSyncHandles,
-  DBEventHandles,
-  DBNoticeConfig,
-  DBNotifConfig,
   DBSchema,
   DBSchemaTable,
   DbJoinMaker,
@@ -24,30 +21,31 @@ import type {
   SQLHandler,
   SQLResult,
   SelectParams,
-  SocketSQLStreamClient,
-  SocketSQLStreamServer,
   SubscribeParams,
   SubscriptionChannels,
   SubscriptionHandler,
   TableHandler,
   UpdateParams,
-  ViewHandler,
+  ViewHandler
 } from "prostgles-types";
 
 import {
+  CHANNELS,
   asName,
   getJoinHandlers,
   getKeys,
   isObject,
   omitKeys,
-  CHANNELS,
 } from "prostgles-types";
 
-import type { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, DbTableSync, Sync, SyncOne } from "./SyncedTable/SyncedTable";
 import { isEqual, useFetch, useSubscribe, useSync } from "./react-hooks";
+import { SQL } from "./SQL";
+import type { DbTableSync, Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
+import { FunctionQueuer } from "./FunctionQueuer";
+import { type AuthHandler, setupAuth } from "./Auth";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
-const hasWnd = typeof window !== "undefined";
+export const hasWnd = typeof window !== "undefined";
 export const debug: any = function (...args: any[]) {
   if (hasWnd && (window as any)[DEBUG_KEY]) {
     (window as any)[DEBUG_KEY](...args);
@@ -56,8 +54,8 @@ export const debug: any = function (...args: any[]) {
 
 export { MethodHandler, SQLResult, asName };
 
-export * from "./react-hooks";
-export * from "./useProstglesClient";
+  export * from "./react-hooks";
+  export * from "./useProstglesClient";
 
 
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
@@ -168,7 +166,7 @@ export type InitOptions<DBSchema = void> = {
    * true by default
    */
   onSchemaChange?: false | (() => void);
-  onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+  onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: AuthHandler, isReconnect: boolean) => any;
 
   /**
    * If not provided will fire onReady
@@ -239,82 +237,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
   let syncedTables: Record<string, any> = {};
 
   let syncs: Syncs = {};
-
-  const notifSubs: {
-    [key: string]: {
-      config: DBNotifConfig
-      listeners: ((notif: any) => void)[]
-    }
-  } = {};
-  const removeNotifListener = (listener: any, conf: DBNotifConfig) => {
-    const channelSubs = notifSubs[conf.notifChannel]
-    if (channelSubs) {
-      channelSubs.listeners = channelSubs.listeners.filter(nl => nl !== listener);
-      if (!channelSubs.listeners.length && channelSubs.config.socketUnsubChannel && socket) {
-        socket.emit(channelSubs.config.socketUnsubChannel, {});
-        delete notifSubs[conf.notifChannel];
-      }
-    }
-  };
-  const addNotifListener = (listener: any, conf: DBNotifConfig) => {
-
-    const channelSubs = notifSubs[conf.notifChannel]
-    if (!channelSubs) {
-      notifSubs[conf.notifChannel] = {
-        config: conf,
-        listeners: [listener]
-      };
-      socket.removeAllListeners(conf.socketChannel);
-      socket.on(conf.socketChannel, (notif: any) => {
-        if (notifSubs[conf.notifChannel]?.listeners.length) {
-          notifSubs[conf.notifChannel]!.listeners.map(l => {
-            l(notif);
-          })
-        } else {
-          socket.emit(notifSubs[conf.notifChannel]?.config.socketUnsubChannel, {});
-        }
-      });
-
-    } else {
-      notifSubs[conf.notifChannel]?.listeners.push(listener);
-    }
-  };
-
-
-  let noticeSubs: {
-    listeners: ((notice: any) => void)[];
-    config: DBNoticeConfig;
-  } | undefined;
-  const removeNoticeListener = (listener: any) => {
-    if (noticeSubs) {
-      noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
-      if (!noticeSubs.listeners.length && noticeSubs.config.socketUnsubChannel && socket) {
-        socket.emit(noticeSubs.config.socketUnsubChannel, {});
-      }
-    }
-  };
-  const addNoticeListener = (listener: any, conf: DBNoticeConfig) => {
-    noticeSubs ??= {
-      config: conf,
-      listeners: []
-    };
-
-    if (!noticeSubs.listeners.length) {
-      socket.removeAllListeners(conf.socketChannel);
-      socket.on(conf.socketChannel, (notice: any) => {
-        if (noticeSubs && noticeSubs.listeners.length) {
-          noticeSubs.listeners.map(l => {
-            l(notice);
-          })
-        } else {
-          socket.emit(conf.socketUnsubChannel, {});
-        }
-      });
-    }
-    noticeSubs.listeners.push(listener);
-  };
-
   let state: undefined | "connected" | "disconnected" | "reconnected";
+  const sql = new SQL()
 
   const destroySyncs = async () => {
     debug("destroySyncs", { subscriptions, syncedTables });
@@ -643,7 +567,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     /* Schema = published schema */
     socket.on(CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }: ClientSchema) => {
-      const { schema, methods, tableSchema, auth, rawSQL, err } = clientSchema;
+      const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
       /** Only destroy existing syncs if schema changed */
       const schemaDidNotChange = schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema)
       if(!schemaDidNotChange){
@@ -671,42 +595,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       const dbo: Partial<DBHandlerClient> = JSON.parse(JSON.stringify(schema));
       const _methods: typeof methods = JSON.parse(JSON.stringify(methods));
       let methodsObj: MethodHandler = {};
-      let _auth = {};
- 
-      if(auth){
-        if (auth.pathGuard && hasWnd) {
-          const doReload = (res?: AuthGuardLocationResponse) => {
-            if (res?.shouldReload) {
-              if (onReload) onReload();
-              else if (typeof window !== "undefined") {
-                window.location.reload();
-              }
-            }
-          }
-          socket.emit(CHANNELS.AUTHGUARD, JSON.stringify(window.location as AuthGuardLocation), (err: any, res: AuthGuardLocationResponse) => {
-            doReload(res)
-          });
-  
-          socket.removeAllListeners(CHANNELS.AUTHGUARD);
-          socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse) => {
-            doReload(res);
-          });
-        }
-  
-        _auth = { ...auth };
-        [CHANNELS.LOGIN, CHANNELS.LOGOUT, CHANNELS.REGISTER].map(funcName => {
-          if (auth[funcName]) {
-            _auth[funcName] = function (params) {
-              return new Promise((resolve, reject) => {
-                socket.emit(preffix + funcName, params, (err, res) => {
-                  if (err) reject(err);
-                  else resolve(res);
-                });
-              });
-            }
-          }
-        });
-      }
+
+      const auth = setupAuth({ authData: authConfig, socket, onReload }); 
 
       _methods.map(method => {
         /** New method def */
@@ -729,99 +619,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       methodsObj = Object.freeze(methodsObj);
 
       if (rawSQL) {
-        dbo.sql = function (query, params, options) {
-          return new Promise((resolve, reject) => {
-            socket.emit(CHANNELS.SQL, { query, params, options }, (err, res) => {
-              if (err) reject(err);
-              else {
-                if(options?.returnType === "stream"){
-                  const { channel, unsubChannel } = res as SocketSQLStreamServer;
-                  const start: SocketSQLStreamClient["start"] = (listener) => new Promise<Awaited<ReturnType<SocketSQLStreamClient["start"]>>>((resolveStart, rejectStart) => {
-                    socket.on(channel, listener)
-                    socket.emit(channel, {}, (pid: number, err) => {
-                      if(err){
-                        rejectStart(err);
-                        socket.removeAllListeners(channel);
-                      } else {
-                        resolveStart({
-                          pid,
-                          run: (query, params) => {
-                            return new Promise((resolveRun, rejectRun) => {
-                              socket.emit(channel, { query, params }, (data, _err) => {
-                                if(_err){
-                                  rejectRun(_err);
-                                } else {
-                                  resolveRun(data);
-                                }
-                              });
-                            });
-                          },
-                          stop: (terminate?: boolean) => {
-                            return new Promise((resolveStop, rejectStop) => {
-                              socket.emit(unsubChannel, { terminate }, (data, _err) => {
-                                if(_err){
-                                  rejectStop(_err);
-                                } else {
-                                  resolveStop(data);
-                                }
-                              });
-                            });
-                          }
-                        });
-                      }
-                    });
-                  });
-                  const streamHandlers = {
-                    channel,
-                    unsubChannel,
-                    start,
-                  } satisfies SocketSQLStreamClient;
-
-                  return resolve(streamHandlers as any);
-                } else if (options &&
-                  (options.returnType === "noticeSubscription") &&
-                  res &&
-                  Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
-                  !Object.values(res).find(v => typeof v !== "string")
-                ) {
-                  const sockInfo: DBNoticeConfig = res;
-                  const addListener = (listener: (arg: any) => void) => {
-                    addNoticeListener(listener, sockInfo);
-                    return {
-                      ...sockInfo,
-                      removeListener: () => removeNoticeListener(listener)
-                    }
-                  };
-                  const handle: DBEventHandles = {
-                    ...sockInfo,
-                    addListener
-                  };
-                  // @ts-ignore
-                  resolve(handle);
-                } else if (
-                  (!options || !options.returnType || options.returnType !== "statement") &&
-                  res &&
-                  Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() &&
-                  !Object.values(res).find(v => typeof v !== "string")
-                ) {
-                  const sockInfo: DBNotifConfig = res;
-                  const addListener = (listener: (arg: any) => void) => {
-                    addNotifListener(listener, sockInfo)
-                    return {
-                      ...res,
-                      removeListener: () => removeNotifListener(listener, sockInfo)
-                    }
-                  }
-                  const handle: DBEventHandles = { ...res, addListener };
-                  resolve(handle as any);
-
-                } else {
-                  resolve(res);
-                }
-              }
-            });
-          });
-        }
+        sql.setup({ dbo, socket });
       }
 
       /* Building DBO object */
@@ -989,7 +787,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
       (async () => {
         try {
-          await onReady(dbo as DBHandlerClient<DBSchema>, methodsObj, tableSchema, _auth, isReconnect);
+          await onReady(dbo as DBHandlerClient<DBSchema>, methodsObj, tableSchema, auth, isReconnect);
         } catch (err) {
           console.error("Prostgles: Error within onReady: \n", err);
           reject(err);
@@ -1000,75 +798,4 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       })();
     });
   })
-}
-
-type Func = (...args: any[]) => any;
-class FunctionQueuer<F extends Func> {
-  private queue: { arguments: Parameters<F>; onResult: (result: ReturnType<F>) => void; onFail: (error: any) => void }[] = [];
-  private func: F;
-  private groupBy?: (args: Parameters<F>) => string;
-  constructor(func: F, groupBy?: ((args: Parameters<F>) => string)) {
-    this.func = func;
-    this.groupBy = groupBy;
-  }
-  private isRunning = false;
-  async run(args: Parameters<F>): Promise<ReturnType<F>> {
-
-    const result = new Promise<ReturnType<F>>((resolve, reject) => {
-      const item = { arguments: args, onResult: resolve, onFail: reject }
-      this.queue.push(item);
-    });
-
-    const startQueueJob = async () => {
-      if (this.isRunning) {
-        return;
-      }
-      this.isRunning = true;
-
-      const runItem = async (item: undefined | typeof this.queue[number]) => {
-        if (item) {
-          try {
-            const result = await this.func(...item.arguments);
-            item.onResult(result);
-          } catch(error) {
-            item.onFail(error);
-          }
-        }
-      }
-
-      if(!this.groupBy){
-        const item = this.queue.shift();
-        await runItem(item);
-
-      /** Run items in parallel for each group */
-      } else {
-        type Item = typeof this.queue[number];
-        const groups: string[] = [];
-        const items: { index: number; item: Item; }[] = [];
-        this.queue.forEach(async (item, index) => {
-          const group = this.groupBy!(item.arguments);
-          if(!groups.includes(group)){
-            groups.push(group);
-            items.push({ index, item });
-          }
-        });
-        items.slice(0).reverse().forEach((item) => {
-          this.queue.splice(item.index, 1);
-        });
-        await Promise.all(items.map(item => {
-          return runItem(item.item);
-        }));
-      }
-
-      this.isRunning = false;
-      if (this.queue.length) {
-        startQueueJob();
-      }
-    }
-
-    startQueueJob();
-
-    return result;
-
-  }
 }

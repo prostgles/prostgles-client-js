@@ -24,20 +24,16 @@ class SyncedTable {
         (0, exports.debug)(mSubs, this._multiSubscriptions);
         this._multiSubscriptions = mSubs.slice(0);
     }
-    ;
     get multiSubscriptions() {
         return this._multiSubscriptions;
     }
-    ;
     set singleSubscriptions(sSubs) {
         (0, exports.debug)(sSubs, this._singleSubscriptions);
         this._singleSubscriptions = sSubs.slice(0);
     }
-    ;
     get singleSubscriptions() {
         return this._singleSubscriptions;
     }
-    ;
     constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError }) {
         this.throttle = 100;
         this.batch_size = 50;
@@ -56,8 +52,8 @@ class SyncedTable {
         this.updatePatches = async (walData) => {
             var _a, _b;
             let remaining = walData.map(d => d.current);
-            let patched = [], patchedItems = [];
-            if (this.columns && this.columns.length && ((_a = this.tableHandler) === null || _a === void 0 ? void 0 : _a.updateBatch) && (this.patchText || this.patchJSON)) {
+            const patched = [], patchedItems = [];
+            if (this.columns.length && ((_a = this.tableHandler) === null || _a === void 0 ? void 0 : _a.updateBatch) && (this.patchText || this.patchJSON)) {
                 // const jCols = this.columns.filter(c => c.data_type === "json")
                 const txtCols = this.columns.filter(c => c.data_type === "text");
                 if (this.patchText && txtCols.length) {
@@ -112,7 +108,7 @@ class SyncedTable {
             if (!this.isSynced)
                 return;
             /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
-            let items = [], deltas = [], ids = [];
+            const items = [], deltas = [], ids = [];
             changes.map(({ idObj, newItem, delta }) => {
                 /* Single subs do not care about the filter */
                 this.singleSubscriptions.filter(s => this.matchesIdObj(s.idObj, idObj)).map(async (s) => {
@@ -131,7 +127,7 @@ class SyncedTable {
                 }
             });
             if (this.onChange || this.multiSubscriptions.length) {
-                let allItems = [], allDeltas = [];
+                const allItems = [], allDeltas = [];
                 this.getItems().map(d => {
                     allItems.push({ ...d });
                     const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
@@ -164,8 +160,8 @@ class SyncedTable {
             return "ok";
         };
         this.unsync = () => {
-            if (this.dbSync && this.dbSync.unsync)
-                this.dbSync.unsync();
+            var _a;
+            (_a = this.dbSync) === null || _a === void 0 ? void 0 : _a.unsync();
         };
         this.destroy = () => {
             this.unsync();
@@ -189,7 +185,7 @@ class SyncedTable {
          * Ensures that all object keys match valid column names
          */
         this.checkItemCols = (item) => {
-            if (this.columns && this.columns.length) {
+            if (this.columns.length) {
                 const badCols = Object.keys({ ...item })
                     .filter(k => !this.columns.find(c => c.name === k));
                 if (badCols.length) {
@@ -205,19 +201,20 @@ class SyncedTable {
          */
         this.upsert = async (items, from_server = false) => {
             var _a, _b;
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if ((!items || !items.length) && !from_server)
                 throw "No data provided for upsert";
             /* If data has been deleted then wait for it to sync with server before continuing */
             // if(from_server && this.getDeleted().length){
             //     await this.syncDeleted();
             // }
-            let results = [];
+            const results = [];
             let status;
-            let walItems = [];
+            const walItems = [];
             await Promise.all(items.map(async (item, i) => {
                 var _a;
                 // let d = { ...item.idObj, ...item.delta };
-                let idObj = { ...item.idObj };
+                const idObj = { ...item.idObj };
                 let delta = { ...item.delta };
                 /* Convert undefined to null because:
                     1) JSON.stringify drops these keys
@@ -230,7 +227,7 @@ class SyncedTable {
                 if (!from_server) {
                     this.checkItemCols({ ...item.delta, ...item.idObj });
                 }
-                let oItm = this.getItem(idObj), oldIdx = oItm.index, oldItem = oItm.data;
+                const oItm = this.getItem(idObj), oldIdx = oItm.index, oldItem = oItm.data;
                 /* Calc delta if missing or if from server */
                 if ((from_server || (0, prostgles_types_1.isEmpty)(delta)) && !(0, prostgles_types_1.isEmpty)(oldItem)) {
                     delta = this.getDelta(oldItem || {}, delta);
@@ -259,7 +256,7 @@ class SyncedTable {
                 }
                 this.setItem(newItem, oldIdx);
                 // if(!status) throw "changeInfo status missing"
-                let changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
+                const changeInfo = { idObj, delta, oldItem, newItem, status, from_server };
                 // const idStr = this.getIdStr(idObj);
                 /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
                 if (!from_server) {
@@ -340,7 +337,7 @@ class SyncedTable {
             if (this.storageType === STORAGE_TYPES.localStorage) {
                 if (!hasWnd)
                     throw "Cannot access window object. Choose another storage method (array OR object)";
-                let cachedStr = window.localStorage.getItem(this.name);
+                const cachedStr = window.localStorage.getItem(this.name);
                 if (cachedStr) {
                     try {
                         items = JSON.parse(cachedStr);
@@ -356,7 +353,7 @@ class SyncedTable {
             else {
                 items = Object.values({ ...this.itemsObj });
             }
-            if (this.id_fields && this.synced_field) {
+            if (this.id_fields.length && this.synced_field) {
                 const s_fields = [this.synced_field, ...this.id_fields.sort()];
                 items = items
                     .filter(d => {
@@ -379,7 +376,7 @@ class SyncedTable {
          * @param param0: SyncBatchRequest
          */
         this.getBatch = ({ from_synced, to_synced, offset, limit } = { offset: 0, limit: undefined }) => {
-            let items = this.getItems();
+            const items = this.getItems();
             // params = params || {};
             // const { from_synced, to_synced, offset = 0, limit = null } = params;
             let res = items.map(c => ({ ...c }))
@@ -396,6 +393,7 @@ class SyncedTable {
         if (onDebug) {
             this.onDebug = evt => onDebug({ ...evt, type: "sync", tableName: name }, this);
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
@@ -422,7 +420,7 @@ class SyncedTable {
         const onSyncRequest = (syncBatchParams) => {
             var _a;
             let clientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
-            let batch = this.getBatch(syncBatchParams);
+            const batch = this.getBatch(syncBatchParams);
             if (batch.length) {
                 clientSyncInfo = {
                     c_fr: this.getRowSyncObj(batch[0]),
@@ -448,7 +446,7 @@ class SyncedTable {
             }
             else if ("isSynced" in onUpdatesParams && onUpdatesParams.isSynced && !this.isSynced) {
                 this.isSynced = onUpdatesParams.isSynced;
-                let items = this.getItems().map(d => ({ ...d }));
+                const items = this.getItems().map(d => ({ ...d }));
                 this.setItems([]);
                 const updateItems = items.map(d => ({
                     idObj: this.getIdObj(d),
@@ -458,7 +456,7 @@ class SyncedTable {
             }
             else if ("data" in onUpdatesParams) {
                 /* Delta left empty so we can prepare it here */
-                let updateItems = onUpdatesParams.data.map(d => {
+                const updateItems = onUpdatesParams.data.map(d => {
                     return {
                         idObj: this.getIdObj(d),
                         delta: d
@@ -501,7 +499,7 @@ class SyncedTable {
                     //         return d;
                     //     }))
                     // }
-                    let _data = await this.updatePatches(walData);
+                    const _data = await this.updatePatches(walData);
                     if (!_data.length)
                         return [];
                     return this.dbSync.syncData(data);
@@ -568,13 +566,14 @@ class SyncedTable {
         this.multiSubscriptions.push(sub);
         if (!this.skipFirstTrigger) {
             setTimeout(() => {
-                let items = this.getItems();
+                const items = this.getItems();
                 sub.notify(items, items);
             }, 0);
         }
         return Object.freeze({ ...handles });
     }
     makeSingleSyncHandles(idObj, onChange) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!idObj || !onChange)
             throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
         const handles = {
@@ -620,7 +619,7 @@ class SyncedTable {
             handlesOnData,
             handles,
             notify: (data, delta) => {
-                let newData = { ...data };
+                const newData = { ...data };
                 if (handlesOnData) {
                     newData.$get = handles.$get;
                     newData.$find = handles.$find;
@@ -634,7 +633,7 @@ class SyncedTable {
         };
         this.singleSubscriptions.push(sub);
         setTimeout(() => {
-            let existingData = handles.$get();
+            const existingData = handles.$get();
             if (existingData) {
                 sub.notify(existingData, existingData);
             }
@@ -645,14 +644,14 @@ class SyncedTable {
         return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
     }
     getIdObj(d) {
-        let res = {};
+        const res = {};
         this.id_fields.sort().map(key => {
             res[key] = d[key];
         });
         return res;
     }
     getRowSyncObj(d) {
-        let res = {};
+        const res = {};
         [this.synced_field, ...this.id_fields].sort().map(key => {
             res[key] = d[key];
         });
@@ -731,9 +730,10 @@ class SyncedTable {
     }
     /* Returns an item by idObj from the local store */
     getItem(idObj) {
-        let index = -1, d;
+        const index = -1;
+        let d;
         if (this.storageType === STORAGE_TYPES.localStorage) {
-            let items = this.getItems();
+            const items = this.getItems();
             d = items.find(d => this.matchesIdObj(d, idObj));
         }
         else if (this.storageType === STORAGE_TYPES.array) {
@@ -782,7 +782,7 @@ class SyncedTable {
         else {
             this.itemsObj = this.itemsObj || {};
             if (!deleteItem) {
-                let existing = this.itemsObj[this.getIdStr(item)] || {};
+                const existing = this.itemsObj[this.getIdStr(item)] || {};
                 this.itemsObj[this.getIdStr(item)] = isFullData ? { ...item } : { ...existing, ...item };
             }
             else {
@@ -798,7 +798,7 @@ exports.SyncedTable = SyncedTable;
 function mergeDeep(_target, _source) {
     const target = _target ? quickClone(_target) : _target;
     const source = _source ? quickClone(_source) : _source;
-    let output = Object.assign({}, target);
+    const output = Object.assign({}, target);
     if ((0, prostgles_types_1.isObject)(target) && (0, prostgles_types_1.isObject)(source)) {
         Object.keys(source).forEach(key => {
             if ((0, prostgles_types_1.isObject)(source[key])) {
@@ -825,7 +825,7 @@ function quickClone(obj) {
         return obj.slice(0).map(v => quickClone(v));
     }
     else if ((0, prostgles_types_1.isObject)(obj)) {
-        let result = {};
+        const result = {};
         (0, prostgles_types_1.getKeys)(obj).map(k => {
             result[k] = quickClone(obj[k]);
         });

@@ -1,5 +1,5 @@
-import { AnyObject } from "prostgles-types";
-import { MultiChangeListener, MultiSyncHandles, SubscriptionMulti, SyncedTable } from "./SyncedTable";
+import type { AnyObject } from "prostgles-types";
+import type { MultiChangeListener, MultiSyncHandles, SubscriptionMulti, SyncedTable } from "./SyncedTable";
 type Args = {
     onChange: MultiChangeListener<AnyObject>;
     handlesOnData: boolean;

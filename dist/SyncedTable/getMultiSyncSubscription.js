@@ -30,7 +30,8 @@ function getMultiSyncSubscription({ onChange, handlesOnData }) {
         handlesOnData,
         handles,
         notify: (_allItems, _allDeltas) => {
-            let allItems = [..._allItems], allDeltas = [..._allDeltas];
+            let allItems = [..._allItems];
+            const allDeltas = [..._allDeltas];
             if (handlesOnData) {
                 allItems = allItems.map((item, i) => {
                     const getItem = (d, idObj) => ({

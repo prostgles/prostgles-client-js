@@ -18,14 +18,17 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = exports.asName = exports.debug = void 0;
+exports.prostgles = exports.asName = exports.debug = exports.hasWnd = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
 const react_hooks_1 = require("./react-hooks");
+const SQL_1 = require("./SQL");
+const FunctionQueuer_1 = require("./FunctionQueuer");
+const Auth_1 = require("./Auth");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
-const hasWnd = typeof window !== "undefined";
+exports.hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
-    if (hasWnd && window[DEBUG_KEY]) {
+    if (exports.hasWnd && window[DEBUG_KEY]) {
         window[DEBUG_KEY](...args);
     }
 };
@@ -49,72 +52,8 @@ function prostgles(initOpts, syncedTable) {
     const subscriptions = {};
     let syncedTables = {};
     let syncs = {};
-    const notifSubs = {};
-    const removeNotifListener = (listener, conf) => {
-        const channelSubs = notifSubs[conf.notifChannel];
-        if (channelSubs) {
-            channelSubs.listeners = channelSubs.listeners.filter(nl => nl !== listener);
-            if (!channelSubs.listeners.length && channelSubs.config.socketUnsubChannel && socket) {
-                socket.emit(channelSubs.config.socketUnsubChannel, {});
-                delete notifSubs[conf.notifChannel];
-            }
-        }
-    };
-    const addNotifListener = (listener, conf) => {
-        var _a;
-        const channelSubs = notifSubs[conf.notifChannel];
-        if (!channelSubs) {
-            notifSubs[conf.notifChannel] = {
-                config: conf,
-                listeners: [listener]
-            };
-            socket.removeAllListeners(conf.socketChannel);
-            socket.on(conf.socketChannel, (notif) => {
-                var _a, _b;
-                if ((_a = notifSubs[conf.notifChannel]) === null || _a === void 0 ? void 0 : _a.listeners.length) {
-                    notifSubs[conf.notifChannel].listeners.map(l => {
-                        l(notif);
-                    });
-                }
-                else {
-                    socket.emit((_b = notifSubs[conf.notifChannel]) === null || _b === void 0 ? void 0 : _b.config.socketUnsubChannel, {});
-                }
-            });
-        }
-        else {
-            (_a = notifSubs[conf.notifChannel]) === null || _a === void 0 ? void 0 : _a.listeners.push(listener);
-        }
-    };
-    let noticeSubs;
-    const removeNoticeListener = (listener) => {
-        if (noticeSubs) {
-            noticeSubs.listeners = noticeSubs.listeners.filter(nl => nl !== listener);
-            if (!noticeSubs.listeners.length && noticeSubs.config.socketUnsubChannel && socket) {
-                socket.emit(noticeSubs.config.socketUnsubChannel, {});
-            }
-        }
-    };
-    const addNoticeListener = (listener, conf) => {
-        noticeSubs !== null && noticeSubs !== void 0 ? noticeSubs : (noticeSubs = {
-            config: conf,
-            listeners: []
-        });
-        if (!noticeSubs.listeners.length) {
-            socket.removeAllListeners(conf.socketChannel);
-            socket.on(conf.socketChannel, (notice) => {
-                if (noticeSubs && noticeSubs.listeners.length) {
-                    noticeSubs.listeners.map(l => {
-                        l(notice);
-                    });
-                }
-                else {
-                    socket.emit(conf.socketUnsubChannel, {});
-                }
-            });
-        }
-        noticeSubs.listeners.push(listener);
-    };
     let state;
+    const sql = new SQL_1.SQL();
     const destroySyncs = async () => {
         (0, exports.debug)("destroySyncs", { subscriptions, syncedTables });
         await Promise.all(Object.values(subscriptions).map(s => s.destroy()));
@@ -205,7 +144,7 @@ function prostgles(initOpts, syncedTable) {
             });
         });
     }
-    const addSyncQueuer = new FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
+    const addSyncQueuer = new FunctionQueuer_1.FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
     async function addSync(params, triggers) {
         return addSyncQueuer.run([params, triggers]);
     }
@@ -302,7 +241,7 @@ function prostgles(initOpts, syncedTable) {
     /**
      * Can be used concurrently
      */
-    const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
+    const addSubQueuer = new FunctionQueuer_1.FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
     async function addSub(dbo, params, onChange, _onError) {
         return addSubQueuer.run([dbo, params, onChange, _onError]);
     }
@@ -421,7 +360,7 @@ function prostgles(initOpts, syncedTable) {
         }
         /* Schema = published schema */
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }) => {
-            const { schema, methods, tableSchema, auth, rawSQL, err } = clientSchema;
+            const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
             const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
@@ -447,42 +386,7 @@ function prostgles(initOpts, syncedTable) {
             const dbo = JSON.parse(JSON.stringify(schema));
             const _methods = JSON.parse(JSON.stringify(methods));
             let methodsObj = {};
-            let _auth = {};
-            if (auth) {
-                if (auth.pathGuard && hasWnd) {
-                    const doReload = (res) => {
-                        if (res === null || res === void 0 ? void 0 : res.shouldReload) {
-                            if (onReload)
-                                onReload();
-                            else if (typeof window !== "undefined") {
-                                window.location.reload();
-                            }
-                        }
-                    };
-                    socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
-                        doReload(res);
-                    });
-                    socket.removeAllListeners(prostgles_types_1.CHANNELS.AUTHGUARD);
-                    socket.on(prostgles_types_1.CHANNELS.AUTHGUARD, (res) => {
-                        doReload(res);
-                    });
-                }
-                _auth = { ...auth };
-                [prostgles_types_1.CHANNELS.LOGIN, prostgles_types_1.CHANNELS.LOGOUT, prostgles_types_1.CHANNELS.REGISTER].map(funcName => {
-                    if (auth[funcName]) {
-                        _auth[funcName] = function (params) {
-                            return new Promise((resolve, reject) => {
-                                socket.emit(preffix + funcName, params, (err, res) => {
-                                    if (err)
-                                        reject(err);
-                                    else
-                                        resolve(res);
-                                });
-                            });
-                        };
-                    }
-                });
-            }
+            const auth = (0, Auth_1.setupAuth)({ authData: authConfig, socket, onReload });
             _methods.map(method => {
                 /** New method def */
                 const isBasic = typeof method === "string";
@@ -505,101 +409,7 @@ function prostgles(initOpts, syncedTable) {
             });
             methodsObj = Object.freeze(methodsObj);
             if (rawSQL) {
-                dbo.sql = function (query, params, options) {
-                    return new Promise((resolve, reject) => {
-                        socket.emit(prostgles_types_1.CHANNELS.SQL, { query, params, options }, (err, res) => {
-                            if (err)
-                                reject(err);
-                            else {
-                                if ((options === null || options === void 0 ? void 0 : options.returnType) === "stream") {
-                                    const { channel, unsubChannel } = res;
-                                    const start = (listener) => new Promise((resolveStart, rejectStart) => {
-                                        socket.on(channel, listener);
-                                        socket.emit(channel, {}, (pid, err) => {
-                                            if (err) {
-                                                rejectStart(err);
-                                                socket.removeAllListeners(channel);
-                                            }
-                                            else {
-                                                resolveStart({
-                                                    pid,
-                                                    run: (query, params) => {
-                                                        return new Promise((resolveRun, rejectRun) => {
-                                                            socket.emit(channel, { query, params }, (data, _err) => {
-                                                                if (_err) {
-                                                                    rejectRun(_err);
-                                                                }
-                                                                else {
-                                                                    resolveRun(data);
-                                                                }
-                                                            });
-                                                        });
-                                                    },
-                                                    stop: (terminate) => {
-                                                        return new Promise((resolveStop, rejectStop) => {
-                                                            socket.emit(unsubChannel, { terminate }, (data, _err) => {
-                                                                if (_err) {
-                                                                    rejectStop(_err);
-                                                                }
-                                                                else {
-                                                                    resolveStop(data);
-                                                                }
-                                                            });
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    });
-                                    const streamHandlers = {
-                                        channel,
-                                        unsubChannel,
-                                        start,
-                                    };
-                                    return resolve(streamHandlers);
-                                }
-                                else if (options &&
-                                    (options.returnType === "noticeSubscription") &&
-                                    res &&
-                                    Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel"].sort().join() &&
-                                    !Object.values(res).find(v => typeof v !== "string")) {
-                                    const sockInfo = res;
-                                    const addListener = (listener) => {
-                                        addNoticeListener(listener, sockInfo);
-                                        return {
-                                            ...sockInfo,
-                                            removeListener: () => removeNoticeListener(listener)
-                                        };
-                                    };
-                                    const handle = {
-                                        ...sockInfo,
-                                        addListener
-                                    };
-                                    // @ts-ignore
-                                    resolve(handle);
-                                }
-                                else if ((!options || !options.returnType || options.returnType !== "statement") &&
-                                    res &&
-                                    Object.keys(res).sort().join() === ["socketChannel", "socketUnsubChannel", "notifChannel"].sort().join() &&
-                                    !Object.values(res).find(v => typeof v !== "string")) {
-                                    const sockInfo = res;
-                                    const addListener = (listener) => {
-                                        addNotifListener(listener, sockInfo);
-                                        return {
-                                            ...res,
-                                            removeListener: () => removeNotifListener(listener, sockInfo)
-                                        };
-                                    };
-                                    const handle = { ...res, addListener };
-                                    resolve(handle);
-                                }
-                                else {
-                                    resolve(res);
-                                }
-                            }
-                        });
-                    });
-                };
+                sql.setup({ dbo, socket });
             }
             /* Building DBO object */
             const checkSubscriptionArgs = (basicFilter, options, onChange, onError) => {
@@ -758,7 +568,7 @@ function prostgles(initOpts, syncedTable) {
             });
             (async () => {
                 try {
-                    await onReady(dbo, methodsObj, tableSchema, _auth, isReconnect);
+                    await onReady(dbo, methodsObj, tableSchema, auth, isReconnect);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);
@@ -770,62 +580,3 @@ function prostgles(initOpts, syncedTable) {
     });
 }
 exports.prostgles = prostgles;
-class FunctionQueuer {
-    constructor(func, groupBy) {
-        this.queue = [];
-        this.isRunning = false;
-        this.func = func;
-        this.groupBy = groupBy;
-    }
-    async run(args) {
-        const result = new Promise((resolve, reject) => {
-            const item = { arguments: args, onResult: resolve, onFail: reject };
-            this.queue.push(item);
-        });
-        const startQueueJob = async () => {
-            if (this.isRunning) {
-                return;
-            }
-            this.isRunning = true;
-            const runItem = async (item) => {
-                if (item) {
-                    try {
-                        const result = await this.func(...item.arguments);
-                        item.onResult(result);
-                    }
-                    catch (error) {
-                        item.onFail(error);
-                    }
-                }
-            };
-            if (!this.groupBy) {
-                const item = this.queue.shift();
-                await runItem(item);
-                /** Run items in parallel for each group */
-            }
-            else {
-                const groups = [];
-                const items = [];
-                this.queue.forEach(async (item, index) => {
-                    const group = this.groupBy(item.arguments);
-                    if (!groups.includes(group)) {
-                        groups.push(group);
-                        items.push({ index, item });
-                    }
-                });
-                items.slice(0).reverse().forEach((item) => {
-                    this.queue.splice(item.index, 1);
-                });
-                await Promise.all(items.map(item => {
-                    return runItem(item.item);
-                }));
-            }
-            this.isRunning = false;
-            if (this.queue.length) {
-                startQueueJob();
-            }
-        };
-        startQueueJob();
-        return result;
-    }
-}

@@ -1,5 +1,6 @@
-import { FieldFilter, getTextPatch, isEmpty, WAL, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, getKeys, isObject, TableHandler, EqualityFilter } from "prostgles-types";
-import { DBHandlerClient } from "../prostgles";
+import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, ClientSyncInfo, TableHandler, EqualityFilter } from "prostgles-types";
+import { getTextPatch, isEmpty, WAL, getKeys, isObject } from "prostgles-types";
+import type { DBHandlerClient } from "../prostgles";
 import { getMultiSyncSubscription } from "./getMultiSyncSubscription";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -163,9 +164,9 @@ export class SyncedTable {
   onChange?: MultiChangeListener;
   id_fields: string[];
   synced_field: string;
-  throttle: number = 100;
-  batch_size: number = 50;
-  skipFirstTrigger: boolean = false;
+  throttle = 100;
+  batch_size = 50;
+  skipFirstTrigger = false;
 
   columns: { name: string, data_type: string }[] = [];
 
@@ -182,18 +183,18 @@ export class SyncedTable {
   set multiSubscriptions(mSubs: SubscriptionMulti[]) {
     debug(mSubs, this._multiSubscriptions);
     this._multiSubscriptions = mSubs.slice(0);
-  };
+  }
   get multiSubscriptions(): SubscriptionMulti[] {
     return this._multiSubscriptions;
-  };
+  }
 
   set singleSubscriptions(sSubs: SubscriptionSingle[]) {
     debug(sSubs, this._singleSubscriptions);
     this._singleSubscriptions = sSubs.slice(0);
-  };
+  }
   get singleSubscriptions(): SubscriptionSingle[] {
     return this._singleSubscriptions
-  };
+  }
 
   dbSync?: DbTableSync;
   items: AnyObject[] = [];
@@ -201,7 +202,7 @@ export class SyncedTable {
   itemsObj: AnyObject = {};
   patchText: boolean;
   patchJSON: boolean;
-  isSynced: boolean = false;
+  isSynced = false;
   onError: SyncedTableOptions["onError"];
   onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName">) => Promise<void>;
 
@@ -215,6 +216,7 @@ export class SyncedTable {
       this.onDebug = evt => onDebug({ ...evt, type: "sync", tableName: name }, this)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!STORAGE_TYPES[storageType]) throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
     if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
       console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
@@ -245,7 +247,7 @@ export class SyncedTable {
 
       let clientSyncInfo: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
 
-      let batch = this.getBatch(syncBatchParams);
+      const batch = this.getBatch(syncBatchParams);
       if (batch.length) {
 
         clientSyncInfo = {
@@ -273,7 +275,7 @@ export class SyncedTable {
           this.onError?.(onUpdatesParams.err);
         } else if ("isSynced" in onUpdatesParams && onUpdatesParams.isSynced && !this.isSynced) {
           this.isSynced = onUpdatesParams.isSynced;
-          let items = this.getItems().map(d => ({ ...d }));
+          const items = this.getItems().map(d => ({ ...d }));
           this.setItems([]);
           const updateItems = items.map(d => ({
             idObj: this.getIdObj(d),
@@ -282,7 +284,7 @@ export class SyncedTable {
           await this.upsert(updateItems, true)
         } else if ("data" in onUpdatesParams) {
           /* Delta left empty so we can prepare it here */
-          let updateItems = onUpdatesParams.data.map(d => {
+          const updateItems = onUpdatesParams.data.map(d => {
             return {
               idObj: this.getIdObj(d),
               delta: d
@@ -330,7 +332,7 @@ export class SyncedTable {
           //     }))
           // }
 
-          let _data = await this.updatePatches(walData);
+          const _data = await this.updatePatches(walData);
           if (!_data.length) return [];
           return this.dbSync!.syncData(data);
         },//, deletedData);,
@@ -374,9 +376,9 @@ export class SyncedTable {
    */
   updatePatches = async (walData: WALItem[]) => {
     let remaining: any[] = walData.map(d => d.current);
-    let patched: [any, any][] = [],
+    const patched: [any, any][] = [],
       patchedItems: any[] = [];
-    if (this.columns && this.columns.length && this.tableHandler?.updateBatch && (this.patchText || this.patchJSON)) {
+    if (this.columns.length && this.tableHandler?.updateBatch && (this.patchText || this.patchJSON)) {
 
       // const jCols = this.columns.filter(c => c.data_type === "json")
       const txtCols = this.columns.filter(c => c.data_type === "text");
@@ -462,7 +464,7 @@ export class SyncedTable {
     this.multiSubscriptions.push(sub as any);
     if (!this.skipFirstTrigger) {
       setTimeout(() => {
-        let items = this.getItems<T>();
+        const items = this.getItems<T>();
         sub.notify(items, items as any);
       }, 0);
     }
@@ -470,6 +472,7 @@ export class SyncedTable {
   }
 
   makeSingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false>(idObj: Partial<T>, onChange: SingleChangeListener<T, Full> | MultiChangeListener<T>): SingleSyncHandles<T, Full> {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
     const handles: SingleSyncHandles<T, Full> = {
@@ -518,7 +521,7 @@ export class SyncedTable {
       handlesOnData,
       handles,
       notify: (data, delta) => {
-        let newData: SyncDataItem<T, Full> = { ...data } as any;
+        const newData: SyncDataItem<T, Full> = { ...data } as any;
 
         if (handlesOnData) {
           newData.$get = handles.$get;
@@ -536,7 +539,7 @@ export class SyncedTable {
     this.singleSubscriptions.push(sub as any);
 
     setTimeout(() => {
-      let existingData = handles.$get();
+      const existingData = handles.$get();
       if (existingData) {
         sub.notify(existingData, existingData as any);
       }
@@ -553,7 +556,7 @@ export class SyncedTable {
     if (!this.isSynced) return;
 
     /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
-    let items: AnyObject[] = [], deltas: AnyObject[] = [], ids: AnyObject[] = [];
+    const items: AnyObject[] = [], deltas: AnyObject[] = [], ids: AnyObject[] = [];
     changes.map(({ idObj, newItem, delta }) => {
 
       /* Single subs do not care about the filter */
@@ -579,7 +582,7 @@ export class SyncedTable {
 
 
     if (this.onChange || this.multiSubscriptions.length) {
-      let allItems: AnyObject[] = [], allDeltas: AnyObject[] = [];
+      const allItems: AnyObject[] = [], allDeltas: AnyObject[] = [];
       this.getItems().map(d => {
         allItems.push({ ...d });
         const dIdx = items.findIndex(_d => this.matchesIdObj(d, _d));
@@ -617,14 +620,14 @@ export class SyncedTable {
     return this.id_fields.sort().map(key => `${d[key] || ""}`).join(".");
   }
   getIdObj(d: AnyObject) {
-    let res: AnyObject = {};
+    const res: AnyObject = {};
     this.id_fields.sort().map(key => {
       res[key] = d[key];
     });
     return res;
   }
   getRowSyncObj(d: AnyObject): AnyObject {
-    let res: AnyObject = {};
+    const res: AnyObject = {};
     [this.synced_field, ...this.id_fields].sort().map(key => {
       res[key] = d[key];
     });
@@ -632,7 +635,7 @@ export class SyncedTable {
   }
 
   unsync = () => {
-    if (this.dbSync && this.dbSync.unsync) this.dbSync.unsync();
+    this.dbSync?.unsync();
   }
 
   destroy = () => {
@@ -740,7 +743,7 @@ export class SyncedTable {
    * Ensures that all object keys match valid column names 
    */
   checkItemCols = (item: AnyObject) => {
-    if (this.columns && this.columns.length) {
+    if (this.columns.length) {
       const badCols = Object.keys({ ...item })
         .filter(k =>
           !this.columns.find(c => c.name === k)
@@ -758,6 +761,7 @@ export class SyncedTable {
    * @param from_server : <boolean> If false then updates will be sent to server
    */
   upsert = async (items: ItemUpdate[], from_server = false): Promise<any> => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if ((!items || !items.length) && !from_server) throw "No data provided for upsert";
 
     /* If data has been deleted then wait for it to sync with server before continuing */
@@ -766,12 +770,12 @@ export class SyncedTable {
     // }
 
     
-    let results: ItemUpdated[] = [];
+    const results: ItemUpdated[] = [];
     let status: ItemUpdated["status"];
-    let walItems: WALItem[] = [];
+    const walItems: WALItem[] = [];
     await Promise.all(items.map(async (item, i) => {
       // let d = { ...item.idObj, ...item.delta };
-      let idObj = { ...item.idObj };
+      const idObj = { ...item.idObj };
       let delta = { ...item.delta };
 
       /* Convert undefined to null because:
@@ -786,7 +790,7 @@ export class SyncedTable {
         this.checkItemCols({ ...item.delta, ...item.idObj });
       }
 
-      let oItm = this.getItem(idObj),
+      const oItm = this.getItem(idObj),
         oldIdx = oItm.index,
         oldItem = oItm.data;
 
@@ -824,7 +828,7 @@ export class SyncedTable {
       this.setItem(newItem, oldIdx);
 
       // if(!status) throw "changeInfo status missing"
-      let changeInfo: ItemUpdated = { idObj, delta, oldItem, newItem, status, from_server };
+      const changeInfo: ItemUpdated = { idObj, delta, oldItem, newItem, status, from_server };
 
       // const idStr = this.getIdStr(idObj);
       /* IF Local updates then Keep any existing oldItem to revert to the earliest working item */
@@ -887,9 +891,10 @@ export class SyncedTable {
 
   /* Returns an item by idObj from the local store */
   getItem<T = AnyObject>(idObj: Partial<T>): { data?: T, index: number } {
-    let index = -1, d;
+    const index = -1; 
+    let d;
     if (this.storageType === STORAGE_TYPES.localStorage) {
-      let items = this.getItems();
+      const items = this.getItems();
       d = items.find(d => this.matchesIdObj(d, idObj));
     } else if (this.storageType === STORAGE_TYPES.array) {
       d = this.items.find(d => this.matchesIdObj(d, idObj));
@@ -908,7 +913,7 @@ export class SyncedTable {
    * @param isFullData 
    * @param deleteItem 
    */
-  setItem(_item: AnyObject, index: number | undefined, isFullData: boolean = false, deleteItem: boolean = false) {
+  setItem(_item: AnyObject, index: number | undefined, isFullData = false, deleteItem = false) {
     const item = quickClone(_item);
     if (this.storageType === STORAGE_TYPES.localStorage) {
       let items = this.getItems();
@@ -928,7 +933,7 @@ export class SyncedTable {
     } else {
       this.itemsObj = this.itemsObj || {};
       if (!deleteItem) {
-        let existing = this.itemsObj[this.getIdStr(item)] || {};
+        const existing = this.itemsObj[this.getIdStr(item)] || {};
         this.itemsObj[this.getIdStr(item)] = isFullData ? { ...item } : { ...existing, ...item };
       } else {
         delete this.itemsObj[this.getIdStr(item)];
@@ -964,7 +969,7 @@ export class SyncedTable {
 
     if (this.storageType === STORAGE_TYPES.localStorage) {
       if (!hasWnd) throw "Cannot access window object. Choose another storage method (array OR object)";
-      let cachedStr = window.localStorage.getItem(this.name);
+      const cachedStr = window.localStorage.getItem(this.name);
       if (cachedStr) {
         try {
           items = JSON.parse(cachedStr);
@@ -978,7 +983,7 @@ export class SyncedTable {
       items = Object.values({ ...this.itemsObj });
     }
 
-    if (this.id_fields && this.synced_field) {
+    if (this.id_fields.length && this.synced_field) {
       const s_fields = [this.synced_field, ...this.id_fields.sort()];
       items = items
         .filter(d => {
@@ -1005,7 +1010,7 @@ export class SyncedTable {
    * @param param0: SyncBatchRequest
    */
   getBatch = ({ from_synced, to_synced, offset, limit }: SyncBatchParams = { offset: 0, limit: undefined }) => {
-    let items = this.getItems();
+    const items = this.getItems();
     // params = params || {};
     // const { from_synced, to_synced, offset = 0, limit = null } = params;
     let res = items.map(c => ({ ...c }))
@@ -1026,7 +1031,7 @@ export class SyncedTable {
 export default function mergeDeep(_target, _source) {
   const target = _target? quickClone(_target) : _target;
   const source = _source? quickClone(_source) : _source;
-  let output = Object.assign({}, target);
+  const output = Object.assign({}, target);
   if (isObject(target) && isObject(source)) {
     Object.keys(source).forEach(key => {
       if (isObject(source[key])) {
@@ -1050,7 +1055,7 @@ export function quickClone<T>(obj: T): T {
   if(Array.isArray(obj)){
     return obj.slice(0).map(v => quickClone(v)) as any
   } else if(isObject(obj)){
-    let result = {}  as any;
+    const result = {}  as any;
     getKeys(obj).map(k => {
       result[k] = quickClone(obj[k]) as any;
     })

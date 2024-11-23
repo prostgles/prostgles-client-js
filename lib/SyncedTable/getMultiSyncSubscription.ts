@@ -1,5 +1,5 @@
-import { AnyObject } from "prostgles-types";
-import { $UpdateOpts, MultiChangeListener, MultiSyncHandles, SubscriptionMulti, SyncedTable } from "./SyncedTable";
+import type { AnyObject } from "prostgles-types";
+import type { $UpdateOpts, MultiChangeListener, MultiSyncHandles, SubscriptionMulti, SyncedTable } from "./SyncedTable";
 
 type Args = {
   onChange: MultiChangeListener<AnyObject>;
@@ -13,7 +13,7 @@ export function getMultiSyncSubscription(this: SyncedTable, { onChange, handlesO
     },
     getItems: () => { return this.getItems(); },
     $upsert: (newData) => {
-      if (!newData) {
+      if (!(newData as any)) {
         throw "No data provided for upsert";
       }
 
@@ -37,8 +37,8 @@ export function getMultiSyncSubscription(this: SyncedTable, { onChange, handlesO
     handlesOnData,
     handles,
     notify: (_allItems, _allDeltas) => {
-      let allItems = [..._allItems],
-        allDeltas = [..._allDeltas];
+      let allItems = [..._allItems];
+      const allDeltas = [..._allDeltas];
       if (handlesOnData) {
         allItems = allItems.map((item, i) => {
 

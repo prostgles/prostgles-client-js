@@ -1,6 +1,8 @@
 import type { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
 import { asName } from "prostgles-types";
-import type { SyncDataItem, SyncOneOptions, SyncOptions, SyncedTable, Sync, SyncOne } from "./SyncedTable/SyncedTable";
+import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
+import { type AuthHandler } from "./Auth";
+export declare const hasWnd: boolean;
 export declare const debug: any;
 export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
@@ -106,7 +108,7 @@ export type InitOptions<DBSchema = void> = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: Auth | undefined, isReconnect: boolean) => any;
+    onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: AuthHandler, isReconnect: boolean) => any;
     /**
      * If not provided will fire onReady
      */

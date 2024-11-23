@@ -1,11 +1,12 @@
 import { type DBSchema, type DBSchemaTable, type MethodHandler } from "prostgles-types";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import { type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
+import { type DBHandlerClient, type InitOptions } from "./prostgles";
+import type { AuthHandler } from "./Auth";
 type OnReadyParams<DBSchema> = {
     dbo: DBHandlerClient<DBSchema>;
     methods: MethodHandler | undefined;
     tableSchema: DBSchemaTable[] | undefined;
-    auth: Auth | undefined;
+    auth: AuthHandler | undefined;
     isReconnect: boolean;
     socket: Socket;
 };
