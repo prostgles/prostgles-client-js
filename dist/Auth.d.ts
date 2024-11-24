@@ -26,6 +26,7 @@ type LoginSignupOptions = {
         withProvider?: WithProviderLogin;
     } & EmailAuth;
     register: undefined | EmailAuth;
+    providers: AuthSocketSchema["providers"];
 };
 type AuthStateLoggedOut = LoginSignupOptions & {
     isLoggedin: false;

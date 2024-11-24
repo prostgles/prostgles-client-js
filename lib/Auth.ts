@@ -25,6 +25,7 @@ type LoginSignupOptions = {
     withProvider?: WithProviderLogin;
   } & EmailAuth;
   register: undefined | EmailAuth;
+  providers: AuthSocketSchema["providers"];
 }
 
 type AuthStateLoggedOut = LoginSignupOptions & {
@@ -67,6 +68,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
     login: undefined,
     prefferedLogin: "",
     register: undefined,
+    providers: authConfig?.providers,
   }
 
   if(authConfig){
