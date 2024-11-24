@@ -19,17 +19,20 @@ type EmailAuth =
   withMagicLink?: (params: { username: string; }) => Promise<any>;
 }
 
-type AuthStateLoggedOut = {
-  isLoggedin: false;
-  user?: undefined;
+type LoginSignupOptions = {
   prefferedLogin: string;
-  login?: {
+  login: undefined | {
     withProvider?: WithProviderLogin;
   } & EmailAuth;
-  register?: EmailAuth
+  register: undefined | EmailAuth;
+}
+
+type AuthStateLoggedOut = LoginSignupOptions & {
+  isLoggedin: false;
+  user?: undefined;
 };
 
-type AuthStateLoggedIn = {
+type AuthStateLoggedIn = LoginSignupOptions & {
   isLoggedin: true;
   user: AnyObject;
   prefferedLogin: string;
@@ -60,8 +63,14 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
     });
   }
 
-  if(!authConfig?.user){
-    const { providers, register, loginType } = authConfig ?? {};
+  const loginSignupOptions: LoginSignupOptions = {
+    login: undefined,
+    prefferedLogin: "",
+    register: undefined,
+  }
+
+  if(authConfig){
+    const { providers, register, loginType } = authConfig;
     const withProvider: WithProviderLogin | undefined = isEmpty(providers)? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
       acc[provider as IdentityProvider] = () => {
         window.location.assign(url);
@@ -69,23 +78,27 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       return acc;
     }, {});
 
+    loginSignupOptions.login = {
+      withProvider,
+      ...(loginType && {
+        [loginType]: async (params) => {
+          return POST("/login", params);
+        },
+      }),
+    };
+
+    loginSignupOptions.register = register?.type? {
+      [register.type]: (params) => {
+        POST(register.url, params);
+      }
+    } : undefined;
+  }
+
+  if(!authConfig?.user){
     return {
       isLoggedin: false,
       user: undefined,
-      prefferedLogin: "",
-      login: {
-        withProvider,
-        ...(loginType && {
-          [loginType]: async (params) => {
-            return POST("/login", params);
-          },
-        }),
-      },
-      register: register?.type? {
-        [register.type]: (params) => {
-          POST(register.url, params);
-        }
-      } : undefined
+      ...loginSignupOptions
     } satisfies AuthStateLoggedOut;
   }
  
@@ -93,9 +106,9 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
     isLoggedin: true,
     user: authConfig.user,
     logout: () => {
-
+      window.location.assign("/logout");
     },
-    prefferedLogin: "",
+    ...loginSignupOptions
   } satisfies AuthStateLoggedIn;
 }
 

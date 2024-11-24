@@ -20,16 +20,18 @@ type EmailAuth = {
         username: string;
     }) => Promise<any>;
 };
-type AuthStateLoggedOut = {
-    isLoggedin: false;
-    user?: undefined;
+type LoginSignupOptions = {
     prefferedLogin: string;
-    login?: {
+    login: undefined | {
         withProvider?: WithProviderLogin;
     } & EmailAuth;
-    register?: EmailAuth;
+    register: undefined | EmailAuth;
 };
-type AuthStateLoggedIn = {
+type AuthStateLoggedOut = LoginSignupOptions & {
+    isLoggedin: false;
+    user?: undefined;
+};
+type AuthStateLoggedIn = LoginSignupOptions & {
     isLoggedin: true;
     user: AnyObject;
     prefferedLogin: string;

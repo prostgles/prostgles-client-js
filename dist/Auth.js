@@ -22,39 +22,47 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
             doReload(res);
         });
     }
-    if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
-        const { providers, register, loginType } = authConfig !== null && authConfig !== void 0 ? authConfig : {};
+    const loginSignupOptions = {
+        login: undefined,
+        prefferedLogin: "",
+        register: undefined,
+    };
+    if (authConfig) {
+        const { providers, register, loginType } = authConfig;
         const withProvider = (0, prostgles_types_1.isEmpty)(providers) ? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
             acc[provider] = () => {
                 window.location.assign(url);
             };
             return acc;
         }, {});
+        loginSignupOptions.login = {
+            withProvider,
+            ...(loginType && {
+                [loginType]: async (params) => {
+                    return (0, exports.POST)("/login", params);
+                },
+            }),
+        };
+        loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) ? {
+            [register.type]: (params) => {
+                (0, exports.POST)(register.url, params);
+            }
+        } : undefined;
+    }
+    if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
         return {
             isLoggedin: false,
             user: undefined,
-            prefferedLogin: "",
-            login: {
-                withProvider,
-                ...(loginType && {
-                    [loginType]: async (params) => {
-                        return (0, exports.POST)("/login", params);
-                    },
-                }),
-            },
-            register: (register === null || register === void 0 ? void 0 : register.type) ? {
-                [register.type]: (params) => {
-                    (0, exports.POST)(register.url, params);
-                }
-            } : undefined
+            ...loginSignupOptions
         };
     }
     return {
         isLoggedin: true,
         user: authConfig.user,
         logout: () => {
+            window.location.assign("/logout");
         },
-        prefferedLogin: "",
+        ...loginSignupOptions
     };
 };
 exports.setupAuth = setupAuth;
