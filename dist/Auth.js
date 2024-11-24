@@ -23,7 +23,7 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
         });
     }
     if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
-        const { login, providers, register } = authConfig !== null && authConfig !== void 0 ? authConfig : {};
+        const { providers, register, loginType } = authConfig !== null && authConfig !== void 0 ? authConfig : {};
         const withProvider = (0, prostgles_types_1.isEmpty)(providers) ? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
             acc[provider] = () => {
                 window.location.assign(url);
@@ -34,11 +34,11 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
             isLoggedin: false,
             user: undefined,
             prefferedLogin: "",
-            login: (login || providers) && {
+            login: {
                 withProvider,
-                ...(login && {
-                    [login.type]: async (params) => {
-                        return (0, exports.POST)(login.url, params);
+                ...(loginType && {
+                    [loginType]: async (params) => {
+                        return (0, exports.POST)("/login", params);
                     },
                 }),
             },

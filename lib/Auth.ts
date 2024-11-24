@@ -61,7 +61,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   }
 
   if(!authConfig?.user){
-    const { login, providers, register } = authConfig ?? {};
+    const { providers, register, loginType } = authConfig ?? {};
     const withProvider: WithProviderLogin | undefined = isEmpty(providers)? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
       acc[provider as IdentityProvider] = () => {
         window.location.assign(url);
@@ -73,11 +73,11 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       isLoggedin: false,
       user: undefined,
       prefferedLogin: "",
-      login: (login || providers) && {
+      login: {
         withProvider,
-        ...(login && {
-          [login.type]: async (params) => {
-            return POST(login.url, params);
+        ...(loginType && {
+          [loginType]: async (params) => {
+            return POST("/login", params);
           },
         }),
       },
