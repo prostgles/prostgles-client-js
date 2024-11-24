@@ -1072,7 +1072,7 @@ export function quickClone<T>(obj: T): T {
   const s: Sync<{ a: number, b: string; }> = 1 as any;
   const sh = s({ a: 1 }, {  } as any, (d) => { d });
   
-  const syncTyped: Sync<{ col1: string; }, ()=>any> = 1 as any;
+  const syncTyped: Sync<{ col1: string; }, ()=> any> = 1 as any;
   
   // const sUntyped: Sync<AnyObject, any> = syncTyped;
 })

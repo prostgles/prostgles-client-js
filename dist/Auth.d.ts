@@ -4,30 +4,30 @@ type Args = {
     authData: AuthSocketSchema | undefined;
     onReload: VoidFunction | undefined;
 };
+type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
+type EmailAuth = {
+    withPassword?: (params: {
+        username: string;
+        password: string;
+        remember_me?: boolean;
+        totp_token?: string;
+        totp_recovery_code?: string;
+    }) => Promise<any>;
+    withMagicLink?: undefined;
+} | {
+    withPassword?: undefined;
+    withMagicLink?: (params: {
+        username: string;
+    }) => Promise<any>;
+};
 type AuthStateLoggedOut = {
     isLoggedin: false;
     user?: undefined;
     prefferedLogin: string;
     login?: {
-        withEmailAndPassword?: (params: {
-            email: string;
-            password: string;
-        }) => Promise<any>;
-        withMagicLink?: (params: {
-            email: string;
-        }) => Promise<any>;
-        withProvider?: (provider: IdentityProvider) => void;
-    };
-    register?: {
-        withPassword: (params: {
-            email: string;
-            password: string;
-        }) => Promise<any>;
-    } | {
-        magicLink: (params: {
-            email: string;
-        }) => Promise<any>;
-    };
+        withProvider?: WithProviderLogin;
+    } & EmailAuth;
+    register?: EmailAuth;
 };
 type AuthStateLoggedIn = {
     isLoggedin: true;
@@ -37,5 +37,6 @@ type AuthStateLoggedIn = {
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
+export declare const POST: (path: string, data: object) => Promise<Response>;
 export {};
 //# sourceMappingURL=Auth.d.ts.map

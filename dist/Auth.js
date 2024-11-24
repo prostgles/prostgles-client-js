@@ -1,41 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setupAuth = void 0;
+exports.POST = exports.setupAuth = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const prostgles_1 = require("./prostgles");
 const setupAuth = ({ authData: authConfig, socket, onReload }) => {
-    const emit = (channel, params) => {
-        return new Promise((resolve, reject) => {
-            socket.emit(channel, params, (err, res) => {
-                if (err)
-                    reject(err);
-                else
-                    resolve(res);
-            });
-        });
-    };
-    if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
-        return {
-            isLoggedin: false,
-            user: undefined,
-            prefferedLogin: "",
-            login: {
-                withEmailAndPassword: (params) => emit(prostgles_types_1.CHANNELS.LOGIN, { type: "withPassword", params }),
-                withMagicLink: (params) => emit(prostgles_types_1.CHANNELS.LOGIN, { type: "magicLink", params }),
-                withProvider: (provider) => {
-                    var _a, _b;
-                    const url = (_b = (_a = authConfig === null || authConfig === void 0 ? void 0 : authConfig.providers) === null || _a === void 0 ? void 0 : _a[provider]) === null || _b === void 0 ? void 0 : _b.url;
-                    if (!url)
-                        throw new Error(`Provider ${provider} not enabled`);
-                    window.location.assign(url);
-                }
-            },
-            register: (authConfig === null || authConfig === void 0 ? void 0 : authConfig.register) ? {
-                [authConfig.register]: (params) => emit(prostgles_types_1.CHANNELS.REGISTER, { type: authConfig.register, params })
-            } : undefined
-        };
-    }
-    if (authConfig.pathGuard && prostgles_1.hasWnd) {
+    if ((authConfig === null || authConfig === void 0 ? void 0 : authConfig.pathGuard) && prostgles_1.hasWnd) {
         const doReload = (res) => {
             if (res === null || res === void 0 ? void 0 : res.shouldReload) {
                 if (onReload)
@@ -53,11 +22,55 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
             doReload(res);
         });
     }
+    if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
+        const { login, providers, register } = authConfig !== null && authConfig !== void 0 ? authConfig : {};
+        const withProvider = (0, prostgles_types_1.isEmpty)(providers) ? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
+            acc[provider] = () => {
+                window.location.assign(url);
+            };
+            return acc;
+        }, {});
+        return {
+            isLoggedin: false,
+            user: undefined,
+            prefferedLogin: "",
+            login: (login || providers) && {
+                withProvider,
+                ...(login && {
+                    [login.type]: async (params) => {
+                        return (0, exports.POST)(login.url, params);
+                    },
+                }),
+            },
+            register: (register === null || register === void 0 ? void 0 : register.type) ? {
+                [register.type]: (params) => {
+                    (0, exports.POST)(register.url, params);
+                }
+            } : undefined
+        };
+    }
     return {
         isLoggedin: true,
         user: authConfig.user,
-        logout: () => emit(prostgles_types_1.CHANNELS.LOGOUT, {}),
+        logout: () => {
+        },
         prefferedLogin: "",
     };
 };
 exports.setupAuth = setupAuth;
+const POST = async (path, data) => {
+    const rawResponse = await fetch(path, {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+    if (!rawResponse.ok) {
+        const error = await rawResponse.json().catch(() => rawResponse.text()).catch(() => rawResponse.statusText);
+        throw new Error(error);
+    }
+    return rawResponse;
+};
+exports.POST = POST;

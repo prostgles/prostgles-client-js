@@ -1,4 +1,4 @@
-import { type AnyObject, type AuthGuardLocation, type AuthGuardLocationResponse, type AuthSocketSchema, CHANNELS, type IdentityProvider, type EmailAuthType } from "prostgles-types";
+import { type AnyObject, type AuthGuardLocation, type AuthGuardLocationResponse, type AuthSocketSchema, CHANNELS, type IdentityProvider, type EmailAuthType, isEmpty } from "prostgles-types";
 import { hasWnd } from "./prostgles";
 
 type Args = {
@@ -7,62 +7,41 @@ type Args = {
   onReload: VoidFunction | undefined;
 }
 
+type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
+
+type EmailAuth = 
+| {
+  withPassword?: (params: { username: string; password: string; remember_me?: boolean; totp_token?: string; totp_recovery_code?: string; }) => Promise<any>;
+  withMagicLink?: undefined;
+} 
+| {
+  withPassword?: undefined;
+  withMagicLink?: (params: { username: string; }) => Promise<any>;
+}
+
 type AuthStateLoggedOut = {
   isLoggedin: false;
   user?: undefined;
   prefferedLogin: string;
   login?: {
-    withEmailAndPassword?: (params: { email: string; password: string }) => Promise<any>;
-    withMagicLink?: (params: { email: string; }) => Promise<any>;
-    withProvider?: (provider: IdentityProvider) => void;
-  };
-  register?: {
-    withPassword: (params: { email: string; password: string }) => Promise<any>;
-  } | {
-    magicLink: (params: { email: string; }) => Promise<any>;
-  }
-}
+    withProvider?: WithProviderLogin;
+  } & EmailAuth;
+  register?: EmailAuth
+};
+
 type AuthStateLoggedIn = {
   isLoggedin: true;
   user: AnyObject;
   prefferedLogin: string;
   logout: VoidFunction;
-}
+};
+
 export type AuthHandler = 
 | AuthStateLoggedOut 
 | AuthStateLoggedIn;
 
 export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): AuthHandler => {
-
-  const emit = (channel: string, params: any) => {
-    return new Promise((resolve, reject) => {
-      socket.emit(channel, params, (err, res) => {
-        if (err) reject(err);
-        else resolve(res);
-      });
-    });
-  }
-
-  if(!authConfig?.user){
-    return {
-      isLoggedin: false,
-      user: undefined,
-      prefferedLogin: "",
-      login: {
-        withEmailAndPassword: (params) => emit(CHANNELS.LOGIN, { type: "withPassword" satisfies EmailAuthType, params }),
-        withMagicLink: (params) => emit(CHANNELS.LOGIN, { type: "magicLink" satisfies EmailAuthType, params }),
-        withProvider: (provider) => {
-          const url = authConfig?.providers?.[provider]?.url;
-          if(!url) throw new Error(`Provider ${provider} not enabled`);
-          window.location.assign(url);
-        }
-      },
-      register: authConfig?.register? {
-        [authConfig.register]: (params) => emit(CHANNELS.REGISTER, { type: authConfig.register, params })
-      } as any : undefined
-    } satisfies AuthStateLoggedOut;
-  } 
-  if (authConfig.pathGuard && hasWnd) {
+  if (authConfig?.pathGuard && hasWnd) {
     const doReload = (res?: AuthGuardLocationResponse) => {
       if (res?.shouldReload) {
         if (onReload) onReload();
@@ -80,11 +59,60 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       doReload(res);
     });
   }
+
+  if(!authConfig?.user){
+    const { login, providers, register } = authConfig ?? {};
+    const withProvider: WithProviderLogin | undefined = isEmpty(providers)? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
+      acc[provider as IdentityProvider] = () => {
+        window.location.assign(url);
+      }
+      return acc;
+    }, {});
+
+    return {
+      isLoggedin: false,
+      user: undefined,
+      prefferedLogin: "",
+      login: (login || providers) && {
+        withProvider,
+        ...(login && {
+          [login.type]: async (params) => {
+            return POST(login.url, params);
+          },
+        }),
+      },
+      register: register?.type? {
+        [register.type]: (params) => {
+          POST(register.url, params);
+        }
+      } : undefined
+    } satisfies AuthStateLoggedOut;
+  }
  
   return {
     isLoggedin: true,
     user: authConfig.user,
-    logout: () => emit(CHANNELS.LOGOUT, {}),
+    logout: () => {
+
+    },
     prefferedLogin: "",
   } satisfies AuthStateLoggedIn;
+}
+
+export const POST = async (path: string, data: object) => {
+  const rawResponse = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
+
+  if(!rawResponse.ok){
+    const error = await rawResponse.json().catch(() => rawResponse.text()).catch(() => rawResponse.statusText);
+    throw new Error(error);
+  }
+  
+  return rawResponse;   
 }
