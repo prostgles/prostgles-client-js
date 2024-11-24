@@ -6,8 +6,6 @@
 
 import type {
   AnyObject,
-  AuthGuardLocation,
-  AuthGuardLocationResponse,
   ClientSchema,
   ClientSyncHandles,
   DBSchema,
@@ -38,11 +36,11 @@ import {
   omitKeys,
 } from "prostgles-types";
 
+import { type AuthHandler, setupAuth } from "./Auth";
+import { FunctionQueuer } from "./FunctionQueuer";
 import { isEqual, useFetch, useSubscribe, useSync } from "./react-hooks";
 import { SQL } from "./SQL";
 import type { DbTableSync, Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
-import { FunctionQueuer } from "./FunctionQueuer";
-import { type AuthHandler, setupAuth } from "./Auth";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 export const hasWnd = typeof window !== "undefined";

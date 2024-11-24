@@ -21,10 +21,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = exports.asName = exports.debug = exports.hasWnd = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
+const Auth_1 = require("./Auth");
+const FunctionQueuer_1 = require("./FunctionQueuer");
 const react_hooks_1 = require("./react-hooks");
 const SQL_1 = require("./SQL");
-const FunctionQueuer_1 = require("./FunctionQueuer");
-const Auth_1 = require("./Auth");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 exports.hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
