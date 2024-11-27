@@ -91,7 +91,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
 
     loginSignupOptions.register = register?.type? {
       [register.type]: (params) => {
-        POST(register.url, params);
+        return POST(register.url, params);
       }
     } : undefined;
   }

@@ -46,7 +46,7 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
         };
         loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) ? {
             [register.type]: (params) => {
-                (0, exports.POST)(register.url, params);
+                return (0, exports.POST)(register.url, params);
             }
         } : undefined;
     }
