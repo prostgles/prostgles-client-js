@@ -78,7 +78,10 @@ const POST = async (path, data) => {
     });
     if (!rawResponse.ok) {
         const error = await rawResponse.json().catch(() => rawResponse.text()).catch(() => rawResponse.statusText);
-        throw error;
+        if (typeof error === "string") {
+            return { success: false, error };
+        }
+        return error;
     }
     return rawResponse;
 };
