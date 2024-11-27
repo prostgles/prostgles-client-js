@@ -5,6 +5,12 @@ type Args = {
     onReload: VoidFunction | undefined;
 };
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
+type SignupResult = {
+    success: true;
+} | {
+    success: false;
+    error: string;
+};
 type EmailAuth = {
     withPassword?: (params: {
         username: string;
@@ -12,13 +18,13 @@ type EmailAuth = {
         remember_me?: boolean;
         totp_token?: string;
         totp_recovery_code?: string;
-    }) => Promise<any>;
+    }) => Promise<SignupResult>;
     withMagicLink?: undefined;
 } | {
     withPassword?: undefined;
     withMagicLink?: (params: {
         username: string;
-    }) => Promise<any>;
+    }) => Promise<SignupResult>;
 };
 type LoginSignupOptions = {
     prefferedLogin: string;

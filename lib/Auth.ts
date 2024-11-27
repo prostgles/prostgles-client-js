@@ -9,14 +9,18 @@ type Args = {
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
+type SignupResult = 
+| { success: true; }
+| { success: false; error: string; }
+
 type EmailAuth = 
 | {
-  withPassword?: (params: { username: string; password: string; remember_me?: boolean; totp_token?: string; totp_recovery_code?: string; }) => Promise<any>;
+  withPassword?: (params: { username: string; password: string; remember_me?: boolean; totp_token?: string; totp_recovery_code?: string; }) => Promise<SignupResult>;
   withMagicLink?: undefined;
 } 
 | {
   withPassword?: undefined;
-  withMagicLink?: (params: { username: string; }) => Promise<any>;
+  withMagicLink?: (params: { username: string; }) => Promise<SignupResult>;
 }
 
 type LoginSignupOptions = {
