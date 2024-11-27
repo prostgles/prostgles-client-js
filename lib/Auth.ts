@@ -126,7 +126,7 @@ export const POST = async (path: string, data: object) => {
 
   if(!rawResponse.ok){
     const error = await rawResponse.json().catch(() => rawResponse.text()).catch(() => rawResponse.statusText);
-    throw new Error(error);
+    throw error;
   }
   
   return rawResponse;   
