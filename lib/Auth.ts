@@ -1,4 +1,4 @@
-import { type AnyObject, type AuthGuardLocation, type AuthGuardLocationResponse, type AuthSocketSchema, CHANNELS, type IdentityProvider, type EmailAuthType, isEmpty } from "prostgles-types";
+import { type AnyObject, type AuthGuardLocation, type AuthGuardLocationResponse, type AuthSocketSchema, CHANNELS, type IdentityProvider, isEmpty } from "prostgles-types";
 import { hasWnd } from "./prostgles";
 
 type Args = {
@@ -9,16 +9,18 @@ type Args = {
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
-type SignupResult = 
+type AuthResult = 
 | { success: true; }
 | { success: false; error: string; }
 
-export type PasswordAuth = (params: { username: string; password: string; remember_me?: boolean; totp_token?: string; totp_recovery_code?: string; }) => Promise<SignupResult>;
-export type MagicLinkAuth = (params: { username: string; }) => Promise<SignupResult>;
+export type PasswordLoginData = { username: string; password: string; remember_me?: boolean; totp_token?: string; totp_recovery_code?: string; };
+export type PasswordRegisterData = Pick<PasswordLoginData, "username" | "password">
+export type PasswordAuth<T> = (params: T) => Promise<AuthResult>;
+export type MagicLinkAuth = (params: Pick<PasswordLoginData, "username">) => Promise<AuthResult>;
 
-type EmailAuth = 
+export type EmailAuth<T> = 
 | {
-  withPassword?: PasswordAuth
+  withPassword?: PasswordAuth<T>
   withMagicLink?: undefined;
 } 
 | {
@@ -30,8 +32,8 @@ type LoginSignupOptions = {
   prefferedLogin: string;
   login: undefined | {
     withProvider?: WithProviderLogin;
-  } & EmailAuth;
-  register: undefined | EmailAuth;
+  } & EmailAuth<PasswordLoginData>;
+  register: undefined | EmailAuth<PasswordRegisterData>;
   providers: AuthSocketSchema["providers"];
 }
 
