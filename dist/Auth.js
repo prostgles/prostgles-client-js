@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.POST = exports.setupAuth = void 0;
+exports.postAuthData = exports.setupAuth = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const prostgles_1 = require("./prostgles");
 const setupAuth = ({ authData: authConfig, socket, onReload }) => {
@@ -40,13 +40,13 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
             withProvider,
             ...(loginType && {
                 [loginType]: async (params) => {
-                    return (0, exports.POST)("/login", params);
+                    return (0, exports.postAuthData)("/login", params);
                 },
             }),
         };
         loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) ? {
             [register.type]: (params) => {
-                return (0, exports.POST)(register.url, params);
+                return (0, exports.postAuthData)(register.url, params);
             }
         } : undefined;
     }
@@ -67,7 +67,7 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
     };
 };
 exports.setupAuth = setupAuth;
-const POST = async (path, data) => {
+const postAuthData = async (path, data) => {
     const rawResponse = await fetch(path, {
         method: "POST",
         headers: {
@@ -83,6 +83,10 @@ const POST = async (path, data) => {
         }
         return error;
     }
-    return rawResponse;
+    const responseObject = await rawResponse.json().catch(async () => ({ message: await rawResponse.text() })).catch(() => ({ message: rawResponse.statusText }));
+    if (rawResponse.redirected) {
+        return { ...responseObject, success: true, redirect_url: rawResponse.url };
+    }
+    return responseObject;
 };
-exports.POST = POST;
+exports.postAuthData = postAuthData;

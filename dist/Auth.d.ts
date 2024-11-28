@@ -7,6 +7,7 @@ type Args = {
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 export type AuthResult = {
     success: true;
+    redirect_url?: string;
 } | {
     success: false;
     error: string;
@@ -48,6 +49,6 @@ type AuthStateLoggedIn = LoginSignupOptions & {
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
-export declare const POST: (path: string, data: object) => Promise<any>;
+export declare const postAuthData: (path: string, data: object) => Promise<AuthResult>;
 export {};
 //# sourceMappingURL=Auth.d.ts.map

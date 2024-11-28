@@ -10,7 +10,7 @@ type Args = {
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
 export type AuthResult = 
-| { success: true; }
+| { success: true; redirect_url?: string; }
 | { success: false; error: string; }
 
 export type PasswordLoginData = { username: string; password: string; remember_me?: boolean; totp_token?: string; totp_recovery_code?: string; };
@@ -93,14 +93,14 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       withProvider,
       ...(loginType && {
         [loginType]: async (params) => {
-          return POST("/login", params);
+          return postAuthData("/login", params);
         },
       }),
     };
 
     loginSignupOptions.register = register?.type? {
       [register.type]: (params) => {
-        return POST(register.url, params);
+        return postAuthData(register.url, params);
       }
     } : undefined;
   }
@@ -123,7 +123,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   } satisfies AuthStateLoggedIn;
 }
 
-export const POST = async (path: string, data: object) => {
+export const postAuthData = async (path: string, data: object): Promise<AuthResult> => {
   const rawResponse = await fetch(path, {
     method: "POST",
     headers: {
@@ -140,6 +140,11 @@ export const POST = async (path: string, data: object) => {
     }
     return error;
   }
+
+  const responseObject = await rawResponse.json().catch(async () => ({ message: await rawResponse.text()})).catch(() => ({ message: rawResponse.statusText }));
+  if(rawResponse.redirected){
+    return { ...responseObject, success: true, redirect_url: rawResponse.url };
+  }
   
-  return rawResponse;   
+  return responseObject;   
 }
