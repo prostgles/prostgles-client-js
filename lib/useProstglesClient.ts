@@ -12,10 +12,10 @@ import {
 } from "prostgles-types";
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import { SyncedTable } from "./SyncedTable/SyncedTable";
-import { prostgles, type Auth, type DBHandlerClient, type InitOptions } from "./prostgles";
-import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 import type { AuthHandler } from "./Auth";
+import { SyncedTable } from "./SyncedTable/SyncedTable";
+import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
+import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;

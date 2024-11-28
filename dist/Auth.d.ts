@@ -11,20 +11,22 @@ type SignupResult = {
     success: false;
     error: string;
 };
+export type PasswordAuth = (params: {
+    username: string;
+    password: string;
+    remember_me?: boolean;
+    totp_token?: string;
+    totp_recovery_code?: string;
+}) => Promise<SignupResult>;
+export type MagicLinkAuth = (params: {
+    username: string;
+}) => Promise<SignupResult>;
 type EmailAuth = {
-    withPassword?: (params: {
-        username: string;
-        password: string;
-        remember_me?: boolean;
-        totp_token?: string;
-        totp_recovery_code?: string;
-    }) => Promise<SignupResult>;
+    withPassword?: PasswordAuth;
     withMagicLink?: undefined;
 } | {
     withPassword?: undefined;
-    withMagicLink?: (params: {
-        username: string;
-    }) => Promise<SignupResult>;
+    withMagicLink?: MagicLinkAuth;
 };
 type LoginSignupOptions = {
     prefferedLogin: string;

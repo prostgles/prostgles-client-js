@@ -126,13 +126,6 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
   sql?: SQLHandler; 
 } & DbJoinMaker;
 
-export type Auth = {
-  register?: (params: any) => Promise<any>;
-  login?: (params: any) => Promise<any>;
-  logout?: (params: any) => Promise<any>;
-  user?: any;
-}
-
 type SyncDebugEvent = {
   type: "sync";
   tableName: string;
@@ -175,6 +168,7 @@ export type InitOptions<DBSchema = void> = {
   onDebug?: (event: DebugEvent) => any;
 }
 
+type AnyFunction = (...args: any[]) => any;
 
 type CoreParams = {
   tableName: string;
@@ -185,9 +179,9 @@ type CoreParams = {
 
 type Subscription = CoreParams & {
   lastData: any;
-  onCall: Function,
-  handlers: Function[];
-  errorHandlers: (Function | undefined)[];
+  onCall: AnyFunction,
+  handlers: AnyFunction[];
+  errorHandlers: (AnyFunction | undefined)[];
   unsubChannel: string;
   destroy: () => any;
 };
@@ -204,7 +198,7 @@ export type SyncInfo = {
   channelName: string
 }
 type SyncConfig = CoreParams & {
-  onCall: Function,
+  onCall: AnyFunction,
   syncInfo: SyncInfo;
   triggers: ClientSyncHandles[]
 };
@@ -248,7 +242,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     syncedTables = {};
   }
 
-  function _unsubscribe(channelName: string, unsubChannel: string, handler: Function) {
+  function _unsubscribe(channelName: string, unsubChannel: string, handler: AnyFunction) {
     debug("_unsubscribe", { channelName, handler });
 
     return new Promise((resolve, reject) => {
@@ -375,7 +369,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     } else {
       const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
       const { channelName } = sync_info;
-      const onCall = function (data: any | undefined, cb: Function) {
+      const onCall = function (data: any | undefined, cb: AnyFunction) {
         /*               
             Client will:
             1. Send last_synced     on(onSyncRequest)
@@ -438,14 +432,14 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
    * Can be used concurrently
    */
   const addSubQueuer = new FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
-  async function addSub(dbo: any, params: CoreParams, onChange: Function, _onError?: Function): Promise<SubscriptionHandler> { 
+  async function addSub(dbo: any, params: CoreParams, onChange: AnyFunction, _onError?: AnyFunction): Promise<SubscriptionHandler> { 
     return addSubQueuer.run([dbo, params, onChange, _onError]);
   }
 
   /**
    * Do NOT use concurrently
    */
-  async function _addSub(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: Function, _onError?: Function): Promise<SubscriptionHandler> {
+  async function _addSub(dbo: any, { tableName, command, param1, param2 }: CoreParams, onChange: AnyFunction, _onError?: AnyFunction): Promise<SubscriptionHandler> {
 
     function makeHandler(channelName: string, unsubChannel: string) {
 
@@ -496,7 +490,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({ tableName, command, param1, param2 })
 
-    const onCall = function (data: any, cb: Function) {
+    const onCall = function (data: any) {
       /* TO DO: confirm receiving data or server will unsubscribe */
       // if(cb) cb(true);
       const sub = subscriptions[channelName];
@@ -621,7 +615,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       }
 
       /* Building DBO object */
-      const checkSubscriptionArgs = (basicFilter: AnyObject | undefined, options: AnyObject | undefined, onChange: Function, onError?: Function) => {
+      const checkSubscriptionArgs = (basicFilter: AnyObject | undefined, options: AnyObject | undefined, onChange: AnyFunction, onError?: AnyFunction) => {
         if (basicFilter !== undefined && !isObject(basicFilter) || options !== undefined && !isObject(options) || !(typeof onChange === "function") || onError !== undefined && typeof onError !== "function") {
           throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
         }

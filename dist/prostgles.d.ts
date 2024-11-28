@@ -74,12 +74,6 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
 } : Record<string, Partial<TableHandlerClient>>) & {
     sql?: SQLHandler;
 } & DbJoinMaker;
-export type Auth = {
-    register?: (params: any) => Promise<any>;
-    login?: (params: any) => Promise<any>;
-    logout?: (params: any) => Promise<any>;
-    user?: any;
-};
 type SyncDebugEvent = {
     type: "sync";
     tableName: string;

@@ -292,7 +292,7 @@ function prostgles(initOpts, syncedTable) {
             return makeHandler(existingCh, existing[1].unsubChannel);
         }
         const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({ tableName, command, param1, param2 });
-        const onCall = function (data, cb) {
+        const onCall = function (data) {
             /* TO DO: confirm receiving data or server will unsubscribe */
             // if(cb) cb(true);
             const sub = subscriptions[channelName];
