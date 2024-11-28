@@ -5,7 +5,7 @@ type Args = {
     onReload: VoidFunction | undefined;
 };
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
-type AuthResult = {
+export type AuthResult = {
     success: true;
 } | {
     success: false;

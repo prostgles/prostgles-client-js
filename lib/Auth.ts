@@ -9,7 +9,7 @@ type Args = {
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
-type AuthResult = 
+export type AuthResult = 
 | { success: true; }
 | { success: false; error: string; }
 
