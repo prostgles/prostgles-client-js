@@ -36,17 +36,21 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
             };
             return acc;
         }, {});
+        const addSearchInCaseItHasReturnUrl = (url) => {
+            const { search } = window.location;
+            return url + search;
+        };
         loginSignupOptions.login = {
             withProvider,
             ...(loginType && {
                 [loginType]: async (params) => {
-                    return (0, exports.postAuthData)("/login", params);
+                    return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl("/login"), params);
                 },
             }),
         };
         loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) ? {
             [register.type]: (params) => {
-                return (0, exports.postAuthData)(register.url, params);
+                return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(register.url), params);
             }
         } : undefined;
     }

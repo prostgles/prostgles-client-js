@@ -89,18 +89,23 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       return acc;
     }, {});
 
+    const addSearchInCaseItHasReturnUrl = (url: string) => {
+      const { search } = window.location;
+      return url + search;
+    }
+
     loginSignupOptions.login = {
       withProvider,
       ...(loginType && {
         [loginType]: async (params) => {
-          return postAuthData("/login", params);
+          return postAuthData(addSearchInCaseItHasReturnUrl("/login"), params);
         },
       }),
     };
 
     loginSignupOptions.register = register?.type? {
       [register.type]: (params) => {
-        return postAuthData(register.url, params);
+        return postAuthData(addSearchInCaseItHasReturnUrl(register.url), params);
       }
     } : undefined;
   }
