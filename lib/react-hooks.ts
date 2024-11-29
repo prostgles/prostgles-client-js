@@ -133,7 +133,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
 
       queue.current.activeEffect.didCleanup = true;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      await (await queue.current.activeEffect.resolvedCleanup)?.run?.();
+      await (await queue.current.activeEffect.resolvedCleanup)?.run?.()?.catch(console.error);
     }
   }
 
@@ -143,7 +143,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
 
     /** Need to wait to ensure activeEffect cleanup finished */
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    await (await queue.current.activeEffect?.resolvedCleanup)?.run?.();
+    await (await queue.current.activeEffect?.resolvedCleanup)?.run?.()?.catch(console.error);
 
     queue.current.activeEffect = newEffect;
     queue.current.activeEffect.resolvedCleanup = queue.current.activeEffect.effect().then(run => ({ run }));
@@ -224,7 +224,11 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[
     const keys = getKeys(val);
     for await (const key of keys) {
       const prop = val[key] as string | Function | Promise<any>;
-      data[key] = typeof prop === "function" ? await prop() : await prop
+      try {
+        data[key] = typeof prop === "function" ? await prop() : await prop
+      } catch (e) {
+        console.error(e);
+      }
     }
     return data;
   }
@@ -232,12 +236,17 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(f: F, deps: any[
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
     let promiseResult
-    if (isNamedObj(f)) {
-      promiseResult = await getNamedObjResults(f);
-    } else {
-      const funcRes = await f();
-      const isNObj = isNamedObj(funcRes);
-      promiseResult = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
+
+    try {
+      if (isNamedObj(f)) {
+        promiseResult = await getNamedObjResults(f);
+      } else {
+        const funcRes = await f();
+        const isNObj = isNamedObj(funcRes);
+        promiseResult = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
+      }
+    } catch (e) {
+      console.error(e);
     }
     if (!getIsMounted()) return;
     setResult(promiseResult);
