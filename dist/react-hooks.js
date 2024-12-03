@@ -20,8 +20,9 @@ const getReact = (throwError) => {
 };
 exports.getReact = getReact;
 (0, exports.getReact)();
+const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT,
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = (_a = React) !== null && _a !== void 0 ? _a : {};
+ } = (_a = React) !== null && _a !== void 0 ? _a : {};
 const getIO = (throwError = false) => {
     try {
         const io = require("socket.io-client");

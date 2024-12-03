@@ -17,8 +17,13 @@ export const getReact = (throwError?: boolean): ReactT => {
   return React as any;
 };
 getReact();
+const { 
+  useEffect = alertNoReact as typeof React["useEffect"], 
+  useCallback = alertNoReact as typeof React["useCallback"], 
+  useRef, 
+  useState = alertNoReactT as typeof React["useState"], 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState = alertNoReactT } = React! ?? {};
+} = React! ?? {};
 
 type IO = typeof import("socket.io-client").default;
 export const getIO = (throwError = false) => {
