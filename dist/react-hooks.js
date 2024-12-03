@@ -156,7 +156,7 @@ const useEffectAsync = (effect, inputs) => {
     }, inputs);
 };
 exports.useEffectAsync = useEffectAsync;
-function useIsMounted() {
+const useIsMounted = () => {
     const isMountedRef = useRef(true);
     const isMounted = useCallback(() => isMountedRef.current, []);
     useEffect(() => {
@@ -167,7 +167,7 @@ function useIsMounted() {
         };
     }, []);
     return isMounted;
-}
+};
 exports.useIsMounted = useIsMounted;
 const usePromise = (f, deps = []) => {
     const isPromiseFunc = (val) => {
@@ -203,7 +203,7 @@ const usePromise = (f, deps = []) => {
         return data;
     };
     const [result, setResult] = useState(isNamedObj(f) ? {} : undefined);
-    const getIsMounted = useIsMounted();
+    const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
         let promiseResult;
         try {
@@ -229,7 +229,7 @@ exports.usePromise = usePromise;
 const useSubscribe = (subFunc, expectsOne, filter, options) => {
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
-    const getIsMounted = useIsMounted();
+    const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
         if (!getIsMounted())
             return;
@@ -257,7 +257,7 @@ exports.useSubscribe = useSubscribe;
 const useSync = (syncFunc, basicFilter, syncOptions) => {
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
-    const getIsMounted = useIsMounted();
+    const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
         if (!getIsMounted())
             return;
@@ -284,7 +284,7 @@ exports.useSync = useSync;
 const useFetch = (fetchFunc, args = []) => {
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
-    const getIsMounted = useIsMounted();
+    const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
         if (!getIsMounted())
             return;

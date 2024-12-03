@@ -15,7 +15,7 @@ type EffectFunc = () => Promise<void | (() => void)>;
  */
 export declare const useAsyncEffectQueue: (effect: EffectFunc, deps: any[]) => void;
 export declare const useEffectAsync: (effect: () => Promise<void | (() => void)>, inputs: any[]) => void;
-export declare function useIsMounted(): any;
+export declare const useIsMounted: () => any;
 type PromiseFunc = () => Promise<any>;
 type NamedResult = Record<string, PromiseFunc>;
 export declare const usePromise: <F extends PromiseFunc | NamedResult>(f: F, deps?: any[]) => F extends NamedResult ? { [key in keyof F]: Awaited<ReturnType<F[key]>>; } : F extends PromiseFunc ? Awaited<ReturnType<F>> | undefined : undefined;

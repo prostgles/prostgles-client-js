@@ -181,7 +181,7 @@ export const useEffectAsync = (effect: () => Promise<void | (() => void)>, input
   }, inputs);
 }
 
-export function useIsMounted() {
+export const useIsMounted = () => {
   const isMountedRef = useRef(true);
   const isMounted = useCallback(() => isMountedRef.current, []);
 
