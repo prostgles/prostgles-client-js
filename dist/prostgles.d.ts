@@ -1,4 +1,4 @@
-import type { AnyObject, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
+import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./Auth";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
@@ -100,7 +100,7 @@ type DebugEvent = {
     data: AnyObject;
 } | SyncDebugEvent | {
     type: "schemaChanged";
-    data: AnyObject;
+    data: ClientSchema;
 };
 export type InitOptions<DBSchema = void> = {
     socket: any;

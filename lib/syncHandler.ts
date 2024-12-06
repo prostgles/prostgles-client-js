@@ -187,7 +187,9 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
         }
       }
     });
-    console.log("reAttached", reAttached, " syncs", syncs);
+    if(reAttached){
+      console.log("reAttached", reAttached, " syncs", syncs);
+    }
   }
 
   return { 

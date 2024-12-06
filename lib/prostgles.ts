@@ -154,7 +154,7 @@ type DebugEvent =
 | SyncDebugEvent
 | {
   type: "schemaChanged";
-  data: AnyObject;
+  data: ClientSchema;
 };
 
 export type InitOptions<DBSchema = void> = {
@@ -250,8 +250,9 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     }
 
     /* Schema = published schema */
-    socket.on(CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }: ClientSchema) => {
-      await onDebug?.({ type: "schemaChanged", data: clientSchema });
+    socket.on(CHANNELS.SCHEMA, async (args: ClientSchema) => {
+      await onDebug?.({ type: "schemaChanged", data: args });
+      const { joinTables = [], ...clientSchema } = args;
       const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
 
       /** Only destroy existing syncs if schema changed */

@@ -76,8 +76,9 @@ function prostgles(initOpts, syncedTable) {
             });
         }
         /* Schema = published schema */
-        socket.on(prostgles_types_1.CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }) => {
-            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "schemaChanged", data: clientSchema }));
+        socket.on(prostgles_types_1.CHANNELS.SCHEMA, async (args) => {
+            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "schemaChanged", data: args }));
+            const { joinTables = [], ...clientSchema } = args;
             const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
             const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
