@@ -17,7 +17,7 @@ type Subscriptions = {
 
 const preffix = CHANNELS._preffix;
 
-export const getSubscriptionHandler = <DBSchema>(initOpts: InitOptions<DBSchema>) => {
+export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "onDebug">) => {
   const { socket, onDebug, } = initOpts;
 
   const subscriptions: Subscriptions = {};
@@ -186,6 +186,10 @@ export const getSubscriptionHandler = <DBSchema>(initOpts: InitOptions<DBSchema>
     return makeHandler(channelName, channelNameUnsubscribe);
   }
 
+  /**
+   * Reconnect all subscriptions
+   * Used when connection is lost and re-established or schema changes
+   */
   const reAttachAll = async () => {
     for await (const s of Object.values(subscriptions)) {
       try {

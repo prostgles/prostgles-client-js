@@ -98,7 +98,10 @@ type DebugEvent = {
     type: "method";
     command: string;
     data: AnyObject;
-} | SyncDebugEvent;
+} | SyncDebugEvent | {
+    type: "schemaChanged";
+    data: AnyObject;
+};
 export type InitOptions<DBSchema = void> = {
     socket: any;
     /**

@@ -22,10 +22,10 @@ exports.prostgles = exports.asName = exports.debug = exports.hasWnd = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
 const Auth_1 = require("./Auth");
-const FunctionQueuer_1 = require("./FunctionQueuer");
 const react_hooks_1 = require("./react-hooks");
 const SQL_1 = require("./SQL");
 const subscriptionHandler_1 = require("./subscriptionHandler");
+const syncHandler_1 = require("./syncHandler");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 exports.hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
@@ -50,168 +50,11 @@ function prostgles(initOpts, syncedTable) {
             socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
     }
     const preffix = prostgles_types_1.CHANNELS._preffix;
-    let syncedTables = {};
     //@ts-ignore
     const subscriptionHandler = (0, subscriptionHandler_1.getSubscriptionHandler)(initOpts);
-    let syncs = {};
+    const syncHandler = (0, syncHandler_1.getSyncHandler)(initOpts);
     let state;
     const sql = new SQL_1.SQL();
-    const destroySyncs = async () => {
-        (0, exports.debug)("destroySyncs", { syncedTables });
-        // await subscriptionHandler.destroy();
-        syncs = {};
-        Object.values(syncedTables).map((s) => {
-            if (s && s.destroy)
-                s.destroy();
-        });
-        syncedTables = {};
-    };
-    function _unsync(channelName, triggers) {
-        (0, exports.debug)("_unsync", { channelName, triggers });
-        return new Promise((resolve, reject) => {
-            if (syncs[channelName]) {
-                syncs[channelName].triggers = syncs[channelName].triggers.filter(tr => (tr.onPullRequest !== triggers.onPullRequest &&
-                    tr.onSyncRequest !== triggers.onSyncRequest &&
-                    tr.onUpdates !== triggers.onUpdates));
-                if (!syncs[channelName].triggers.length) {
-                    socket.emit(channelName + "unsync", {}, (err, res) => {
-                        if (err)
-                            reject(err);
-                        else
-                            resolve(res);
-                    });
-                    socket.removeListener(channelName, syncs[channelName].onCall);
-                    delete syncs[channelName];
-                }
-            }
-        });
-    }
-    function addServerSync({ tableName, command, param1, param2 }, onSyncRequest) {
-        return new Promise((resolve, reject) => {
-            socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
-                if (err) {
-                    console.error(err);
-                    reject(err);
-                }
-                else if (res) {
-                    const { id_fields, synced_field, channelName } = res;
-                    socket.emit(channelName, { onSyncRequest: onSyncRequest({}) }, (response) => {
-                        console.log(response);
-                    });
-                    resolve({ id_fields, synced_field, channelName });
-                }
-            });
-        });
-    }
-    // /**
-    //  * Obtaines subscribe channel from server
-    //  */
-    // function addServerSub({ tableName, command, param1, param2 }: CoreParams): Promise<SubscriptionChannels> {
-    //   return new Promise((resolve, reject) => {
-    //     socket.emit(preffix, { tableName, command, param1, param2 }, (err?: any, res?: SubscriptionChannels) => {
-    //       if (err) {
-    //         console.error(err);
-    //         reject(err);
-    //       } else if (res) {
-    //         resolve(res);
-    //       }
-    //     });
-    //   });
-    // }
-    const addSyncQueuer = new FunctionQueuer_1.FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
-    async function addSync(params, triggers) {
-        return addSyncQueuer.run([params, triggers]);
-    }
-    async function _addSync({ tableName, command, param1, param2 }, triggers) {
-        const { onSyncRequest } = triggers;
-        function makeHandler(channelName) {
-            const unsync = function () {
-                _unsync(channelName, triggers);
-            };
-            const syncData = function (data, deleted, cb) {
-                socket.emit(channelName, {
-                    onSyncRequest: {
-                        ...onSyncRequest({}),
-                        ...({ data }),
-                        ...({ deleted })
-                    },
-                }, !cb ? null : (response) => {
-                    cb(response);
-                });
-            };
-            return Object.freeze({ unsync, syncData });
-        }
-        const existingChannel = Object.keys(syncs).find(ch => {
-            const s = syncs[ch];
-            return (s &&
-                s.tableName === tableName &&
-                s.command === command &&
-                (0, react_hooks_1.isEqual)(s.param1, param1) &&
-                (0, react_hooks_1.isEqual)(s.param2, param2));
-        });
-        if (existingChannel) {
-            syncs[existingChannel].triggers.push(triggers);
-            return makeHandler(existingChannel);
-        }
-        else {
-            const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
-            const { channelName } = sync_info;
-            const onCall = function (data, cb) {
-                /*
-                    Client will:
-                    1. Send last_synced     on(onSyncRequest)
-                    2. Send data >= server_synced   on(onPullRequest)
-                    3. Send data on CRUD    emit(data.data)
-                    4. Upsert data.data     on(data.data)
-                */
-                if (!data)
-                    return;
-                if (!syncs[channelName])
-                    return;
-                syncs[channelName].triggers.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
-                    if (data.data) {
-                        Promise.resolve(onUpdates(data))
-                            .then(() => {
-                            cb({ ok: true });
-                        })
-                            .catch(err => {
-                            cb({ err });
-                        });
-                    }
-                    else if (data.onSyncRequest) {
-                        Promise.resolve(onSyncRequest(data.onSyncRequest))
-                            .then(res => cb({ onSyncRequest: res }))
-                            .catch(err => {
-                            cb({ err });
-                        });
-                    }
-                    else if (data.onPullRequest) {
-                        Promise.resolve(onPullRequest(data.onPullRequest))
-                            .then(arr => {
-                            cb({ data: arr });
-                        })
-                            .catch(err => {
-                            cb({ err });
-                        });
-                    }
-                    else {
-                        console.log("unexpected response");
-                    }
-                });
-            };
-            syncs[channelName] = {
-                tableName,
-                command,
-                param1,
-                param2,
-                triggers: [triggers],
-                syncInfo: sync_info,
-                onCall
-            };
-            socket.on(channelName, onCall);
-            return makeHandler(channelName);
-        }
-    }
     return new Promise((resolve, reject) => {
         socket.removeAllListeners(prostgles_types_1.CHANNELS.CONNECTION);
         socket.on(prostgles_types_1.CHANNELS.CONNECTION, error => {
@@ -234,11 +77,12 @@ function prostgles(initOpts, syncedTable) {
         }
         /* Schema = published schema */
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, async ({ joinTables = [], ...clientSchema }) => {
+            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "schemaChanged", data: clientSchema }));
             const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
             const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
-                await destroySyncs();
+                await syncHandler.destroySyncs();
             }
             if ((state === "connected" || state === "reconnected") && onReconnect) {
                 onReconnect(socket, err);
@@ -313,8 +157,8 @@ function prostgles(initOpts, syncedTable) {
                             };
                             const upsertSyncTable = async (basicFilter = {}, options = {}, onError) => {
                                 const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify((0, prostgles_types_1.omitKeys)(options, ["handlesOnData"]))}`;
-                                if (!syncedTables[syncName]) {
-                                    syncedTables[syncName] = await syncedTable.create({
+                                if (!syncHandler.syncedTables[syncName]) {
+                                    syncHandler.syncedTables[syncName] = await syncedTable.create({
                                         ...options,
                                         onDebug: onDebug,
                                         name: tableName,
@@ -323,7 +167,7 @@ function prostgles(initOpts, syncedTable) {
                                         onError
                                     });
                                 }
-                                return syncedTables[syncName];
+                                return syncHandler.syncedTables[syncName];
                             };
                             const sync = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "sync", tableName, data: { basicFilter, options } }));
@@ -346,7 +190,7 @@ function prostgles(initOpts, syncedTable) {
                         }
                         dboTable._sync = async function (param1, param2, syncHandles) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "_sync", tableName, data: { param1, param2, syncHandles } }));
-                            return addSync({ tableName, command, param1, param2 }, syncHandles);
+                            return syncHandler.addSync({ tableName, command, param1, param2 }, syncHandles);
                         };
                     }
                     else if (sub_commands.includes(command)) {
@@ -406,18 +250,7 @@ function prostgles(initOpts, syncedTable) {
                 });
             });
             await subscriptionHandler.reAttachAll();
-            Object.entries(syncs).forEach(async ([ch, s]) => {
-                const firstTrigger = s.triggers[0];
-                if (firstTrigger) {
-                    try {
-                        await addServerSync(s, firstTrigger.onSyncRequest);
-                        socket.on(ch, s.onCall);
-                    }
-                    catch (err) {
-                        console.error("There was an issue reconnecting olf subscriptions", err);
-                    }
-                }
-            });
+            await syncHandler.reAttachAll();
             joinTables.flat().map(table => {
                 var _a, _b, _c, _d;
                 (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});
