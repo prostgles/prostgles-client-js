@@ -83,6 +83,14 @@ type SyncDebugEvent = {
 };
 type DebugEvent = {
     type: "table";
+    command: "unsubscribe";
+    tableName: string;
+    /**
+     * If defined then the server will be asked to unsubscribe
+     */
+    unsubChannel?: string;
+} | {
+    type: "table";
     command: keyof TableHandlerClient;
     tableName: string;
     data: AnyObject;

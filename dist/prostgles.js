@@ -64,13 +64,14 @@ function prostgles(initOpts, syncedTable) {
         });
         syncedTables = {};
     };
-    function _unsubscribe(channelName, unsubChannel, handler) {
+    function _unsubscribe(channelName, unsubChannel, handler, onDebug) {
         (0, exports.debug)("_unsubscribe", { channelName, handler });
         return new Promise((resolve, reject) => {
             const sub = subscriptions[channelName];
             if (sub) {
                 sub.handlers = sub.handlers.filter(h => h !== handler);
                 if (!sub.handlers.length) {
+                    onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "unsubscribe", tableName: sub.tableName });
                     socket.emit(unsubChannel, {}, (err, _res) => {
                         if (err)
                             console.error(err);
@@ -83,6 +84,7 @@ function prostgles(initOpts, syncedTable) {
                     resolve(true);
                 }
                 else {
+                    onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "unsubscribe", tableName: sub.tableName, unsubChannel });
                     resolve(true);
                 }
             }
@@ -251,7 +253,7 @@ function prostgles(initOpts, syncedTable) {
     async function _addSub(dbo, { tableName, command, param1, param2 }, onChange, _onError) {
         function makeHandler(channelName, unsubChannel) {
             const unsubscribe = function () {
-                return _unsubscribe(channelName, unsubChannel, onChange);
+                return _unsubscribe(channelName, unsubChannel, onChange, onDebug);
             };
             let res = { unsubscribe, filter: { ...param1 } };
             /* Some dbo sorting was done to make sure this will work */
@@ -331,7 +333,7 @@ function prostgles(initOpts, syncedTable) {
             destroy: async () => {
                 var _a, _b;
                 for await (const h of (_b = (_a = subscriptions[channelName]) === null || _a === void 0 ? void 0 : _a.handlers) !== null && _b !== void 0 ? _b : []) {
-                    await _unsubscribe(channelName, channelNameUnsubscribe, h);
+                    await _unsubscribe(channelName, channelNameUnsubscribe, h, onDebug);
                 }
             }
         };

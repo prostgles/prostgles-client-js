@@ -133,7 +133,17 @@ type SyncDebugEvent = {
   command: keyof ClientSyncHandles;
   data: AnyObject;
 };
-type DebugEvent = {
+type DebugEvent = 
+| {
+  type: "table";
+  command: "unsubscribe";
+  tableName: string;
+  /**
+   * If defined then the server will be asked to unsubscribe
+   */
+  unsubChannel?: string;
+}
+| {
   type: "table";
   command: keyof TableHandlerClient;
   tableName: string;
@@ -242,7 +252,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     syncedTables = {};
   }
 
-  function _unsubscribe(channelName: string, unsubChannel: string, handler: AnyFunction) {
+  function _unsubscribe(channelName: string, unsubChannel: string, handler: AnyFunction, onDebug: InitOptions["onDebug"]) {
     debug("_unsubscribe", { channelName, handler });
 
     return new Promise((resolve, reject) => {
@@ -250,6 +260,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       if (sub) {
         sub.handlers = sub.handlers.filter(h => h !== handler);
         if (!sub.handlers.length) {
+          onDebug?.({ type: "table", command: "unsubscribe", tableName: sub.tableName });
           socket.emit(unsubChannel, {}, (err: any, _res: any) => {
             if (err) console.error(err);
             else reject(err);
@@ -260,6 +271,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
           /* Not waiting for server confirmation to speed things up */
           resolve(true)
         } else {
+          onDebug?.({ type: "table", command: "unsubscribe", tableName: sub.tableName, unsubChannel });
           resolve(true)
         }
       } else {
@@ -444,7 +456,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     function makeHandler(channelName: string, unsubChannel: string) {
 
       const unsubscribe = function () {
-        return _unsubscribe(channelName, unsubChannel, onChange);
+        return _unsubscribe(channelName, unsubChannel, onChange, onDebug);
       }
       let res: any = { unsubscribe, filter: { ...param1 } }
       /* Some dbo sorting was done to make sure this will work */
@@ -526,7 +538,7 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       errorHandlers: [onError],
       destroy: async () => {
         for await(const h of subscriptions[channelName]?.handlers ?? []){
-          await _unsubscribe(channelName, channelNameUnsubscribe, h);
+          await _unsubscribe(channelName, channelNameUnsubscribe, h, onDebug);
         }
       }
     }
