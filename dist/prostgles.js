@@ -50,7 +50,6 @@ function prostgles(initOpts, syncedTable) {
             socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
     }
     const preffix = prostgles_types_1.CHANNELS._preffix;
-    //@ts-ignore
     const subscriptionHandler = (0, subscriptionHandler_1.getSubscriptionHandler)(initOpts);
     const syncHandler = (0, syncHandler_1.getSyncHandler)(initOpts);
     let state;

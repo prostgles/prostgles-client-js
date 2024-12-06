@@ -15,7 +15,7 @@ import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import type { AuthHandler } from "./Auth";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
-import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
+import { getIO, getReact, useAsyncEffectQueue, useIsMounted, useMemoDeep } from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;
@@ -43,9 +43,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
 
   const socketRef = useRef<Socket>();
 
-  useAsyncEffectQueue(async () => {
-    if(skip) return undefined;
-
+  const socket = useMemoDeep(() => {
     socketRef.current?.disconnect();
     const io = getIO();
     const opts = {
@@ -55,6 +53,12 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     }
     const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
     socketRef.current = socket;
+    return socket;
+  }, [socketOptions]);
+
+  useAsyncEffectQueue(async () => {
+    if(skip) return undefined;
+
     await prostgles<DBSchema>({
       socket,
       ...initOpts, 
@@ -82,7 +86,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       socket.disconnect();
     }
     
-  }, [initOpts, socketOptions, skip]);
+  }, [initOpts, socket, skip]);
 
   return onReadyArgs;
 }

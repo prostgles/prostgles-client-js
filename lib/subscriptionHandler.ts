@@ -35,7 +35,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     });
   }
 
-  function _unsubscribe(channelName: string, unsubChannel: string, handler: AnyFunction, onDebug: InitOptions["onDebug"]): Promise<true> {
+  function _unsubscribe(channelName: string, unsubChannel: string, handler: AnyFunction): Promise<true> {
     debug("_unsubscribe", { channelName, handler });
 
     return new Promise((resolve, reject) => {
@@ -94,7 +94,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     const makeHandler = (channelName: string, unsubChannel: string) => {
 
       const unsubscribe = function () {
-        return _unsubscribe(channelName, unsubChannel, onChange, onDebug);
+        return _unsubscribe(channelName, unsubChannel, onChange);
       }
 
       let subHandlers: any = { unsubscribe, filter: { ...param1 } }

@@ -217,8 +217,6 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
   const preffix = CHANNELS._preffix;
 
-
-  //@ts-ignore
   const subscriptionHandler = getSubscriptionHandler(initOpts);
   const syncHandler = getSyncHandler(initOpts);
 
