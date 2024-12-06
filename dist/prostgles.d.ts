@@ -118,6 +118,13 @@ export type InitOptions<DBSchema = void> = {
     onDisconnect?: () => any;
     onDebug?: (event: DebugEvent) => any;
 };
+export type AnyFunction = (...args: any[]) => any;
+export type CoreParams = {
+    tableName: string;
+    command: string;
+    param1?: AnyObject;
+    param2?: AnyObject;
+};
 export type onUpdatesParams = {
     data: object[];
     isSynced: boolean;

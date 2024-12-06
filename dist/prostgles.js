@@ -25,6 +25,7 @@ const Auth_1 = require("./Auth");
 const FunctionQueuer_1 = require("./FunctionQueuer");
 const react_hooks_1 = require("./react-hooks");
 const SQL_1 = require("./SQL");
+const subscriptionHandler_1 = require("./subscriptionHandler");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 exports.hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
@@ -49,14 +50,15 @@ function prostgles(initOpts, syncedTable) {
             socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
     }
     const preffix = prostgles_types_1.CHANNELS._preffix;
-    const subscriptions = {};
     let syncedTables = {};
+    //@ts-ignore
+    const subscriptionHandler = (0, subscriptionHandler_1.getSubscriptionHandler)(initOpts);
     let syncs = {};
     let state;
     const sql = new SQL_1.SQL();
     const destroySyncs = async () => {
-        (0, exports.debug)("destroySyncs", { subscriptions, syncedTables });
-        await Promise.all(Object.values(subscriptions).map(s => s.destroy()));
+        (0, exports.debug)("destroySyncs", { syncedTables });
+        // await subscriptionHandler.destroy();
         syncs = {};
         Object.values(syncedTables).map((s) => {
             if (s && s.destroy)
@@ -64,35 +66,6 @@ function prostgles(initOpts, syncedTable) {
         });
         syncedTables = {};
     };
-    function _unsubscribe(channelName, unsubChannel, handler, onDebug) {
-        (0, exports.debug)("_unsubscribe", { channelName, handler });
-        return new Promise((resolve, reject) => {
-            const sub = subscriptions[channelName];
-            if (sub) {
-                sub.handlers = sub.handlers.filter(h => h !== handler);
-                if (!sub.handlers.length) {
-                    onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "unsubscribe", tableName: sub.tableName });
-                    socket.emit(unsubChannel, {}, (err, _res) => {
-                        if (err)
-                            console.error(err);
-                        else
-                            reject(err);
-                    });
-                    socket.removeListener(channelName, sub.onCall);
-                    delete subscriptions[channelName];
-                    /* Not waiting for server confirmation to speed things up */
-                    resolve(true);
-                }
-                else {
-                    onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "unsubscribe", tableName: sub.tableName, unsubChannel });
-                    resolve(true);
-                }
-            }
-            else {
-                resolve(true);
-            }
-        });
-    }
     function _unsync(channelName, triggers) {
         (0, exports.debug)("_unsync", { channelName, triggers });
         return new Promise((resolve, reject) => {
@@ -130,22 +103,21 @@ function prostgles(initOpts, syncedTable) {
             });
         });
     }
-    /**
-     * Obtaines subscribe channel from server
-     */
-    function addServerSub({ tableName, command, param1, param2 }) {
-        return new Promise((resolve, reject) => {
-            socket.emit(preffix, { tableName, command, param1, param2 }, (err, res) => {
-                if (err) {
-                    console.error(err);
-                    reject(err);
-                }
-                else if (res) {
-                    resolve(res);
-                }
-            });
-        });
-    }
+    // /**
+    //  * Obtaines subscribe channel from server
+    //  */
+    // function addServerSub({ tableName, command, param1, param2 }: CoreParams): Promise<SubscriptionChannels> {
+    //   return new Promise((resolve, reject) => {
+    //     socket.emit(preffix, { tableName, command, param1, param2 }, (err?: any, res?: SubscriptionChannels) => {
+    //       if (err) {
+    //         console.error(err);
+    //         reject(err);
+    //       } else if (res) {
+    //         resolve(res);
+    //       }
+    //     });
+    //   });
+    // }
     const addSyncQueuer = new FunctionQueuer_1.FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
     async function addSync(params, triggers) {
         return addSyncQueuer.run([params, triggers]);
@@ -239,106 +211,6 @@ function prostgles(initOpts, syncedTable) {
             socket.on(channelName, onCall);
             return makeHandler(channelName);
         }
-    }
-    /**
-     * Can be used concurrently
-     */
-    const addSubQueuer = new FunctionQueuer_1.FunctionQueuer(_addSub, ([_, { tableName }]) => tableName);
-    async function addSub(dbo, params, onChange, _onError) {
-        return addSubQueuer.run([dbo, params, onChange, _onError]);
-    }
-    /**
-     * Do NOT use concurrently
-     */
-    async function _addSub(dbo, { tableName, command, param1, param2 }, onChange, _onError) {
-        function makeHandler(channelName, unsubChannel) {
-            const unsubscribe = function () {
-                return _unsubscribe(channelName, unsubChannel, onChange, onDebug);
-            };
-            let res = { unsubscribe, filter: { ...param1 } };
-            /* Some dbo sorting was done to make sure this will work */
-            if (dbo[tableName].update) {
-                res = {
-                    ...res,
-                    update: function (newData, updateParams) {
-                        return dbo[tableName].update(param1, newData, updateParams);
-                    }
-                };
-            }
-            if (dbo[tableName].delete) {
-                res = {
-                    ...res,
-                    delete: function (deleteParams) {
-                        return dbo[tableName].delete(param1, deleteParams);
-                    }
-                };
-            }
-            return Object.freeze(res);
-        }
-        const existing = Object.entries(subscriptions).find(([ch, s]) => {
-            return (s.tableName === tableName &&
-                s.command === command &&
-                JSON.stringify(s.param1 || {}) === JSON.stringify(param1 || {}) &&
-                JSON.stringify(s.param2 || {}) === JSON.stringify(param2 || {}));
-        });
-        if (existing) {
-            const existingCh = existing[0];
-            existing[1].handlers.push(onChange);
-            existing[1].errorHandlers.push(_onError);
-            setTimeout(() => {
-                var _a, _b;
-                if ((_a = subscriptions[existingCh]) === null || _a === void 0 ? void 0 : _a.lastData) {
-                    onChange((_b = subscriptions[existingCh]) === null || _b === void 0 ? void 0 : _b.lastData);
-                }
-            }, 10);
-            return makeHandler(existingCh, existing[1].unsubChannel);
-        }
-        const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({ tableName, command, param1, param2 });
-        const onCall = function (data) {
-            /* TO DO: confirm receiving data or server will unsubscribe */
-            // if(cb) cb(true);
-            const sub = subscriptions[channelName];
-            if (sub) {
-                if (data.data) {
-                    sub.lastData = data.data;
-                    sub.handlers.forEach(h => {
-                        h(data.data);
-                    });
-                }
-                else if (data.err) {
-                    sub.errorHandlers.forEach(h => {
-                        h === null || h === void 0 ? void 0 : h(data.err);
-                    });
-                }
-                else {
-                    console.error("INTERNAL ERROR: Unexpected data format from subscription: ", data);
-                }
-            }
-            else {
-                console.warn("Orphaned subscription: ", channelName);
-            }
-        };
-        const onError = _onError || function (err) { console.error(`Uncaught error within running subscription \n ${channelName}`, err); };
-        socket.on(channelName, onCall);
-        subscriptions[channelName] = {
-            lastData: undefined,
-            tableName,
-            command,
-            param1,
-            param2,
-            onCall,
-            unsubChannel: channelNameUnsubscribe,
-            handlers: [onChange],
-            errorHandlers: [onError],
-            destroy: async () => {
-                var _a, _b;
-                for await (const h of (_b = (_a = subscriptions[channelName]) === null || _a === void 0 ? void 0 : _a.handlers) !== null && _b !== void 0 ? _b : []) {
-                    await _unsubscribe(channelName, channelNameUnsubscribe, h, onDebug);
-                }
-            }
-        };
-        socket.emit(channelNameReady, { now: Date.now() });
-        return makeHandler(channelName, channelNameUnsubscribe);
     }
     return new Promise((resolve, reject) => {
         socket.removeAllListeners(prostgles_types_1.CHANNELS.CONNECTION);
@@ -481,7 +353,7 @@ function prostgles(initOpts, syncedTable) {
                         const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {
                             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: command, tableName, data: { param1, param2, onChange, onError } }));
                             checkSubscriptionArgs(param1, param2, onChange, onError);
-                            return addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
+                            return subscriptionHandler.addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
                         };
                         dboTable[command] = subFunc;
                         const SUBONE = "subscribeOne";
@@ -498,7 +370,7 @@ function prostgles(initOpts, syncedTable) {
                                 await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } }));
                                 checkSubscriptionArgs(param1, param2, onChange, onError);
                                 const onChangeOne = (rows) => { onChange(rows[0]); };
-                                return addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
+                                return subscriptionHandler.addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
                             };
                         }
                     }
@@ -533,16 +405,7 @@ function prostgles(initOpts, syncedTable) {
                     }
                 });
             });
-            // Re-attach listeners
-            Object.entries(subscriptions).forEach(async ([ch, s]) => {
-                try {
-                    await addServerSub(s);
-                    socket.on(ch, s.onCall);
-                }
-                catch (err) {
-                    console.error("There was an issue reconnecting old subscriptions", err);
-                }
-            });
+            await subscriptionHandler.reAttachAll();
             Object.entries(syncs).forEach(async ([ch, s]) => {
                 const firstTrigger = s.triggers[0];
                 if (firstTrigger) {
