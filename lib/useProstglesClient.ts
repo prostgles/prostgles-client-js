@@ -59,7 +59,6 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       socket,
       ...initOpts, 
       onReady: (...args) => {
-        if (!getIsMounted()) return;
         const [dbo, methods, tableSchema, auth, isReconnect] = args;
         const onReadyArgs: OnReadyParams<DBSchema> = { 
           dbo, 
@@ -69,6 +68,11 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
           isReconnect, 
           socket 
         };
+        if (!getIsMounted()) {
+          initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs as any });
+          return;
+        }
+        initOpts.onDebug?.({ type: "onReady", data: args as any });
         setOnReadyArgs({ ...onReadyArgs, isLoading: false });
       }
     }, SyncedTable)

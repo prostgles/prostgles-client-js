@@ -74,6 +74,13 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
 } : Record<string, Partial<TableHandlerClient>>) & {
     sql?: SQLHandler;
 } & DbJoinMaker;
+type OnReadyArgs = {
+    dbo: DBHandlerClient<DBSchema>;
+    methods: MethodHandler | undefined;
+    tableSchema: DBSchemaTable[] | undefined;
+    auth: AuthHandler;
+    isReconnect: boolean;
+};
 type SyncDebugEvent = {
     type: "sync";
     tableName: string;
@@ -101,6 +108,12 @@ type DebugEvent = {
 } | SyncDebugEvent | {
     type: "schemaChanged";
     data: ClientSchema;
+} | {
+    type: "onReady";
+    data: OnReadyArgs;
+} | {
+    type: "onReady.notMounted";
+    data: OnReadyArgs;
 };
 export type InitOptions<DBSchema = void> = {
     socket: any;

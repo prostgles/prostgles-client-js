@@ -33,8 +33,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
             socket,
             ...initOpts,
             onReady: (...args) => {
-                if (!getIsMounted())
-                    return;
+                var _a, _b;
                 const [dbo, methods, tableSchema, auth, isReconnect] = args;
                 const onReadyArgs = {
                     dbo,
@@ -44,6 +43,11 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                     isReconnect,
                     socket
                 };
+                if (!getIsMounted()) {
+                    (_a = initOpts.onDebug) === null || _a === void 0 ? void 0 : _a.call(initOpts, { type: "onReady.notMounted", data: onReadyArgs });
+                    return;
+                }
+                (_b = initOpts.onDebug) === null || _b === void 0 ? void 0 : _b.call(initOpts, { type: "onReady", data: args });
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });
             }
         }, SyncedTable_1.SyncedTable)
