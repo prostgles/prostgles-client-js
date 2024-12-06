@@ -47,7 +47,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                     (_a = initOpts.onDebug) === null || _a === void 0 ? void 0 : _a.call(initOpts, { type: "onReady.notMounted", data: onReadyArgs });
                     return;
                 }
-                (_b = initOpts.onDebug) === null || _b === void 0 ? void 0 : _b.call(initOpts, { type: "onReady", data: args });
+                (_b = initOpts.onDebug) === null || _b === void 0 ? void 0 : _b.call(initOpts, { type: "onReady", data: onReadyArgs });
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });
             }
         }, SyncedTable_1.SyncedTable)

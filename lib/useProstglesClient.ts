@@ -72,7 +72,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
           initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs as any });
           return;
         }
-        initOpts.onDebug?.({ type: "onReady", data: args as any });
+        initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
         setOnReadyArgs({ ...onReadyArgs, isLoading: false });
       }
     }, SyncedTable)
