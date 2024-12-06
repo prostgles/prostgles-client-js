@@ -15,7 +15,7 @@ import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import type { AuthHandler } from "./Auth";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
-import { getIO, getReact, useAsyncEffectQueue, useIsMounted, useMemoDeep } from "./react-hooks";
+import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 
 type OnReadyParams<DBSchema> = {
   dbo: DBHandlerClient<DBSchema>;
@@ -25,7 +25,7 @@ type OnReadyParams<DBSchema> = {
   isReconnect: boolean;
   socket: Socket;
 }
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
+export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
   socketOptions?: Partial<ManagerOptions & SocketOptions> & { uri?: string; };
   skip?: boolean;
 };
@@ -34,7 +34,7 @@ type ProstglesClientState<PGC> =
 | { isLoading: false; error?: undefined; } & PGC 
 | { isLoading: false; error: Error | string; };
 
-export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: HookInitOpts = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
+export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts }: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
   const { useRef, useState } = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = useState<ProstglesClientState<OnReadyParams<DBSchema>>>({
     isLoading: true
@@ -43,7 +43,9 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
 
   const socketRef = useRef<Socket>();
 
-  const socket = useMemoDeep(() => {
+  useAsyncEffectQueue(async () => {
+    if(skip) return undefined;
+
     socketRef.current?.disconnect();
     const io = getIO();
     const opts = {
@@ -53,12 +55,6 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
     }
     const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
     socketRef.current = socket;
-    return socket;
-  }, [socketOptions]);
-
-  useAsyncEffectQueue(async () => {
-    if(skip) return undefined;
-
     await prostgles<DBSchema>({
       socket,
       ...initOpts, 
@@ -86,7 +82,7 @@ export const useProstglesClient = <DBSchema>({ skip, socketOptions, ...initOpts 
       socket.disconnect();
     }
     
-  }, [initOpts, socket, skip]);
+  }, [initOpts, socketOptions, skip]);
 
   return onReadyArgs;
 }

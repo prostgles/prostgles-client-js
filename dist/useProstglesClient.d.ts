@@ -10,7 +10,7 @@ type OnReadyParams<DBSchema> = {
     isReconnect: boolean;
     socket: Socket;
 };
-type HookInitOpts = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
+export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
     socketOptions?: Partial<ManagerOptions & SocketOptions> & {
         uri?: string;
     };
@@ -26,6 +26,6 @@ type ProstglesClientState<PGC> = {
     isLoading: false;
     error: Error | string;
 };
-export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions, ...initOpts }?: HookInitOpts) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
+export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
 export {};
 //# sourceMappingURL=useProstglesClient.d.ts.map

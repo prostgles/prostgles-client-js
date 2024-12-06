@@ -16,8 +16,10 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
     });
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
     const socketRef = useRef();
-    const socket = (0, react_hooks_1.useMemoDeep)(() => {
+    (0, react_hooks_1.useAsyncEffectQueue)(async () => {
         var _a;
+        if (skip)
+            return undefined;
         (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
         const io = (0, react_hooks_1.getIO)();
         const opts = {
@@ -27,11 +29,6 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         };
         const socket = typeof (socketOptions === null || socketOptions === void 0 ? void 0 : socketOptions.uri) === "string" ? io(socketOptions.uri, opts) : io(opts);
         socketRef.current = socket;
-        return socket;
-    }, [socketOptions]);
-    (0, react_hooks_1.useAsyncEffectQueue)(async () => {
-        if (skip)
-            return undefined;
         await (0, prostgles_1.prostgles)({
             socket,
             ...initOpts,
@@ -59,7 +56,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
         return () => {
             socket.disconnect();
         };
-    }, [initOpts, socket, skip]);
+    }, [initOpts, socketOptions, skip]);
     return onReadyArgs;
 };
 exports.useProstglesClient = useProstglesClient;
