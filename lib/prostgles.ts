@@ -26,18 +26,16 @@ import type {
 import {
   CHANNELS,
   asName,
-  getJoinHandlers,
-  getKeys,
-  isObject,
-  omitKeys,
+  getJoinHandlers
 } from "prostgles-types";
 
 import { type AuthHandler, setupAuth } from "./Auth";
-import { FunctionQueuer } from "./FunctionQueuer";
-import { isEqual, useFetch, useSubscribe, useSync } from "./react-hooks";
-import { SQL } from "./SQL";
+import { getDBO } from "./getDBO";
+import { getMethods } from "./getMethods";
+import { getSqlHandler } from "./getSqlHandler";
+import { isEqual } from "./react-hooks";
 import { getSubscriptionHandler } from "./subscriptionHandler";
-import type { DbTableSync, Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
+import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 import { getSyncHandler } from "./syncHandler";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -48,9 +46,9 @@ export const debug: any = function (...args: any[]) {
   }
 };
 
-export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
 export * from "./useProstglesClient";
+export { MethodHandler, SQLResult, asName };
 
 
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
@@ -124,7 +122,7 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
 } & DbJoinMaker;
 
 type OnReadyArgs = {
-  dbo: DBHandlerClient<DBSchema>; 
+  dbo: DBHandlerClient | any; 
   methods: MethodHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined; 
   auth: AuthHandler; 
@@ -163,6 +161,7 @@ type DebugEvent =
 | {
   type: "schemaChanged";
   data: ClientSchema;
+  state: "connected" | "disconnected" | "reconnected" | undefined;
 }
 | {
   type: "onReady";
@@ -171,6 +170,11 @@ type DebugEvent =
 | {
   type: "onReady.notMounted";
   data: OnReadyArgs;
+}
+| {
+  type: "onReady.call";
+  data: OnReadyArgs;
+  state: "connected" | "disconnected" | "reconnected" | undefined;
 }
 ;
 
@@ -219,6 +223,7 @@ type CurrentClientSchema = {
   date: Date; 
   clientSchema: Omit<ClientSchema, "joinTables">;
 };
+
 export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable | undefined) {
   const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
   let schemaAge: CurrentClientSchema | undefined;
@@ -232,13 +237,11 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
     if (cb) socket.on(CHANNELS.SCHEMA_CHANGED, cb)
   }
 
-  const preffix = CHANNELS._preffix;
-
   const subscriptionHandler = getSubscriptionHandler(initOpts);
   const syncHandler = getSyncHandler(initOpts);
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
-  const sql = new SQL();
+  const sqlHandler = getSqlHandler({ socket });
 
 
   return new Promise((resolve, reject) => {
@@ -266,20 +269,22 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
     /* Schema = published schema */
     socket.on(CHANNELS.SCHEMA, async (args: ClientSchema) => {
-      await onDebug?.({ type: "schemaChanged", data: args });
+      await onDebug?.({ type: "schemaChanged", data: args, state });
       const { joinTables = [], ...clientSchema } = args;
       const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
 
       /** Only destroy existing syncs if schema changed */
       const schemaDidNotChange = schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema)
       if(!schemaDidNotChange){
-        await syncHandler.destroySyncs();
+        await syncHandler.destroySyncs().catch(error => console.error("Error while destroying syncs", error));
       }
 
+      if (err) {
+        console.error("Error on schema change:", err)
+      }
       if ((state === "connected" || state === "reconnected") && onReconnect) {
         onReconnect(socket, err);
         if (err) {
-          console.error(err)
           return;
         }
         schemaAge = { origin: "onReconnect", date: new Date(), clientSchema };
@@ -295,162 +300,21 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       const isReconnect = state === "reconnected";
       state = "connected";
 
-      const dbo: Partial<DBHandlerClient> = JSON.parse(JSON.stringify(schema));
-      const _methods: typeof methods = JSON.parse(JSON.stringify(methods));
-      let methodsObj: MethodHandler = {};
-
       const auth = setupAuth({ authData: authConfig, socket, onReload }); 
+      const { methodsObj } = getMethods({ onDebug, methods, socket });
 
-      _methods.map(method => {
-        /** New method def */
-        const isBasic = typeof method === "string";
-        const methodName = isBasic ? method : method.name;
-        const onRun = async function (...params) {
-          await onDebug?.({ type: "method", command: methodName, data: { params } });
-          return new Promise((resolve, reject) => {
-            socket.emit(CHANNELS.METHOD, { method: methodName, params }, (err, res) => {
-              if (err) reject(err);
-              else resolve(res);
-            });
-          })
-        }
-        methodsObj[methodName] = isBasic ? onRun : {
-          ...method,
-          run: onRun
-        };
+      const { dbo } = getDBO({ 
+        schema, 
+        onDebug, 
+        syncedTable, 
+        syncHandler, 
+        subscriptionHandler, 
+        socket, 
+        joinTables,
       });
-      methodsObj = Object.freeze(methodsObj);
-
-      if (rawSQL) {
-        sql.setup({ dbo, socket });
+      if(rawSQL){
+        dbo.sql = sqlHandler.sql;
       }
-
-      /* Building DBO object */
-      const checkSubscriptionArgs = (basicFilter: AnyObject | undefined, options: AnyObject | undefined, onChange: AnyFunction, onError?: AnyFunction) => {
-        if (basicFilter !== undefined && !isObject(basicFilter) || options !== undefined && !isObject(options) || !(typeof onChange === "function") || onError !== undefined && typeof onError !== "function") {
-          throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
-        }
-      }
-      const sub_commands = ["subscribe", "subscribeOne"] as const;
-      getKeys(dbo).forEach(tableName => {
-        const all_commands = Object.keys(dbo[tableName]!);
-
-        const dboTable = dbo[tableName] as TableHandlerClient;
-        all_commands
-          .sort((a, b) => <never>sub_commands.includes(a as any) - <never>sub_commands.includes(b as any))
-          .forEach(command => {
-
-            if (command === "sync") {
-              dboTable._syncInfo = { ...dboTable[command] };
-              if (syncedTable) {
-                dboTable.getSync = async (filter, params = {}) => {
-                  await onDebug?.({ type: "table", command: "getSync", tableName, data: { filter, params } });
-                  return syncedTable.create({ 
-                    name: tableName, 
-                    onDebug: onDebug as any, 
-                    filter, 
-                    db: dbo, 
-                    ...params 
-                  });
-                }
-                const upsertSyncTable = async (basicFilter = {}, options: SyncOptions = {}, onError) => {
-                  const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(omitKeys(options, ["handlesOnData"]))}`
-                  if (!syncHandler.syncedTables[syncName]) {
-                    syncHandler.syncedTables[syncName] = await syncedTable.create({ 
-                      ...options, 
-                      onDebug: onDebug as any, 
-                      name: tableName, 
-                      filter: basicFilter, 
-                      db: dbo, 
-                      onError 
-                    });
-                  }
-                  return syncHandler.syncedTables[syncName]
-                }
-                const sync: Sync<AnyObject> = async (basicFilter, options = { handlesOnData: true, select: "*" }, onChange, onError) => {
-                  await onDebug?.({ type: "table", command: "sync", tableName, data: { basicFilter, options } });
-                  checkSubscriptionArgs(basicFilter, options, onChange, onError);
-                  const s = await upsertSyncTable(basicFilter, options, onError);
-                  return await s.sync(onChange, options.handlesOnData);
-                }
-                const syncOne: SyncOne<AnyObject> = async (basicFilter, options = { handlesOnData: true }, onChange, onError) => {
-                  await onDebug?.({ type: "table", command: "syncOne", tableName, data: { basicFilter, options } });
-                  checkSubscriptionArgs(basicFilter, options, onChange, onError);
-                  const s = await upsertSyncTable(basicFilter, options, onError);
-                  return await s.syncOne(basicFilter, onChange, options.handlesOnData);
-                }
-                dboTable.sync = sync;
-                dboTable.syncOne = syncOne;
-                // eslint-disable-next-line react-hooks/rules-of-hooks
-                dboTable.useSync = (basicFilter, options) => useSync(sync, basicFilter, options) as any;
-                // eslint-disable-next-line react-hooks/rules-of-hooks
-                dboTable.useSyncOne = (basicFilter, options) => useSync(syncOne, basicFilter, options) as any;
-              }
-
-              dboTable._sync = async function (param1, param2, syncHandles) {
-                await onDebug?.({ type: "table", command: "_sync", tableName, data: { param1, param2, syncHandles } });
-                return syncHandler.addSync({ tableName, command, param1, param2 }, syncHandles);
-              }
-            } else if (sub_commands.includes(command as any)) {
-              const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {
-                await onDebug?.({ type: "table", command: command as typeof sub_commands[number], tableName, data: { param1, param2, onChange, onError } });
-                checkSubscriptionArgs(param1, param2, onChange, onError);
-                return subscriptionHandler.addSub(dbo, { tableName, command, param1, param2 }, onChange, onError);
-              };
-              dboTable[command] = subFunc;
-              const SUBONE = "subscribeOne";
-
-              /**
-               * React hooks 
-               */
-              const handlerName = command === "subscribe" ? "useSubscribe" : command === "subscribeOne"? "useSubscribeOne" : undefined;
-              if(handlerName){
-                // eslint-disable-next-line react-hooks/rules-of-hooks
-                dboTable[handlerName] = (filter, options) => useSubscribe(subFunc, command === SUBONE, filter, options)
-              }
-
-              if (command === SUBONE || !sub_commands.includes(SUBONE)) {
-                dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
-                  await onDebug?.({ type: "table", command: "getSync", tableName, data: { param1, param2, onChange, onError } });
-                  checkSubscriptionArgs(param1, param2, onChange, onError);
-
-                  const onChangeOne = (rows) => { onChange(rows[0]) };
-                  return subscriptionHandler.addSub(dbo, { tableName, command, param1, param2 }, onChangeOne, onError);
-                };
-              }
-            } else {
-              const method = async function (param1, param2, param3) {
-                await onDebug?.({ type: "table", command: command as any, tableName, data: { param1, param2, param3 } });
-                return new Promise((resolve, reject) => {
-                  socket.emit(preffix,
-                    { tableName, command, param1, param2, param3 },
-
-                    /* Get col definition and re-cast data types?! */
-                    (err, res) => {
-                      if (err) reject(err);
-                      else resolve(res);
-                    }
-                  );
-                })
-              }
-              dboTable[command] = method;
-
-              const methodName = command === "findOne" ? "useFindOne" : command === "find" ? "useFind" : command === "count" ? "useCount" : command === "size" ? "useSize" : undefined;
-              if(methodName){
-                // eslint-disable-next-line react-hooks/rules-of-hooks
-                dboTable[methodName] = (param1, param2, param3?) => useFetch(method, [param1, param2, param3]);
-              }
-              if (["find", "findOne"].includes(command)) {
-                dboTable.getJoinedTables = function () {
-                  return joinTables
-                    .filter(tb => Array.isArray(tb) && tb.includes(tableName))
-                    .flat()
-                    .filter(t => t !== tableName);
-                }
-              }
-            }
-          })
-      });
 
       await subscriptionHandler.reAttachAll();
       await syncHandler.reAttachAll();
@@ -470,6 +334,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
       (async () => {
         try {
+          const onReadyArgs = { dbo, methods: methodsObj, tableSchema, auth, isReconnect };
+          await onDebug?.({ type: "onReady.call", data: onReadyArgs, state });
           await onReady(dbo as DBHandlerClient<DBSchema>, methodsObj, tableSchema, auth, isReconnect);
         } catch (err) {
           console.error("Prostgles: Error within onReady: \n", err);

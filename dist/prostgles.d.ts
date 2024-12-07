@@ -4,9 +4,9 @@ import { type AuthHandler } from "./Auth";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 export declare const hasWnd: boolean;
 export declare const debug: any;
-export { MethodHandler, SQLResult, asName };
 export * from "./react-hooks";
 export * from "./useProstglesClient";
+export { MethodHandler, SQLResult, asName };
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
     _syncInfo?: any;
@@ -75,7 +75,7 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
     sql?: SQLHandler;
 } & DbJoinMaker;
 type OnReadyArgs = {
-    dbo: DBHandlerClient<DBSchema>;
+    dbo: DBHandlerClient | any;
     methods: MethodHandler | undefined;
     tableSchema: DBSchemaTable[] | undefined;
     auth: AuthHandler;
@@ -108,12 +108,17 @@ type DebugEvent = {
 } | SyncDebugEvent | {
     type: "schemaChanged";
     data: ClientSchema;
+    state: "connected" | "disconnected" | "reconnected" | undefined;
 } | {
     type: "onReady";
     data: OnReadyArgs;
 } | {
     type: "onReady.notMounted";
     data: OnReadyArgs;
+} | {
+    type: "onReady.call";
+    data: OnReadyArgs;
+    state: "connected" | "disconnected" | "reconnected" | undefined;
 };
 export type InitOptions<DBSchema = void> = {
     socket: any;
