@@ -22,12 +22,12 @@ exports.prostgles = exports.asName = exports.debug = exports.hasWnd = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
 const Auth_1 = require("./Auth");
-const getDBO_1 = require("./getDBO");
+const getDbHandler_1 = require("./getDbHandler");
 const getMethods_1 = require("./getMethods");
 const getSqlHandler_1 = require("./getSqlHandler");
 const react_hooks_1 = require("./react-hooks");
-const subscriptionHandler_1 = require("./subscriptionHandler");
-const syncHandler_1 = require("./syncHandler");
+const getSubscriptionHandler_1 = require("./getSubscriptionHandler");
+const getSyncHandler_1 = require("./getSyncHandler");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 exports.hasWnd = typeof window !== "undefined";
 const debug = function (...args) {
@@ -51,10 +51,10 @@ function prostgles(initOpts, syncedTable) {
         if (cb)
             socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
     }
-    const subscriptionHandler = (0, subscriptionHandler_1.getSubscriptionHandler)(initOpts);
-    const syncHandler = (0, syncHandler_1.getSyncHandler)(initOpts);
+    const subscriptionHandler = (0, getSubscriptionHandler_1.getSubscriptionHandler)(initOpts);
+    const syncHandler = (0, getSyncHandler_1.getSyncHandler)(initOpts);
+    const sqlHandler = (0, getSqlHandler_1.getSqlHandler)(initOpts);
     let state;
-    const sqlHandler = (0, getSqlHandler_1.getSqlHandler)({ socket });
     return new Promise((resolve, reject) => {
         socket.removeAllListeners(prostgles_types_1.CHANNELS.CONNECTION);
         socket.on(prostgles_types_1.CHANNELS.CONNECTION, error => {
@@ -83,7 +83,8 @@ function prostgles(initOpts, syncedTable) {
             /** Only destroy existing syncs if schema changed */
             const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
-                await syncHandler.destroySyncs().catch(error => console.error("Error while destroying syncs", error));
+                syncHandler.destroySyncs()
+                    .catch(error => console.error("Error while destroying syncs", error));
             }
             if (err) {
                 console.error("Error on schema change:", err);
@@ -106,7 +107,7 @@ function prostgles(initOpts, syncedTable) {
             state = "connected";
             const auth = (0, Auth_1.setupAuth)({ authData: authConfig, socket, onReload });
             const { methodsObj } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
-            const { dbo } = (0, getDBO_1.getDBO)({
+            const { dbo } = (0, getDbHandler_1.getDBO)({
                 schema,
                 onDebug,
                 syncedTable,
@@ -118,8 +119,8 @@ function prostgles(initOpts, syncedTable) {
             if (rawSQL) {
                 dbo.sql = sqlHandler.sql;
             }
-            await subscriptionHandler.reAttachAll();
-            await syncHandler.reAttachAll();
+            subscriptionHandler.reAttachAll();
+            syncHandler.reAttachAll();
             joinTables.flat().map(table => {
                 var _a, _b, _c, _d;
                 (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});

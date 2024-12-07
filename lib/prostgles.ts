@@ -30,13 +30,13 @@ import {
 } from "prostgles-types";
 
 import { type AuthHandler, setupAuth } from "./Auth";
-import { getDBO } from "./getDBO";
+import { getDBO } from "./getDbHandler";
 import { getMethods } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
 import { isEqual } from "./react-hooks";
-import { getSubscriptionHandler } from "./subscriptionHandler";
+import { getSubscriptionHandler } from "./getSubscriptionHandler";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
-import { getSyncHandler } from "./syncHandler";
+import { getSyncHandler } from "./getSyncHandler";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 export const hasWnd = typeof window !== "undefined";
@@ -239,14 +239,14 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
 
   const subscriptionHandler = getSubscriptionHandler(initOpts);
   const syncHandler = getSyncHandler(initOpts);
+  const sqlHandler = getSqlHandler(initOpts);
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
-  const sqlHandler = getSqlHandler({ socket });
 
 
   return new Promise((resolve, reject) => {
 
-    socket.removeAllListeners(CHANNELS.CONNECTION)
+    socket.removeAllListeners(CHANNELS.CONNECTION);
     socket.on(CHANNELS.CONNECTION, error => {
       reject(error);
       return "ok"
@@ -276,7 +276,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
       /** Only destroy existing syncs if schema changed */
       const schemaDidNotChange = schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema)
       if(!schemaDidNotChange){
-        await syncHandler.destroySyncs().catch(error => console.error("Error while destroying syncs", error));
+        syncHandler.destroySyncs()
+          .catch(error => console.error("Error while destroying syncs", error));
       }
 
       if (err) {
@@ -316,8 +317,8 @@ export function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable
         dbo.sql = sqlHandler.sql;
       }
 
-      await subscriptionHandler.reAttachAll();
-      await syncHandler.reAttachAll();
+      subscriptionHandler.reAttachAll();
+      syncHandler.reAttachAll();
 
       joinTables.flat().map(table => {
         dbo.innerJoin ??= {};

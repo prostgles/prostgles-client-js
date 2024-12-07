@@ -1,8 +1,8 @@
 import { type AnyObject, CHANNELS, type ClientSchema, getKeys, isObject, omitKeys, type TableSchemaForClient } from "prostgles-types";
 import { type InitOptions, type TableHandlerClient, type AnyFunction, type DBHandlerClient, useSync, useSubscribe, useFetch } from "./prostgles";
 import type { Sync, SyncedTable, SyncOne, SyncOptions } from "./SyncedTable/SyncedTable";
-import type { getSyncHandler } from "./syncHandler";
-import type { getSubscriptionHandler } from "./subscriptionHandler";
+import type { getSyncHandler } from "./getSyncHandler";
+import type { getSubscriptionHandler } from "./getSubscriptionHandler";
 
 
 type Args = {
