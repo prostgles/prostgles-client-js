@@ -1,6 +1,6 @@
 import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter } from "prostgles-types";
 import { WAL } from "prostgles-types";
-import type { DBHandlerClient } from "../prostgles";
+import { type DBHandlerClient } from "../prostgles";
 export declare const debug: any;
 export type SyncOptions = Partial<SyncedTableOptions> & {
     select?: FieldFilter;
@@ -18,8 +18,8 @@ type SyncDebugEvent = {
 /**
  * Creates a local synchronized table
  */
-type OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any;
-export type Sync<T extends AnyObject, OnChangeFunc extends OnChange<T> = (data: (SyncDataItem<Required<T>>)[], delta?: Partial<T>[]) => any, Upsert extends ((newData: T[]) => any) = ((newData: T[]) => any)> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChangeFunc, onError?: (error: any) => void) => Promise<{
+type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
+export type Sync<T extends AnyObject, OnChangeFunc extends OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any, Upsert extends (newData: T[]) => any = (newData: T[]) => any> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChangeFunc, onError?: (error: any) => void) => Promise<{
     $unsync: () => void;
     $upsert: Upsert;
     getItems: () => T[];
@@ -27,7 +27,7 @@ export type Sync<T extends AnyObject, OnChangeFunc extends OnChange<T> = (data: 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T extends AnyObject = AnyObject> = (basicFilter: Partial<T>, options: SyncOneOptions, onChange: (data: (SyncDataItem<Required<T>>), delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
+export type SyncOne<T extends AnyObject = AnyObject> = (basicFilter: Partial<T>, options: SyncOneOptions, onChange: (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
 export type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
@@ -57,8 +57,8 @@ type DeepPartial<T> = T extends Array<any> ? T : T extends object ? {
  * CRUD handles added if initialised with handlesOnData = true
  */
 export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false> = {
-    $get: () => T;
-    $find: (idObj: Partial<T>) => (T | undefined);
+    $get: () => T | undefined;
+    $find: (idObj: Partial<T>) => T | undefined;
     $unsync: () => any;
     $delete: () => void;
     $update: <OPTS extends $UpdateOpts>(newData: OPTS extends {
@@ -103,7 +103,7 @@ export type SyncedTableOptions = {
     db: any;
     pushDebounce?: number;
     skipFirstTrigger?: boolean;
-    select?: "*" | {};
+    select?: "*" | AnyObject;
     storageType?: StorageType;
     patchText?: boolean;
     patchJSON?: boolean;
@@ -118,7 +118,7 @@ export type DbTableSync = {
 export declare class SyncedTable {
     db: DBHandlerClient;
     name: string;
-    select?: "*" | {};
+    select?: "*" | AnyObject;
     filter?: AnyObject;
     onChange?: MultiChangeListener;
     id_fields: string[];
@@ -150,7 +150,7 @@ export declare class SyncedTable {
     isSynced: boolean;
     onError: SyncedTableOptions["onError"];
     onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName">) => Promise<void>;
-    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError }: SyncedTableOptions);
+    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError, }: SyncedTableOptions);
     /**
      * Will update text/json fields through patching method
      * This will send less data to server
@@ -177,14 +177,14 @@ export declare class SyncedTable {
      * @param newData -> updates. Must include id_fields + updates
      */
     _notifySubscribers: (changes?: Pick<ItemUpdated, "idObj" | "newItem" | "delta">[]) => void;
-    unsubscribe: (onChange: Function) => string;
+    unsubscribe: (onChange: SingleChangeListener | MultiChangeListener) => string;
     getIdStr(d: AnyObject): string;
     getIdObj(d: AnyObject): AnyObject;
     getRowSyncObj(d: AnyObject): AnyObject;
     unsync: () => void;
     destroy: () => void;
-    matchesFilter(item: AnyObject): boolean;
-    matchesIdObj(a: AnyObject, b: AnyObject): boolean;
+    matchesFilter(item: AnyObject | undefined): boolean;
+    matchesIdObj(a: AnyObject | undefined, b: AnyObject | undefined): boolean;
     /**
      * Returns properties that are present in {n} and are different to {o}
      * @param o current full data item

@@ -13,15 +13,12 @@
     "module": "commonjs",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    // "removeComments": true,
     // "sourceMap": true,
 
     /* OMG. webpack ts-loader bypased due to this */
     "rootDir": "./lib",
-    // "esModuleInterop": true,
     "noImplicitAny": false,
     "outDir": "dist",
-    // "moduleResolution": "node"
     "declaration": true,
     "declarationMap": true,
     "ignoreDeprecations": "5.0",
@@ -31,6 +28,7 @@
   "include": ["lib"],
   "exclude": [
     "./dist",
+    "./tests",
     "node_modules"
   ]
 }

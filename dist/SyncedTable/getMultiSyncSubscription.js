@@ -6,24 +6,26 @@ function getMultiSyncSubscription({ onChange, handlesOnData }) {
         $unsync: () => {
             return this.unsubscribe(onChange);
         },
-        getItems: () => { return this.getItems(); },
+        getItems: () => {
+            return this.getItems();
+        },
         $upsert: (newData) => {
             if (!newData) {
                 throw "No data provided for upsert";
             }
             const prepareOne = (d) => {
-                return ({
+                return {
                     idObj: this.getIdObj(d),
-                    delta: d
-                });
+                    delta: d,
+                };
             };
             if (Array.isArray(newData)) {
-                this.upsert(newData.map(d => prepareOne(d)));
+                this.upsert(newData.map((d) => prepareOne(d)));
             }
             else {
                 this.upsert([prepareOne(newData)]);
             }
-        }
+        },
     };
     const sub = {
         _onChange: onChange,
@@ -40,19 +42,19 @@ function getMultiSyncSubscription({ onChange, handlesOnData }) {
                         $get: () => getItem(this.getItem(idObj).data, idObj),
                         $find: (idObject) => getItem(this.getItem(idObject).data, idObject),
                         $update: (newData, opts) => {
-                            return this.upsert([{ idObj, delta: newData, opts }]).then(r => true);
+                            return this.upsert([{ idObj, delta: newData, opts }]).then((r) => true);
                         },
                         $delete: async () => {
                             return this.delete(idObj);
                         },
-                        $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData)
+                        $cloneMultiSync: (onChange) => this.sync(onChange, handlesOnData),
                     });
                     const idObj = this.getIdObj(item);
                     return getItem(item, idObj);
                 });
             }
             return onChange(allItems, allDeltas);
-        }
+        },
     };
     return { sub, handles };
 }

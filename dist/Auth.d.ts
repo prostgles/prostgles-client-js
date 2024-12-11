@@ -31,9 +31,9 @@ export type EmailAuth<T> = {
 };
 type LoginSignupOptions = {
     prefferedLogin: string;
-    login: undefined | {
+    login: undefined | ({
         withProvider?: WithProviderLogin;
-    } & EmailAuth<PasswordLoginData>;
+    } & EmailAuth<PasswordLoginData>);
     register: undefined | EmailAuth<PasswordRegisterData>;
     providers: AuthSocketSchema["providers"];
 };

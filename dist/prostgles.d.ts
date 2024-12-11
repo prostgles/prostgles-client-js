@@ -12,33 +12,57 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     _syncInfo?: any;
     getSync?: any;
     sync?: Sync<T>;
+    /**
+     * Retrieves rows matching the filter and keeps them in sync
+     * - use { handlesOnData: true } to get optimistic updates method: $update
+     * - any changes to the row using the $update method will be reflected instantly
+     *    to all sync subscribers that were initiated with the same syncOptions
+     */
     useSync?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOptions) => {
         data: undefined | SyncDataItem<Required<T>>[];
         isLoading: boolean;
         error?: any;
     };
     syncOne?: SyncOne<T>;
+    /**
+     * Retrieves the first row matching the filter and keeps it in sync
+     * - use { handlesOnData: true } to get optimistic updates method: $update
+     * - any changes to the row using the $update method will be reflected instantly
+     *    to all sync subscribers that were initiated with the same syncOptions
+     */
     useSyncOne?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOneOptions) => {
         data: undefined | SyncDataItem<Required<T>>;
         isLoading: boolean;
         error?: any;
     };
     _sync?: any;
+    /**
+     * Retrieves a list of matching records from the view/table and subscribes to changes
+     */
     useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
         data: GetSelectReturnType<S, SubParams, T, true> | undefined;
         error?: any;
         isLoading: boolean;
     };
+    /**
+     * Retrieves a matching record from the view/table and subscribes to changes
+     */
     useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
         data: GetSelectReturnType<S, SubParams, T, false> | undefined;
         error?: any;
         isLoading: boolean;
     };
+    /**
+     * Retrieves a list of matching records from the view/table
+     */
     useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: undefined | GetSelectReturnType<S, P, T, true>;
         isLoading: boolean;
         error?: any;
     };
+    /**
+     * Retrieves first matching record from the view/table
+     */
     useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
         data: undefined | GetSelectReturnType<S, P, T, false>;
         isLoading: boolean;

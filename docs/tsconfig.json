@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.spec.ts"],
+  "files": ["generateDocs.ts"],
   "compilerOptions": {
     "baseUrl": ".",
     "target": "es2019",
@@ -7,7 +7,7 @@
       "es6",
       "dom", 
       "es2017",
-      "es2019"
+      "es2019",
     ],
     "strict": true,
     "module": "commonjs",
@@ -15,9 +15,12 @@
     "rootDir": "./", 
     "outDir": "dist",
     "noImplicitAny": false, 
+    "declaration": true,
+    "strictNullChecks": true,
+    "declarationMap": true,
     "ignoreDeprecations": "5.0", 
     "skipLibCheck": true,
-    "noUncheckedIndexedAccess": false
+    "noUncheckedIndexedAccess": true,
   }, 
   "exclude": [ 
     "node_modules"

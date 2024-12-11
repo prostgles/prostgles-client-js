@@ -30,12 +30,13 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
     };
     if (authConfig) {
         const { providers, register, loginType } = authConfig;
-        const withProvider = (0, prostgles_types_1.isEmpty)(providers) ? undefined : providers && Object.entries(providers).reduce((acc, [provider, { url }]) => {
-            acc[provider] = () => {
-                window.location.assign(url);
-            };
-            return acc;
-        }, {});
+        const withProvider = (0, prostgles_types_1.isEmpty)(providers) ? undefined : (providers &&
+            Object.entries(providers).reduce((acc, [provider, { url }]) => {
+                acc[provider] = () => {
+                    window.location.assign(url);
+                };
+                return acc;
+            }, {}));
         const addSearchInCaseItHasReturnUrl = (url) => {
             const { search } = window.location;
             return url + search;
@@ -48,17 +49,20 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
                 },
             }),
         };
-        loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) ? {
-            [register.type]: (params) => {
-                return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(register.url), params);
-            }
-        } : undefined;
+        loginSignupOptions.register =
+            (register === null || register === void 0 ? void 0 : register.type) ?
+                {
+                    [register.type]: (params) => {
+                        return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(register.url), params);
+                    },
+                }
+                : undefined;
     }
     if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
         return {
             isLoggedin: false,
             user: undefined,
-            ...loginSignupOptions
+            ...loginSignupOptions,
         };
     }
     return {
@@ -67,7 +71,7 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
         logout: () => {
             window.location.assign("/logout");
         },
-        ...loginSignupOptions
+        ...loginSignupOptions,
     };
 };
 exports.setupAuth = setupAuth;
@@ -75,19 +79,25 @@ const postAuthData = async (path, data) => {
     const rawResponse = await fetch(path, {
         method: "POST",
         headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            Accept: "application/json",
+            "Content-Type": "application/json",
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
     });
     if (!rawResponse.ok) {
-        const error = await rawResponse.json().catch(() => rawResponse.text()).catch(() => rawResponse.statusText);
+        const error = await rawResponse
+            .json()
+            .catch(() => rawResponse.text())
+            .catch(() => rawResponse.statusText);
         if (typeof error === "string") {
             return { success: false, error };
         }
         return error;
     }
-    const responseObject = await rawResponse.json().catch(async () => ({ message: await rawResponse.text() })).catch(() => ({ message: rawResponse.statusText }));
+    const responseObject = await rawResponse
+        .json()
+        .catch(async () => ({ message: await rawResponse.text() }))
+        .catch(() => ({ message: rawResponse.statusText }));
     if (rawResponse.redirected) {
         return { ...responseObject, success: true, redirect_url: rawResponse.url };
     }

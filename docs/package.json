@@ -1,10 +1,10 @@
 {
-  "name": "test",
+  "name": "generate-docs",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "generateDocs.js",
   "scripts": {
-    "test": "npm i && tsc && node --test dist/*.spec.js"
+    "start": "npm i && tsc && node dist/generateDocs.js"
   },
   "author": "",
   "license": "ISC",
