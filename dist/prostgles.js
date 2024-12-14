@@ -39,7 +39,7 @@ exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
 __exportStar(require("./useProstglesClient"), exports);
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug, } = initOpts;
     let schemaAge;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
@@ -57,7 +57,7 @@ function prostgles(initOpts, syncedTable) {
     let state;
     return new Promise((resolve, reject) => {
         socket.removeAllListeners(prostgles_types_1.CHANNELS.CONNECTION);
-        socket.on(prostgles_types_1.CHANNELS.CONNECTION, error => {
+        socket.on(prostgles_types_1.CHANNELS.CONNECTION, (error) => {
             reject(error);
             return "ok";
         });
@@ -83,8 +83,9 @@ function prostgles(initOpts, syncedTable) {
             /** Only destroy existing syncs if schema changed */
             const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
-                syncHandler.destroySyncs()
-                    .catch(error => console.error("Error while destroying syncs", error));
+                syncHandler
+                    .destroySyncs()
+                    .catch((error) => console.error("Error while destroying syncs", error));
             }
             if (err) {
                 console.error("Error on schema change:", err);
@@ -121,7 +122,7 @@ function prostgles(initOpts, syncedTable) {
             }
             subscriptionHandler.reAttachAll();
             syncHandler.reAttachAll();
-            joinTables.flat().map(table => {
+            joinTables.flat().map((table) => {
                 var _a, _b, _c, _d;
                 (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});
                 (_b = dbo.leftJoin) !== null && _b !== void 0 ? _b : (dbo.leftJoin = {});

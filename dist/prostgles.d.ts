@@ -1,4 +1,4 @@
-import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, GetSelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
+import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./Auth";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
@@ -40,7 +40,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * Retrieves a list of matching records from the view/table and subscribes to changes
      */
     useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
-        data: GetSelectReturnType<S, SubParams, T, true> | undefined;
+        data: SelectReturnType<S, SubParams, T, true> | undefined;
         error?: any;
         isLoading: boolean;
     };
@@ -48,7 +48,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * Retrieves a matching record from the view/table and subscribes to changes
      */
     useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => {
-        data: GetSelectReturnType<S, SubParams, T, false> | undefined;
+        data: SelectReturnType<S, SubParams, T, false> | undefined;
         error?: any;
         isLoading: boolean;
     };
@@ -56,7 +56,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * Retrieves a list of matching records from the view/table
      */
     useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
-        data: undefined | GetSelectReturnType<S, P, T, true>;
+        data: undefined | SelectReturnType<S, P, T, true>;
         isLoading: boolean;
         error?: any;
     };
@@ -64,7 +64,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * Retrieves first matching record from the view/table
      */
     useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => {
-        data: undefined | GetSelectReturnType<S, P, T, false>;
+        data: undefined | SelectReturnType<S, P, T, false>;
         isLoading: boolean;
         error?: any;
     };
@@ -155,8 +155,18 @@ export type InitOptions<DBSchema = void> = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, tableSchema: DBSchemaTable[] | undefined, auth: AuthHandler, isReconnect: boolean) => any;
+    onReady: (
     /**
+     * The database handler object.
+     * Only allowed tables and table methods are defined
+     */
+    dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, 
+    /**
+     * Table schema together with column permission details the client has access to
+     */
+    tableSchema: DBSchemaTable[] | undefined, auth: AuthHandler, isReconnect: boolean) => any;
+    /**
+     * Custom handler in case of websocket re-connection.
      * If not provided will fire onReady
      */
     onReconnect?: (socket: any, error?: any) => any;
