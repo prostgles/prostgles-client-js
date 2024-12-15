@@ -16,13 +16,13 @@ const useProstglesClient = ({ skip, socketOptions: socketPathOrOptions, ...initO
     });
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
     const socketRef = useRef();
-    const socketOptions = typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
         var _a;
         if (skip)
             return undefined;
         (_a = socketRef.current) === null || _a === void 0 ? void 0 : _a.disconnect();
         const io = (0, react_hooks_1.getIO)();
+        const socketOptions = typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
         const opts = {
             reconnectionDelay: 1000,
             reconnection: true,
@@ -60,7 +60,7 @@ const useProstglesClient = ({ skip, socketOptions: socketPathOrOptions, ...initO
         return () => {
             socket.disconnect();
         };
-    }, [initOpts, socketOptions, skip]);
+    }, [initOpts, socketPathOrOptions, skip]);
     return onReadyArgs;
 };
 exports.useProstglesClient = useProstglesClient;

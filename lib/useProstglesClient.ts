@@ -46,13 +46,13 @@ export const useProstglesClient = <DBSchema>({
   const getIsMounted = useIsMounted();
 
   const socketRef = useRef<Socket>();
-  const socketOptions =
-    typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
   useAsyncEffectQueue(async () => {
     if (skip) return undefined;
 
     socketRef.current?.disconnect();
     const io = getIO();
+    const socketOptions =
+      typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
     const opts = {
       reconnectionDelay: 1000,
       reconnection: true,
@@ -92,7 +92,7 @@ export const useProstglesClient = <DBSchema>({
     return () => {
       socket.disconnect();
     };
-  }, [initOpts, socketOptions, skip]);
+  }, [initOpts, socketPathOrOptions, skip]);
 
   return onReadyArgs;
 };
