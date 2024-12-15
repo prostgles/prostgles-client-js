@@ -9,13 +9,14 @@ const prostgles_types_1 = require("prostgles-types");
 const SyncedTable_1 = require("./SyncedTable/SyncedTable");
 const prostgles_1 = require("./prostgles");
 const react_hooks_1 = require("./react-hooks");
-const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
+const useProstglesClient = ({ skip, socketOptions: socketPathOrOptions, ...initOpts } = {}) => {
     const { useRef, useState } = (0, react_hooks_1.getReact)(true);
     const [onReadyArgs, setOnReadyArgs] = useState({
-        isLoading: true
+        isLoading: true,
     });
     const getIsMounted = (0, react_hooks_1.useIsMounted)();
     const socketRef = useRef();
+    const socketOptions = typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
     (0, react_hooks_1.useAsyncEffectQueue)(async () => {
         var _a;
         if (skip)
@@ -41,7 +42,7 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                     tableSchema,
                     auth,
                     isReconnect,
-                    socket
+                    socket,
                 };
                 if (!getIsMounted()) {
                     (_a = initOpts.onDebug) === null || _a === void 0 ? void 0 : _a.call(initOpts, { type: "onReady.notMounted", data: onReadyArgs });
@@ -49,9 +50,8 @@ const useProstglesClient = ({ skip, socketOptions, ...initOpts } = {}) => {
                 }
                 (_b = initOpts.onDebug) === null || _b === void 0 ? void 0 : _b.call(initOpts, { type: "onReady", data: onReadyArgs });
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });
-            }
-        }, SyncedTable_1.SyncedTable)
-            .catch(err => {
+            },
+        }, SyncedTable_1.SyncedTable).catch((err) => {
             if (!getIsMounted())
                 return;
             const error = err instanceof Error ? err : new Error(err);

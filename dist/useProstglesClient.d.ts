@@ -10,22 +10,26 @@ type OnReadyParams<DBSchema> = {
     isReconnect: boolean;
     socket: Socket;
 };
+type SocketPathOrOptions = string | (Partial<ManagerOptions & SocketOptions> & {
+    uri?: string;
+});
 export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
-    socketOptions?: Partial<ManagerOptions & SocketOptions> & {
-        uri?: string;
-    };
+    /**
+     * Socket.IO path or options
+     */
+    socketOptions?: SocketPathOrOptions;
     skip?: boolean;
 };
 type ProstglesClientState<PGC> = {
     isLoading: true;
     error?: undefined;
-} | {
+} | ({
     isLoading: false;
     error?: undefined;
-} & PGC | {
+} & PGC) | {
     isLoading: false;
     error: Error | string;
 };
-export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
+export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
 export {};
 //# sourceMappingURL=useProstglesClient.d.ts.map
