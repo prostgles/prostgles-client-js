@@ -8,6 +8,12 @@ export declare const debug: any;
 export * from "./react-hooks";
 export * from "./useProstglesClient";
 export { MethodHandler, SQLResult, asName };
+/**
+ * Async result type:
+ * - data: the expected data
+ * - isLoading: true when data is being fetched (initially or on subsequent filter/option changes)
+ * - error: any error that occurred
+ */
 export type AsyncResult<T> = {
     data?: undefined;
     isLoading: true;
@@ -21,7 +27,6 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
-    sync?: Sync<T>;
     /**
      * Retrieves rows matching the filter and keeps them in sync
      * - use { handlesOnData: true } to get optimistic updates method: $update
@@ -29,6 +34,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      *    to all sync subscribers that were initiated with the same syncOptions
      */
     useSync?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOptions) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
+    sync?: Sync<T>;
     syncOne?: SyncOne<T>;
     /**
      * Retrieves the first row matching the filter and keeps it in sync

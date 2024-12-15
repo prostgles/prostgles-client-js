@@ -53,6 +53,12 @@ export * from "./react-hooks";
 export * from "./useProstglesClient";
 export { MethodHandler, SQLResult, asName };
 
+/**
+ * Async result type:
+ * - data: the expected data
+ * - isLoading: true when data is being fetched (initially or on subsequent filter/option changes)
+ * - error: any error that occurred
+ */
 export type AsyncResult<T> =
   | { data?: undefined; isLoading: true; error?: undefined }
   | { data: T; isLoading: boolean; error?: any };
@@ -64,7 +70,6 @@ export type ViewHandlerClient<
   getJoinedTables: () => string[];
   _syncInfo?: any;
   getSync?: any;
-  sync?: Sync<T>;
 
   /**
    * Retrieves rows matching the filter and keeps them in sync
@@ -81,6 +86,8 @@ export type ViewHandlerClient<
   //   isLoading: boolean;
   //   error?: any;
   // };
+
+  sync?: Sync<T>;
   syncOne?: SyncOne<T>;
 
   /**

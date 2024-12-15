@@ -60,6 +60,8 @@ export type Sync<
   onError?: (error: any) => void,
 ) => Promise<SyncHandler<T, Upsert>>;
 
+type OnchangeOne<T> = (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => void | Promise<void>;
+
 /**
  * Creates a local synchronized record
  */
