@@ -39,23 +39,26 @@ type SyncDebugEvent = {
  * Creates a local synchronized table
  */
 type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
+
+type SyncHandler<T, Upsert> = {
+  $unsync: () => void;
+  $upsert: Upsert;
+  getItems: () => T[];
+};
+
 export type Sync<
   T extends AnyObject,
-  OnChangeFunc extends OnChange<T> = (
-    data: SyncDataItem<Required<T>>[],
-    delta?: Partial<T>[],
-  ) => any,
+  // OnChangeFunc extends OnChange<T> = (
+  //   data: SyncDataItem<Required<T>>[],
+  //   delta?: Partial<T>[],
+  // ) => void | Promise<void>,
   Upsert extends (newData: T[]) => any = (newData: T[]) => any,
 > = (
   basicFilter: EqualityFilter<T>,
   options: SyncOptions,
-  onChange: OnChangeFunc,
+  onChange: OnChange<T>,
   onError?: (error: any) => void,
-) => Promise<{
-  $unsync: () => void;
-  $upsert: Upsert;
-  getItems: () => T[];
-}>;
+) => Promise<SyncHandler<T, Upsert>>;
 
 /**
  * Creates a local synchronized record
@@ -1145,7 +1148,7 @@ export function quickClone<T>(obj: T): T {
  */
 const typeTest = async () => {
   const s: Sync<{ a: number; b: string }> = 1 as any;
-  const sh = s({ a: 1 }, {} as any, (d) => ({ d }));
+  const sh = s({ a: 1 }, {} as any, (d) => {});
 
   const syncTyped: Sync<{ col1: string }, () => any> = 1 as any;
 

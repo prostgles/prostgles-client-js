@@ -853,7 +853,7 @@ exports.quickClone = quickClone;
  */
 const typeTest = async () => {
     const s = 1;
-    const sh = s({ a: 1 }, {}, (d) => ({ d }));
+    const sh = s({ a: 1 }, {}, (d) => { });
     const syncTyped = 1;
     // const sUntyped: Sync<AnyObject, any> = syncTyped;
 };

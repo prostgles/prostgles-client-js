@@ -19,11 +19,12 @@ type SyncDebugEvent = {
  * Creates a local synchronized table
  */
 type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
-export type Sync<T extends AnyObject, OnChangeFunc extends OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any, Upsert extends (newData: T[]) => any = (newData: T[]) => any> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChangeFunc, onError?: (error: any) => void) => Promise<{
+type SyncHandler<T, Upsert> = {
     $unsync: () => void;
     $upsert: Upsert;
     getItems: () => T[];
-}>;
+};
+export type Sync<T extends AnyObject, Upsert extends (newData: T[]) => any = (newData: T[]) => any> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChange<T>, onError?: (error: any) => void) => Promise<SyncHandler<T, Upsert>>;
 /**
  * Creates a local synchronized record
  */

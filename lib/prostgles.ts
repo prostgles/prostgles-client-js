@@ -53,6 +53,10 @@ export * from "./react-hooks";
 export * from "./useProstglesClient";
 export { MethodHandler, SQLResult, asName };
 
+export type AsyncResult<T> =
+  | { data?: undefined; isLoading: true; error?: undefined }
+  | { data: T; isLoading: boolean; error?: any };
+
 export type ViewHandlerClient<
   T extends AnyObject = AnyObject,
   S extends DBSchema | void = void,
@@ -71,11 +75,12 @@ export type ViewHandlerClient<
   useSync?: (
     basicFilter: EqualityFilter<T>,
     syncOptions: SyncOptions,
-  ) => {
-    data: undefined | SyncDataItem<Required<T>>[];
-    isLoading: boolean;
-    error?: any;
-  };
+  ) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
+  // {
+  //   data: undefined | SyncDataItem<Required<T>>[];
+  //   isLoading: boolean;
+  //   error?: any;
+  // };
   syncOne?: SyncOne<T>;
 
   /**
@@ -87,11 +92,12 @@ export type ViewHandlerClient<
   useSyncOne?: (
     basicFilter: EqualityFilter<T>,
     syncOptions: SyncOneOptions,
-  ) => {
-    data: undefined | SyncDataItem<Required<T>>;
-    isLoading: boolean;
-    error?: any;
-  };
+  ) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
+  // {
+  //   data: undefined | SyncDataItem<Required<T>>;
+  //   isLoading: boolean;
+  //   error?: any;
+  // };
   _sync?: any;
 
   /**
@@ -100,11 +106,12 @@ export type ViewHandlerClient<
   useSubscribe: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>,
     options?: SubParams,
-  ) => {
-    data: SelectReturnType<S, SubParams, T, true> | undefined;
-    error?: any;
-    isLoading: boolean;
-  };
+  ) => AsyncResult<SelectReturnType<S, SubParams, T, true> | undefined>;
+  // {
+  //   data: SelectReturnType<S, SubParams, T, true> | undefined;
+  //   error?: any;
+  //   isLoading: boolean;
+  // };
 
   /**
    * Retrieves a matching record from the view/table and subscribes to changes
@@ -112,11 +119,12 @@ export type ViewHandlerClient<
   useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>,
     options?: SubParams,
-  ) => {
-    data: SelectReturnType<S, SubParams, T, false> | undefined;
-    error?: any;
-    isLoading: boolean;
-  };
+  ) => AsyncResult<SelectReturnType<S, SubParams, T, false> | undefined>;
+  // {
+  //   data: SelectReturnType<S, SubParams, T, false> | undefined;
+  //   error?: any;
+  //   isLoading: boolean;
+  // };
 
   /**
    * Retrieves a list of matching records from the view/table
@@ -124,7 +132,8 @@ export type ViewHandlerClient<
   useFind: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
-  ) => { data: undefined | SelectReturnType<S, P, T, true>; isLoading: boolean; error?: any };
+  ) => AsyncResult<SelectReturnType<S, P, T, true> | undefined>;
+  // { data: undefined | SelectReturnType<S, P, T, true>; isLoading: boolean; error?: any };
 
   /**
    * Retrieves first matching record from the view/table
@@ -132,7 +141,8 @@ export type ViewHandlerClient<
   useFindOne: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
-  ) => { data: undefined | SelectReturnType<S, P, T, false>; isLoading: boolean; error?: any };
+  ) => AsyncResult<SelectReturnType<S, P, T, false> | undefined>;
+  // { data: undefined | SelectReturnType<S, P, T, false>; isLoading: boolean; error?: any };
 
   /**
    * Returns the total number of rows matching the filter
@@ -140,7 +150,8 @@ export type ViewHandlerClient<
   useCount: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
-  ) => { data: number | undefined; isLoading: boolean; error?: any };
+  ) => AsyncResult<number | undefined>;
+  // { data: number | undefined; isLoading: boolean; error?: any };
 
   /**
    * Returns result size in bits matching the filter and selectParams
@@ -148,7 +159,8 @@ export type ViewHandlerClient<
   useSize: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
-  ) => { data: string | undefined; isLoading: boolean; error?: any };
+  ) => AsyncResult<string | undefined>;
+  // { data: string | undefined; isLoading: boolean; error?: any };
 };
 
 export type TableHandlerClient<
@@ -243,9 +255,10 @@ export type InitOptions<DBSchema = void> = {
   onReload?: () => void;
 
   /**
-   * true by default
+   * Callback called when schema changes.
+   * "onReady" will be called after this callback
    */
-  onSchemaChange?: false | (() => void);
+  onSchemaChange?: () => void;
 
   /**
    * Callback called when:
@@ -260,18 +273,19 @@ export type InitOptions<DBSchema = void> = {
    * Custom handler in case of websocket re-connection.
    * If not provided will fire onReady
    */
-  onReconnect?: (socket: any, error?: any) => any;
+  onReconnect?: (socket: any, error?: any) => void;
+
   /**
    * On disconnect handler.
    * It is recommended to use this callback instead of socket.on("disconnect")
    */
-  onDisconnect?: () => any;
+  onDisconnect?: () => void;
 
   /**
    * Awaited debug callback.
    * Allows greater granularity during debugging.
    */
-  onDebug?: (event: DebugEvent) => any;
+  onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
 
 type OnReadyCallback<DBSchema = void> = (
@@ -324,24 +338,13 @@ export function prostgles<DBSchema>(
   initOpts: InitOptions<DBSchema>,
   syncedTable: typeof SyncedTable | undefined,
 ) {
-  const {
-    socket,
-    onReady,
-    onDisconnect,
-    onReconnect,
-    onSchemaChange = true,
-    onReload,
-    onDebug,
-  } = initOpts;
+  const { socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug } =
+    initOpts;
   let schemaAge: CurrentClientSchema | undefined;
   debug("prostgles", { initOpts });
   if (onSchemaChange) {
-    let cb;
-    if (typeof onSchemaChange === "function") {
-      cb = onSchemaChange;
-    }
     socket.removeAllListeners(CHANNELS.SCHEMA_CHANGED);
-    if (cb) socket.on(CHANNELS.SCHEMA_CHANGED, cb);
+    socket.on(CHANNELS.SCHEMA_CHANGED, onSchemaChange);
   }
 
   const subscriptionHandler = getSubscriptionHandler(initOpts);

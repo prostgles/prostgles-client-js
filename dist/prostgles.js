@@ -39,17 +39,12 @@ exports.debug = debug;
 __exportStar(require("./react-hooks"), exports);
 __exportStar(require("./useProstglesClient"), exports);
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange = true, onReload, onDebug, } = initOpts;
+    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug } = initOpts;
     let schemaAge;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
-        let cb;
-        if (typeof onSchemaChange === "function") {
-            cb = onSchemaChange;
-        }
         socket.removeAllListeners(prostgles_types_1.CHANNELS.SCHEMA_CHANGED);
-        if (cb)
-            socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, cb);
+        socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, onSchemaChange);
     }
     const subscriptionHandler = (0, getSubscriptionHandler_1.getSubscriptionHandler)(initOpts);
     const syncHandler = (0, getSyncHandler_1.getSyncHandler)(initOpts);
