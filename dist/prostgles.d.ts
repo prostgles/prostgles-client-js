@@ -2,6 +2,7 @@ import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTabl
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./Auth";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
+import type { Socket } from "socket.io-client";
 export declare const hasWnd: boolean;
 export declare const debug: any;
 export * from "./react-hooks";
@@ -145,7 +146,10 @@ type DebugEvent = {
     state: "connected" | "disconnected" | "reconnected" | undefined;
 };
 export type InitOptions<DBSchema = void> = {
-    socket: any;
+    /**
+     * Socket.io client instance
+     */
+    socket: Socket;
     /**
      * Execute this when requesting user reload (due to session expiring authGuard)
      * Otherwise window will reload
@@ -155,24 +159,48 @@ export type InitOptions<DBSchema = void> = {
      * true by default
      */
     onSchemaChange?: false | (() => void);
-    onReady: (
     /**
-     * The database handler object.
-     * Only allowed tables and table methods are defined
+     * Callback called when:
+     * - the client connects for the first time
+     * - the schema changes
+     * - the client reconnects
+     * - server requests a reload
      */
-    dbo: DBHandlerClient<DBSchema>, methods: MethodHandler | undefined, 
-    /**
-     * Table schema together with column permission details the client has access to
-     */
-    tableSchema: DBSchemaTable[] | undefined, auth: AuthHandler, isReconnect: boolean) => any;
+    onReady: OnReadyCallback<DBSchema>;
     /**
      * Custom handler in case of websocket re-connection.
      * If not provided will fire onReady
      */
     onReconnect?: (socket: any, error?: any) => any;
+    /**
+     * On disconnect handler.
+     * It is recommended to use this callback instead of socket.on("disconnect")
+     */
     onDisconnect?: () => any;
+    /**
+     * Awaited debug callback.
+     * Allows greater granularity during debugging.
+     */
     onDebug?: (event: DebugEvent) => any;
 };
+type OnReadyCallback<DBSchema = void> = (
+/**
+ * The database handler object.
+ * Only allowed tables and table methods are defined
+ */
+dbo: DBHandlerClient<DBSchema>, 
+/**
+ * Custom server-side TS methods
+ */
+methods: MethodHandler | undefined, 
+/**
+ * Table schema together with column permission details the client has access to
+ */
+tableSchema: DBSchemaTable[] | undefined, 
+/**
+ * Handlers for authentication that are configured on the server through the "auth" options
+ */
+auth: AuthHandler, isReconnect: boolean) => void | Promise<void>;
 export type AnyFunction = (...args: any[]) => any;
 export type CoreParams = {
     tableName: string;
