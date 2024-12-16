@@ -73,8 +73,6 @@ export const getDBO = ({
 
   const schemaClone = quickClone(schema);
   getObjectEntries(schemaClone).forEach(([tableName, methods]) => {
-    dbo[tableName] ??= {};
-
     const allowedCommands = getKeys(methods);
     const dboTable = dbo[tableName] as TableHandlerClient;
     allowedCommands
@@ -83,7 +81,7 @@ export const getDBO = ({
       )
       .forEach((command) => {
         if (command === "sync") {
-          dboTable._syncInfo = { ...dboTable[command] };
+          dboTable._syncInfo = { ...methods[command] };
           if (syncedTable) {
             dboTable.getSync = async (filter, params = {}) => {
               await onDebug?.({
