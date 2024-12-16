@@ -111,6 +111,7 @@ function prostgles(initOpts, syncedTable) {
                 subscriptionHandler,
                 socket,
                 joinTables,
+                tableSchema,
             });
             if (rawSQL) {
                 dbo.sql = sqlHandler.sql;

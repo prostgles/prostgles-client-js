@@ -406,10 +406,11 @@ class SyncedTable {
         this.storageType = storageType;
         this.patchText = patchText;
         this.patchJSON = patchJSON;
-        if (!db)
-            throw "db missing";
+        const tableHandler = db[name];
+        if (!tableHandler)
+            throw `${name} table not found in db`;
         this.db = db;
-        const { id_fields, synced_field, throttle = 100, batch_size = 50 } = db[this.name]._syncInfo;
+        const { id_fields, synced_field, throttle = 100, batch_size = 50 } = tableHandler._syncInfo;
         if (!id_fields || !synced_field)
             throw "id_fields/synced_field missing";
         this.id_fields = id_fields;
@@ -481,7 +482,7 @@ class SyncedTable {
             synced_field,
             throttle,
         };
-        db[this.name]
+        tableHandler
             ._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates })
             .then((s) => {
             this.dbSync = s;
@@ -537,8 +538,8 @@ class SyncedTable {
             });
             onReady();
         });
-        if (db[this.name].getColumns) {
-            db[this.name].getColumns().then((cols) => {
+        if (tableHandler.getColumns) {
+            tableHandler.getColumns().then((cols) => {
                 this.columns = cols;
             });
         }

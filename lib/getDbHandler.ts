@@ -2,7 +2,9 @@ import {
   type AnyObject,
   CHANNELS,
   type ClientSchema,
+  type DBSchemaTable,
   getKeys,
+  getObjectEntries,
   isObject,
   omitKeys,
   type TableSchemaForClient,
@@ -16,12 +18,19 @@ import {
   useSubscribe,
   useFetch,
 } from "./prostgles";
-import type { Sync, SyncedTable, SyncOne, SyncOptions } from "./SyncedTable/SyncedTable";
+import {
+  quickClone,
+  type Sync,
+  type SyncedTable,
+  type SyncOne,
+  type SyncOptions,
+} from "./SyncedTable/SyncedTable";
 import type { getSyncHandler } from "./getSyncHandler";
 import type { getSubscriptionHandler } from "./getSubscriptionHandler";
 
 type Args = {
   schema: TableSchemaForClient;
+  tableSchema: DBSchemaTable[] | undefined;
   onDebug: InitOptions["onDebug"];
   socket: InitOptions["socket"];
   joinTables: ClientSchema["joinTables"];
@@ -34,6 +43,7 @@ const preffix = CHANNELS._preffix;
 
 export const getDBO = ({
   schema,
+  tableSchema,
   onDebug,
   syncedTable,
   syncHandler,
@@ -41,8 +51,6 @@ export const getDBO = ({
   socket,
   joinTables,
 }: Args) => {
-  const dbo: Partial<DBHandlerClient> = JSON.parse(JSON.stringify(schema));
-
   /* Building DBO object */
   const checkSubscriptionArgs = (
     basicFilter: AnyObject | undefined,
@@ -60,11 +68,16 @@ export const getDBO = ({
     }
   };
   const sub_commands = ["subscribe", "subscribeOne"] as const;
-  getKeys(dbo).forEach((tableName) => {
-    const all_commands = Object.keys(dbo[tableName]!);
 
+  const dbo: Partial<DBHandlerClient> = {};
+
+  const schemaClone = quickClone(schema);
+  getObjectEntries(schemaClone).forEach(([tableName, methods]) => {
+    dbo[tableName] ??= {};
+
+    const allowedCommands = getKeys(methods);
     const dboTable = dbo[tableName] as TableHandlerClient;
-    all_commands
+    allowedCommands
       .sort(
         (a, b) => <never>sub_commands.includes(a as any) - <never>sub_commands.includes(b as any),
       )
@@ -210,6 +223,10 @@ export const getDBO = ({
           }
         } else {
           const method = async function (param1, param2, param3) {
+            if (command === "getColumns" && !param1 && !param2 && !param3) {
+              const columns = tableSchema?.find((t) => t.name === tableName)?.columns;
+              if (columns) return columns;
+            }
             await onDebug?.({
               type: "table",
               command: command as any,

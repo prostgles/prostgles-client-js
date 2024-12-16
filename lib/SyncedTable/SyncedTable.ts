@@ -35,14 +35,16 @@ type SyncDebugEvent = {
   data: AnyObject;
 };
 
+type OnErrorHandler = (error: any) => void;
+
 /**
  * Creates a local synchronized table
  */
 type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
 
-type SyncHandler<T, Upsert> = {
+type SyncHandler<T> = {
   $unsync: () => void;
-  $upsert: Upsert;
+  $upsert: (newData: T[]) => void | Promise<void>;
   getItems: () => T[];
 };
 
@@ -52,13 +54,13 @@ export type Sync<
   //   data: SyncDataItem<Required<T>>[],
   //   delta?: Partial<T>[],
   // ) => void | Promise<void>,
-  Upsert extends (newData: T[]) => any = (newData: T[]) => any,
+  // Upsert extends (newData: T[]) => any = (newData: T[]) => any,
 > = (
   basicFilter: EqualityFilter<T>,
   options: SyncOptions,
   onChange: OnChange<T>,
-  onError?: (error: any) => void,
-) => Promise<SyncHandler<T, Upsert>>;
+  onError?: OnErrorHandler,
+) => Promise<SyncHandler<T>>;
 
 type OnchangeOne<T> = (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => void | Promise<void>;
 
@@ -68,8 +70,8 @@ type OnchangeOne<T> = (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => v
 export type SyncOne<T extends AnyObject = AnyObject> = (
   basicFilter: Partial<T>,
   options: SyncOneOptions,
-  onChange: (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => any,
-  onError?: (error: any) => void,
+  onChange: OnchangeOne<T>,
+  onError?: OnErrorHandler,
 ) => Promise<SingleSyncHandles<T>>;
 
 export type SyncBatchRequest = {
@@ -168,21 +170,43 @@ export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends b
 ) => any;
 type StorageType = keyof typeof STORAGE_TYPES;
 export type SyncedTableOptions = {
+  /**
+   * Table name
+   */
   name: string;
-  filter?: AnyObject;
+
+  /**
+   * Basic filter
+   */
+  filter?: EqualityFilter<AnyObject>;
+
+  /**
+   * Data change listener.
+   * Called on first sync and every time the data changes
+   */
   onChange?: MultiChangeListener;
   onError?: (error: any) => void;
-  db: any;
-  pushDebounce?: number;
+  db: DBHandlerClient | Partial<DBHandlerClient>;
+
+  /**
+   * If true then the first onChange trigger is skipped
+   */
   skipFirstTrigger?: boolean;
   select?: "*" | AnyObject;
+
+  /**
+   * Default is "object".
+   * "localStorage" will persist the data
+   */
   storageType?: StorageType;
 
-  /* If true then only the delta of text field is sent to server */
+  /**
+   * If true then only the delta of the text field is sent to server.
+   * Full text is sent if an error occurs
+   */
   patchText?: boolean;
   patchJSON?: boolean;
-  onReady: () => any;
-  skipIncomingDeltaCheck?: boolean;
+  onReady: () => void;
   onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
 };
 
@@ -192,7 +216,7 @@ export type DbTableSync = {
 };
 
 export class SyncedTable {
-  db: DBHandlerClient;
+  db: DBHandlerClient | Partial<DBHandlerClient>;
   name: string;
   select?: "*" | AnyObject;
   filter?: AnyObject;
@@ -277,10 +301,11 @@ export class SyncedTable {
     this.patchText = patchText;
     this.patchJSON = patchJSON;
 
-    if (!db) throw "db missing";
+    const tableHandler = db[name];
+    if (!tableHandler) throw `${name} table not found in db`;
     this.db = db;
 
-    const { id_fields, synced_field, throttle = 100, batch_size = 50 } = db[this.name]._syncInfo;
+    const { id_fields, synced_field, throttle = 100, batch_size = 50 } = tableHandler._syncInfo;
     if (!id_fields || !synced_field) throw "id_fields/synced_field missing";
     this.id_fields = id_fields;
     this.synced_field = synced_field;
@@ -356,7 +381,7 @@ export class SyncedTable {
       throttle,
     };
 
-    db[this.name]
+    tableHandler
       ._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates })
       .then((s: DbTableSync) => {
         this.dbSync = s;
@@ -415,8 +440,8 @@ export class SyncedTable {
         onReady();
       });
 
-    if (db[this.name].getColumns) {
-      db[this.name].getColumns().then((cols: any) => {
+    if (tableHandler.getColumns) {
+      tableHandler.getColumns().then((cols) => {
         this.columns = cols;
       });
     }
@@ -1152,7 +1177,7 @@ const typeTest = async () => {
   const s: Sync<{ a: number; b: string }> = 1 as any;
   const sh = s({ a: 1 }, {} as any, (d) => {});
 
-  const syncTyped: Sync<{ col1: string }, () => any> = 1 as any;
+  const syncTyped: Sync<{ col1: string }> = 1 as any;
 
   // const sUntyped: Sync<AnyObject, any> = syncTyped;
 };

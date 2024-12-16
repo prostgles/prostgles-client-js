@@ -15,20 +15,22 @@ type SyncDebugEvent = {
     command: keyof ClientSyncHandles;
     data: AnyObject;
 };
+type OnErrorHandler = (error: any) => void;
 /**
  * Creates a local synchronized table
  */
 type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
-type SyncHandler<T, Upsert> = {
+type SyncHandler<T> = {
     $unsync: () => void;
-    $upsert: Upsert;
+    $upsert: (newData: T[]) => void | Promise<void>;
     getItems: () => T[];
 };
-export type Sync<T extends AnyObject, Upsert extends (newData: T[]) => any = (newData: T[]) => any> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChange<T>, onError?: (error: any) => void) => Promise<SyncHandler<T, Upsert>>;
+export type Sync<T extends AnyObject> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChange<T>, onError?: OnErrorHandler) => Promise<SyncHandler<T>>;
+type OnchangeOne<T> = (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => void | Promise<void>;
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T extends AnyObject = AnyObject> = (basicFilter: Partial<T>, options: SyncOneOptions, onChange: (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => any, onError?: (error: any) => void) => Promise<SingleSyncHandles<T>>;
+export type SyncOne<T extends AnyObject = AnyObject> = (basicFilter: Partial<T>, options: SyncOneOptions, onChange: OnchangeOne<T>, onError?: OnErrorHandler) => Promise<SingleSyncHandles<T>>;
 export type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;
@@ -97,19 +99,38 @@ export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: SyncD
 export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
 type StorageType = keyof typeof STORAGE_TYPES;
 export type SyncedTableOptions = {
+    /**
+     * Table name
+     */
     name: string;
-    filter?: AnyObject;
+    /**
+     * Basic filter
+     */
+    filter?: EqualityFilter<AnyObject>;
+    /**
+     * Data change listener.
+     * Called on first sync and every time the data changes
+     */
     onChange?: MultiChangeListener;
     onError?: (error: any) => void;
-    db: any;
-    pushDebounce?: number;
+    db: DBHandlerClient | Partial<DBHandlerClient>;
+    /**
+     * If true then the first onChange trigger is skipped
+     */
     skipFirstTrigger?: boolean;
     select?: "*" | AnyObject;
+    /**
+     * Default is "object".
+     * "localStorage" will persist the data
+     */
     storageType?: StorageType;
+    /**
+     * If true then only the delta of the text field is sent to server.
+     * Full text is sent if an error occurs
+     */
     patchText?: boolean;
     patchJSON?: boolean;
-    onReady: () => any;
-    skipIncomingDeltaCheck?: boolean;
+    onReady: () => void;
     onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
 };
 export type DbTableSync = {
@@ -117,7 +138,7 @@ export type DbTableSync = {
     syncData: (data?: AnyObject[], deleted?: AnyObject[], cb?: (err?: any) => void) => void;
 };
 export declare class SyncedTable {
-    db: DBHandlerClient;
+    db: DBHandlerClient | Partial<DBHandlerClient>;
     name: string;
     select?: "*" | AnyObject;
     filter?: AnyObject;
