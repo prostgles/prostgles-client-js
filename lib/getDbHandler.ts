@@ -67,17 +67,18 @@ export const getDBO = ({
       throw "Expecting: ( basicFilter<object>, options<object>, onChange<function> , onError?<function>) but got something else";
     }
   };
-  const sub_commands = ["subscribe", "subscribeOne"] as const;
+  const subscribeCommands = ["subscribe", "subscribeOne"] as const;
 
   const dbo: Partial<DBHandlerClient> = {};
 
   const schemaClone = quickClone(schema);
   getObjectEntries(schemaClone).forEach(([tableName, methods]) => {
     const allowedCommands = getKeys(methods);
-    const dboTable = dbo[tableName] as TableHandlerClient;
+    const dboTable = {} as TableHandlerClient;
     allowedCommands
       .sort(
-        (a, b) => <never>sub_commands.includes(a as any) - <never>sub_commands.includes(b as any),
+        (a, b) =>
+          <never>subscribeCommands.includes(a as any) - <never>subscribeCommands.includes(b as any),
       )
       .forEach((command) => {
         if (command === "sync") {
@@ -166,11 +167,11 @@ export const getDBO = ({
             });
             return syncHandler.addSync({ tableName, command, param1, param2 }, syncHandles);
           };
-        } else if (sub_commands.includes(command as any)) {
+        } else if (subscribeCommands.includes(command as any)) {
           const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {
             await onDebug?.({
               type: "table",
-              command: command as (typeof sub_commands)[number],
+              command: command as (typeof subscribeCommands)[number],
               tableName,
               data: { param1, param2, onChange, onError },
             });
@@ -198,7 +199,7 @@ export const getDBO = ({
               useSubscribe(subFunc, command === SUBONE, filter, options);
           }
 
-          if (command === SUBONE || !sub_commands.includes(SUBONE)) {
+          if (command === SUBONE || !subscribeCommands.includes(SUBONE)) {
             dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
               await onDebug?.({
                 type: "table",
