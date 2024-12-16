@@ -2,11 +2,12 @@ import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParam
 import { WAL } from "prostgles-types";
 import { type DBHandlerClient } from "../prostgles";
 export declare const debug: any;
-export type SyncOptions = Partial<SyncedTableOptions> & {
+type OmittedSyncProps = "onDebug" | "name" | "filter" | "db" | "onError";
+export type SyncOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & {
     select?: FieldFilter;
     handlesOnData?: boolean;
 };
-export type SyncOneOptions = Partial<SyncedTableOptions> & {
+export type SyncOneOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & {
     handlesOnData?: boolean;
 };
 type SyncDebugEvent = {

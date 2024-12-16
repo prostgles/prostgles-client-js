@@ -68,8 +68,8 @@ export type ViewHandlerClient<
   S extends DBSchema | void = void,
 > = ViewHandler<T, S> & {
   getJoinedTables: () => string[];
-  _syncInfo?: any;
-  getSync?: any;
+  _syncInfo?: AnyObject;
+  getSync?: AnyObject;
 
   /**
    * Retrieves rows matching the filter and keeps them in sync
@@ -81,11 +81,6 @@ export type ViewHandlerClient<
     basicFilter: EqualityFilter<T>,
     syncOptions: SyncOptions,
   ) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
-  // {
-  //   data: undefined | SyncDataItem<Required<T>>[];
-  //   isLoading: boolean;
-  //   error?: any;
-  // };
 
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
@@ -100,12 +95,11 @@ export type ViewHandlerClient<
     basicFilter: EqualityFilter<T>,
     syncOptions: SyncOneOptions,
   ) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
-  // {
-  //   data: undefined | SyncDataItem<Required<T>>;
-  //   isLoading: boolean;
-  //   error?: any;
-  // };
-  _sync?: any;
+
+  /**
+   * Used internally to setup sync
+   */
+  _sync?: (params: CoreParams, triggers: ClientSyncHandles) => Promise<void>;
 
   /**
    * Retrieves a list of matching records from the view/table and subscribes to changes
@@ -114,11 +108,6 @@ export type ViewHandlerClient<
     filter?: FullFilter<T, S>,
     options?: SubParams,
   ) => AsyncResult<SelectReturnType<S, SubParams, T, true> | undefined>;
-  // {
-  //   data: SelectReturnType<S, SubParams, T, true> | undefined;
-  //   error?: any;
-  //   isLoading: boolean;
-  // };
 
   /**
    * Retrieves a matching record from the view/table and subscribes to changes
@@ -127,11 +116,6 @@ export type ViewHandlerClient<
     filter?: FullFilter<T, S>,
     options?: SubParams,
   ) => AsyncResult<SelectReturnType<S, SubParams, T, false> | undefined>;
-  // {
-  //   data: SelectReturnType<S, SubParams, T, false> | undefined;
-  //   error?: any;
-  //   isLoading: boolean;
-  // };
 
   /**
    * Retrieves a list of matching records from the view/table
@@ -140,7 +124,6 @@ export type ViewHandlerClient<
     filter?: FullFilter<T, S>,
     selectParams?: P,
   ) => AsyncResult<SelectReturnType<S, P, T, true> | undefined>;
-  // { data: undefined | SelectReturnType<S, P, T, true>; isLoading: boolean; error?: any };
 
   /**
    * Retrieves first matching record from the view/table
@@ -149,7 +132,6 @@ export type ViewHandlerClient<
     filter?: FullFilter<T, S>,
     selectParams?: P,
   ) => AsyncResult<SelectReturnType<S, P, T, false> | undefined>;
-  // { data: undefined | SelectReturnType<S, P, T, false>; isLoading: boolean; error?: any };
 
   /**
    * Returns the total number of rows matching the filter
@@ -158,7 +140,6 @@ export type ViewHandlerClient<
     filter?: FullFilter<T, S>,
     selectParams?: P,
   ) => AsyncResult<number | undefined>;
-  // { data: number | undefined; isLoading: boolean; error?: any };
 
   /**
    * Returns result size in bits matching the filter and selectParams
@@ -167,7 +148,6 @@ export type ViewHandlerClient<
     filter?: FullFilter<T, S>,
     selectParams?: P,
   ) => AsyncResult<string | undefined>;
-  // { data: string | undefined; isLoading: boolean; error?: any };
 };
 
 export type TableHandlerClient<

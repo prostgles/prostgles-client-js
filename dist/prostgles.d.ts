@@ -25,8 +25,8 @@ export type AsyncResult<T> = {
 };
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     getJoinedTables: () => string[];
-    _syncInfo?: any;
-    getSync?: any;
+    _syncInfo?: AnyObject;
+    getSync?: AnyObject;
     /**
      * Retrieves rows matching the filter and keeps them in sync
      * - use { handlesOnData: true } to get optimistic updates method: $update
@@ -43,7 +43,10 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      *    to all sync subscribers that were initiated with the same syncOptions
      */
     useSyncOne?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOneOptions) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
-    _sync?: any;
+    /**
+     * Used internally to setup sync
+     */
+    _sync?: (params: CoreParams, triggers: ClientSyncHandles) => Promise<void>;
     /**
      * Retrieves a list of matching records from the view/table and subscribes to changes
      */

@@ -4,15 +4,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useMemoDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getIO = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
-const alertNoReact = (...args) => { throw "Must install react"; };
-const alertNoReactT = (...args) => { throw "Must install react"; };
+const alertNoReact = (...args) => {
+    throw "Must install react";
+};
+const alertNoReactT = (...args) => {
+    throw "Must install react";
+};
 const getReact = (throwError) => {
     try {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         React !== null && React !== void 0 ? React : (React = require("react"));
     }
-    catch (err) {
-    }
+    catch (err) { }
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (throwError && !React)
         throw new Error("Must install react");
@@ -28,18 +31,17 @@ const getIO = (throwError = false) => {
         const io = require("socket.io-client");
         return io;
     }
-    catch (err) {
-    }
+    catch (err) { }
     if (throwError)
         throw new Error("Must install socket.io-client");
-    return ({});
+    return {};
 };
 exports.getIO = getIO;
 const isEqual = function (x, y) {
     if (x === y) {
         return true;
     }
-    else if ((typeof x == "object" && x != null) && (typeof y == "object" && y != null)) {
+    else if (typeof x == "object" && x != null && typeof y == "object" && y != null) {
         if (Object.keys(x).length != Object.keys(y).length) {
             return false;
         }
@@ -98,7 +100,7 @@ const useAsyncEffectQueue = (effect, deps) => {
     const queue = useRef({
         activeEffect: undefined,
         newEffect: undefined,
-        history: []
+        history: [],
     });
     const onCleanup = async (effectFunc) => {
         var _a, _b, _c, _d, _e;
@@ -121,7 +123,9 @@ const useAsyncEffectQueue = (effect, deps) => {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         await ((_d = (_c = (_b = (await ((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup))) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b)) === null || _d === void 0 ? void 0 : _d.catch(console.error));
         queue.current.activeEffect = newEffect;
-        queue.current.activeEffect.resolvedCleanup = queue.current.activeEffect.effect().then(run => ({ run }));
+        queue.current.activeEffect.resolvedCleanup = queue.current.activeEffect
+            .effect()
+            .then((run) => ({ run }));
     };
     (0, exports.useEffectDeep)(() => {
         const newEffect = { effect, deps, didCleanup: false };
@@ -140,7 +144,7 @@ const useEffectAsync = (effect, inputs) => {
     });
     onCleanup.current.effect = effect;
     (0, exports.useEffectDeep)(() => {
-        effect().then(result => {
+        effect().then((result) => {
             if (typeof result === "function") {
                 onCleanup.current.cleanup = result;
                 if (onCleanup.current.cleanupEffect === effect) {
@@ -214,7 +218,10 @@ const usePromise = (f, deps = []) => {
             else {
                 const funcRes = await f();
                 const isNObj = isNamedObj(funcRes);
-                promiseResult = isNObj ? await getNamedObjResults(funcRes) : isPromiseFunc(funcRes) ? await funcRes() : funcRes;
+                promiseResult =
+                    isNObj ? await getNamedObjResults(funcRes)
+                        : isPromiseFunc(funcRes) ? await funcRes()
+                            : funcRes;
             }
         }
         catch (e) {
@@ -241,10 +248,14 @@ const useSubscribe = (subFunc, expectsOne, filter, options) => {
             setResult({ data: undefined, error: newError, isLoading: false });
         };
         try {
-            const sub = await subFunc(filter, options, newData => {
+            const sub = await subFunc(filter, options, (newData) => {
                 if (!getIsMounted())
                     return;
-                setResult({ data: expectsOne ? newData[0] : newData, error: undefined, isLoading: false });
+                setResult({
+                    data: expectsOne ? newData[0] : newData,
+                    error: undefined,
+                    isLoading: false,
+                });
             }, setError);
             return sub.unsubscribe;
         }
@@ -262,13 +273,13 @@ const useSync = (syncFunc, basicFilter, syncOptions) => {
     (0, exports.useAsyncEffectQueue)(async () => {
         if (!getIsMounted())
             return;
-        const setError = newError => {
+        const setError = (newError) => {
             if (!getIsMounted())
                 return;
             setResult({ data: undefined, error: newError, isLoading: false });
         };
         try {
-            const syncHandlers = await syncFunc(basicFilter, syncOptions, newData => {
+            const syncHandlers = await syncFunc(basicFilter, syncOptions, (newData) => {
                 if (!getIsMounted())
                     return;
                 setResult({ data: newData, error: undefined, isLoading: false });
