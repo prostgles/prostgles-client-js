@@ -74,7 +74,9 @@ export const getDBO = ({
   const schemaClone = quickClone(schema);
   getObjectEntries(schemaClone).forEach(([tableName, methods]) => {
     const allowedCommands = getKeys(methods);
-    const dboTable = {} as TableHandlerClient;
+    dbo[tableName] = {};
+
+    const dboTable = dbo[tableName] as TableHandlerClient;
     allowedCommands
       .sort(
         (a, b) =>
