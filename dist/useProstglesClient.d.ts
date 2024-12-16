@@ -22,12 +22,15 @@ export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "s
 };
 type ProstglesClientState<PGC> = {
     isLoading: true;
+    hasError?: undefined;
     error?: undefined;
 } | ({
     isLoading: false;
+    hasError?: false;
     error?: undefined;
 } & PGC) | {
     isLoading: false;
+    hasError: true;
     error: Error | string;
 };
 export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1>>;

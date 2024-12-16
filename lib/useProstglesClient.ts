@@ -30,9 +30,9 @@ export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "s
   skip?: boolean;
 };
 type ProstglesClientState<PGC> =
-  | { isLoading: true; error?: undefined }
-  | ({ isLoading: false; error?: undefined } & PGC)
-  | { isLoading: false; error: Error | string };
+  | { isLoading: true; hasError?: undefined; error?: undefined }
+  | ({ isLoading: false; hasError?: false; error?: undefined } & PGC)
+  | { isLoading: false; hasError: true; error: Error | string };
 
 export const useProstglesClient = <DBSchema>({
   skip,
@@ -86,7 +86,7 @@ export const useProstglesClient = <DBSchema>({
     ).catch((err) => {
       if (!getIsMounted()) return;
       const error = err instanceof Error ? err : new Error(err);
-      setOnReadyArgs({ isLoading: false, error });
+      setOnReadyArgs({ isLoading: false, error, hasError: true });
     });
 
     return () => {
