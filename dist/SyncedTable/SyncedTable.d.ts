@@ -113,7 +113,7 @@ export type SyncedTableOptions = {
      * Called on first sync and every time the data changes
      */
     onChange?: MultiChangeListener;
-    onError?: (error: any) => void;
+    onError?: OnErrorHandler;
     db: DBHandlerClient | Partial<DBHandlerClient>;
     /**
      * If true then the first onChange trigger is skipped

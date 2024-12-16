@@ -33,7 +33,6 @@ type Args = {
   tableSchema: DBSchemaTable[] | undefined;
   onDebug: InitOptions["onDebug"];
   socket: InitOptions["socket"];
-  joinTables: ClientSchema["joinTables"];
   syncedTable: typeof SyncedTable | undefined;
   syncHandler: ReturnType<typeof getSyncHandler>;
   subscriptionHandler: ReturnType<typeof getSubscriptionHandler>;
@@ -49,7 +48,6 @@ export const getDBO = ({
   syncHandler,
   subscriptionHandler,
   socket,
-  joinTables,
 }: Args) => {
   /* Building DBO object */
   const checkSubscriptionArgs = (
@@ -259,14 +257,6 @@ export const getDBO = ({
             dboTable[methodName] = (param1, param2, param3?) =>
               // eslint-disable-next-line react-hooks/rules-of-hooks
               useFetch(method, [param1, param2, param3]);
-          }
-          if (["find", "findOne"].includes(command)) {
-            dboTable.getJoinedTables = function () {
-              return joinTables
-                .filter((tb) => Array.isArray(tb) && tb.includes(tableName))
-                .flat()
-                .filter((t) => t !== tableName);
-            };
           }
         }
       });

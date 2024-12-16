@@ -67,10 +67,6 @@ export type ViewHandlerClient<
   T extends AnyObject = AnyObject,
   S extends DBSchema | void = void,
 > = ViewHandler<T, S> & {
-  getJoinedTables: () => string[];
-  _syncInfo?: AnyObject;
-  getSync?: AnyObject;
-
   /**
    * Retrieves rows matching the filter and keeps them in sync
    * - use { handlesOnData: true } to get optimistic updates method: $update
@@ -100,6 +96,8 @@ export type ViewHandlerClient<
    * Used internally to setup sync
    */
   _sync?: (params: CoreParams, triggers: ClientSyncHandles) => Promise<void>;
+  _syncInfo?: AnyObject;
+  getSync?: AnyObject;
 
   /**
    * Retrieves a list of matching records from the view/table and subscribes to changes
@@ -155,7 +153,6 @@ export type TableHandlerClient<
   S extends DBSchema | void = void,
 > = ViewHandlerClient<T, S> &
   TableHandler<T, S> & {
-    getJoinedTables: () => string[];
     _syncInfo?: any;
     getSync?: any;
     sync?: Sync<T>;
@@ -408,7 +405,6 @@ export function prostgles<DBSchema>(
         syncHandler,
         subscriptionHandler,
         socket,
-        joinTables,
         tableSchema,
       });
       if (rawSQL) {

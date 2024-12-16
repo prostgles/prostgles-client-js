@@ -110,7 +110,6 @@ function prostgles(initOpts, syncedTable) {
                 syncHandler,
                 subscriptionHandler,
                 socket,
-                joinTables,
                 tableSchema,
             });
             if (rawSQL) {
