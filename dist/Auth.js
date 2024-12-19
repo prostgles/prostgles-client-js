@@ -90,7 +90,7 @@ const postAuthData = async (path, data) => {
             .catch(() => rawResponse.text())
             .catch(() => rawResponse.statusText);
         if (typeof error === "string") {
-            return { success: false, error };
+            return { success: false, code: "something-went-wrong", message: error };
         }
         return error;
     }

@@ -19,9 +19,7 @@ type Args = {
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
-export type AuthResult =
-  | { success: true; redirect_url?: string }
-  | { success: false; error: string };
+export type { EmailLoginResponse, EmailRegisterResponse };
 
 export type PasswordLoginData = {
   username: string;
@@ -157,7 +155,10 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   } satisfies AuthStateLoggedIn;
 };
 
-export const postAuthData = async (path: string, data: object): Promise<AuthResult> => {
+export const postAuthData = async (
+  path: string,
+  data: object,
+): Promise<EmailRegisterResponse | EmailLoginResponse> => {
   const rawResponse = await fetch(path, {
     method: "POST",
     headers: {
@@ -173,7 +174,7 @@ export const postAuthData = async (path: string, data: object): Promise<AuthResu
       .catch(() => rawResponse.text())
       .catch(() => rawResponse.statusText);
     if (typeof error === "string") {
-      return { success: false, error };
+      return { success: false, code: "something-went-wrong", message: error };
     }
     return error;
   }

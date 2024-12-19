@@ -5,13 +5,7 @@ type Args = {
     onReload: VoidFunction | undefined;
 };
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
-export type AuthResult = {
-    success: true;
-    redirect_url?: string;
-} | {
-    success: false;
-    error: string;
-};
+export type { EmailLoginResponse, EmailRegisterResponse };
 export type PasswordLoginData = {
     username: string;
     password: string;
@@ -49,6 +43,5 @@ type AuthStateLoggedIn = LoginSignupOptions & {
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
-export declare const postAuthData: (path: string, data: object) => Promise<AuthResult>;
-export {};
+export declare const postAuthData: (path: string, data: object) => Promise<EmailRegisterResponse | EmailLoginResponse>;
 //# sourceMappingURL=Auth.d.ts.map
