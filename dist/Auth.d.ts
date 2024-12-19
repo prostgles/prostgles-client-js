@@ -1,4 +1,4 @@
-import { type AnyObject, type AuthSocketSchema, type IdentityProvider } from "prostgles-types";
+import { type AnyObject, type AuthSocketSchema, type EmailLoginResponse, type EmailRegisterResponse, type IdentityProvider } from "prostgles-types";
 type Args = {
     socket: any;
     authData: AuthSocketSchema | undefined;
@@ -20,8 +20,8 @@ export type PasswordLoginData = {
     totp_recovery_code?: string;
 };
 export type PasswordRegisterData = Pick<PasswordLoginData, "username" | "password">;
-export type PasswordAuth<T> = (params: T) => Promise<AuthResult>;
-export type MagicLinkAuth = (params: Pick<PasswordLoginData, "username">) => Promise<AuthResult>;
+export type PasswordAuth<T> = (params: T) => Promise<EmailRegisterResponse>;
+export type MagicLinkAuth = (params: Pick<PasswordLoginData, "username">) => Promise<EmailLoginResponse>;
 export type EmailAuth<T> = {
     withPassword?: PasswordAuth<T>;
     withMagicLink?: undefined;
