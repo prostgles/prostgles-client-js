@@ -1,14 +1,13 @@
-import {
-  type AnyObject,
-  type AuthGuardLocation,
-  type AuthGuardLocationResponse,
-  type AuthSocketSchema,
-  CHANNELS,
-  type EmailLoginResponse,
-  type EmailRegisterResponse,
-  type IdentityProvider,
-  isEmpty,
+import type {
+  AnyObject,
+  AuthGuardLocation,
+  AuthGuardLocationResponse,
+  AuthSocketSchema,
+  IdentityProvider,
+  AuthResponse,
+  AuthRequest,
 } from "prostgles-types";
+import { CHANNELS, isEmpty } from "prostgles-types";
 import { hasWnd } from "./prostgles";
 
 type Args = {
@@ -19,24 +18,32 @@ type Args = {
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
-export type { EmailLoginResponse, EmailRegisterResponse };
-
-export type PasswordLoginData = {
-  username: string;
-  password: string;
-  remember_me?: boolean;
-  totp_token?: string;
-  totp_recovery_code?: string;
+type ClientAuthSuccess<T> = T & {
+  /**
+   * This is a client-only property that is obtained from server redirect response
+   */
+  redirect_url?: string;
 };
-export type PasswordRegisterData = Pick<PasswordLoginData, "username" | "password">;
-export type PasswordAuth<T> = (params: T) => Promise<EmailRegisterResponse>;
-export type MagicLinkAuth = (
-  params: Pick<PasswordLoginData, "username">,
-) => Promise<EmailLoginResponse>;
 
-export type EmailAuth<T> =
+export type MagicLinkAuthResponse = ClientAuthSuccess<
+  AuthResponse.MagicLinkAuthFailure | AuthResponse.MagicLinkAuthSuccess
+>;
+
+export type PasswordLoginResponse = ClientAuthSuccess<
+  AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess
+>;
+export type PasswordRegisterResponse = ClientAuthSuccess<
+  AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess
+>;
+export type PasswordRegister = (
+  params: AuthRequest.RegisterData,
+) => Promise<PasswordRegisterResponse>;
+export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
+export type MagicLinkAuth = (params: AuthRequest.RegisterData) => Promise<MagicLinkAuthResponse>;
+
+export type EmailAuth<Type extends "register" | "login"> =
   | {
-      withPassword?: PasswordAuth<T>;
+      withPassword?: Type extends "register" ? PasswordRegister : PasswordLogin;
       withMagicLink?: undefined;
     }
   | {
@@ -45,13 +52,10 @@ export type EmailAuth<T> =
     };
 
 type LoginSignupOptions = {
-  prefferedLogin: string;
-  login:
-    | undefined
-    | ({
-        withProvider?: WithProviderLogin;
-      } & EmailAuth<PasswordLoginData>);
-  register: undefined | EmailAuth<PasswordRegisterData>;
+  prefferedLogin: "email" | IdentityProvider | undefined;
+  loginWithProvider: undefined | WithProviderLogin;
+  login: undefined | EmailAuth<"login">;
+  register: undefined | EmailAuth<"register">;
   providers: AuthSocketSchema["providers"];
 };
 
@@ -63,7 +67,6 @@ type AuthStateLoggedOut = LoginSignupOptions & {
 type AuthStateLoggedIn = LoginSignupOptions & {
   isLoggedin: true;
   user: AnyObject;
-  prefferedLogin: string;
   logout: VoidFunction;
 };
 
@@ -95,14 +98,15 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
 
   const loginSignupOptions: LoginSignupOptions = {
     login: undefined,
-    prefferedLogin: "",
+    prefferedLogin: undefined,
+    loginWithProvider: undefined,
     register: undefined,
     providers: authConfig?.providers,
   };
 
   if (authConfig) {
     const { providers, register, loginType } = authConfig;
-    const withProvider: WithProviderLogin | undefined =
+    loginSignupOptions.loginWithProvider =
       isEmpty(providers) ? undefined : (
         providers &&
         Object.entries(providers).reduce((acc, [provider, { url }]) => {
@@ -118,23 +122,17 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       return url + search;
     };
 
-    loginSignupOptions.login = {
-      withProvider,
-      ...(loginType && {
-        [loginType]: async (params) => {
-          return postAuthData(addSearchInCaseItHasReturnUrl("/login"), params);
-        },
-      }),
+    loginSignupOptions.login = loginType && {
+      [loginType]: async (params) => {
+        return postAuthData(addSearchInCaseItHasReturnUrl("/login"), params);
+      },
     };
 
-    loginSignupOptions.register =
-      register?.type ?
-        {
-          [register.type]: (params) => {
-            return postAuthData(addSearchInCaseItHasReturnUrl(register.url), params);
-          },
-        }
-      : undefined;
+    loginSignupOptions.register = register?.type && {
+      [register.type]: (params) => {
+        return postAuthData(addSearchInCaseItHasReturnUrl(register.url), params);
+      },
+    };
   }
 
   if (!authConfig?.user) {
@@ -158,7 +156,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
 export const postAuthData = async (
   path: string,
   data: object,
-): Promise<EmailRegisterResponse | EmailLoginResponse> => {
+): Promise<PasswordRegisterResponse | PasswordRegisterResponse | MagicLinkAuthResponse> => {
   const rawResponse = await fetch(path, {
     method: "POST",
     headers: {

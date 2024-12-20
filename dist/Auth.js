@@ -24,39 +24,35 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
     }
     const loginSignupOptions = {
         login: undefined,
-        prefferedLogin: "",
+        prefferedLogin: undefined,
+        loginWithProvider: undefined,
         register: undefined,
         providers: authConfig === null || authConfig === void 0 ? void 0 : authConfig.providers,
     };
     if (authConfig) {
         const { providers, register, loginType } = authConfig;
-        const withProvider = (0, prostgles_types_1.isEmpty)(providers) ? undefined : (providers &&
-            Object.entries(providers).reduce((acc, [provider, { url }]) => {
-                acc[provider] = () => {
-                    window.location.assign(url);
-                };
-                return acc;
-            }, {}));
+        loginSignupOptions.loginWithProvider =
+            (0, prostgles_types_1.isEmpty)(providers) ? undefined : (providers &&
+                Object.entries(providers).reduce((acc, [provider, { url }]) => {
+                    acc[provider] = () => {
+                        window.location.assign(url);
+                    };
+                    return acc;
+                }, {}));
         const addSearchInCaseItHasReturnUrl = (url) => {
             const { search } = window.location;
             return url + search;
         };
-        loginSignupOptions.login = {
-            withProvider,
-            ...(loginType && {
-                [loginType]: async (params) => {
-                    return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl("/login"), params);
-                },
-            }),
+        loginSignupOptions.login = loginType && {
+            [loginType]: async (params) => {
+                return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl("/login"), params);
+            },
         };
-        loginSignupOptions.register =
-            (register === null || register === void 0 ? void 0 : register.type) ?
-                {
-                    [register.type]: (params) => {
-                        return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(register.url), params);
-                    },
-                }
-                : undefined;
+        loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) && {
+            [register.type]: (params) => {
+                return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(register.url), params);
+            },
+        };
     }
     if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
         return {
