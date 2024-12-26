@@ -10,11 +10,14 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
                 if (onReload)
                     onReload();
                 else if (prostgles_1.hasWnd) {
-                    window.location.reload();
+                    console.log("prostgles page reload due to authguard", res);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 200);
                 }
             }
         };
-        socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (err, res) => {
+        socket.emit(prostgles_types_1.CHANNELS.AUTHGUARD, JSON.stringify(window.location), (_err, res) => {
             doReload(res);
         });
         socket.removeAllListeners(prostgles_types_1.CHANNELS.AUTHGUARD);
@@ -23,14 +26,15 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
         });
     }
     const loginSignupOptions = {
+        loginType: authConfig === null || authConfig === void 0 ? void 0 : authConfig.loginType,
         login: undefined,
         prefferedLogin: undefined,
         loginWithProvider: undefined,
-        register: undefined,
+        signupWithEmailAndPassword: undefined,
         providers: authConfig === null || authConfig === void 0 ? void 0 : authConfig.providers,
     };
     if (authConfig) {
-        const { providers, register, loginType } = authConfig;
+        const { providers, signupWithEmailAndPassword, loginType } = authConfig;
         loginSignupOptions.loginWithProvider =
             (0, prostgles_types_1.isEmpty)(providers) ? undefined : (providers &&
                 Object.entries(providers).reduce((acc, [provider, { url }]) => {
@@ -43,16 +47,16 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
             const { search } = window.location;
             return url + search;
         };
-        loginSignupOptions.login = loginType && {
-            [loginType]: async (params) => {
-                return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl("/login"), params);
-            },
-        };
-        loginSignupOptions.register = (register === null || register === void 0 ? void 0 : register.type) && {
-            [register.type]: (params) => {
-                return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(register.url), params);
-            },
-        };
+        loginSignupOptions.login =
+            loginType &&
+                (async (params) => {
+                    return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl("/login"), params);
+                });
+        loginSignupOptions.signupWithEmailAndPassword =
+            signupWithEmailAndPassword &&
+                ((params) => {
+                    return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+                });
     }
     if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
         return {

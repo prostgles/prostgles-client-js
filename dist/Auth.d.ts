@@ -11,24 +11,16 @@ type ClientAuthSuccess<T> = T & {
      */
     redirect_url?: string;
 };
-export type MagicLinkAuthResponse = ClientAuthSuccess<AuthResponse.MagicLinkAuthFailure | AuthResponse.MagicLinkAuthSuccess>;
-export type PasswordLoginResponse = ClientAuthSuccess<AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess>;
+export type PasswordLoginResponse = ClientAuthSuccess<AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess | AuthResponse.MagicLinkAuthSuccess | AuthResponse.MagicLinkAuthFailure | AuthResponse.OAuthRegisterSuccess | AuthResponse.OAuthRegisterFailure>;
 export type PasswordRegisterResponse = ClientAuthSuccess<AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess>;
 export type PasswordRegister = (params: AuthRequest.RegisterData) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
-export type MagicLinkAuth = (params: AuthRequest.RegisterData) => Promise<MagicLinkAuthResponse>;
-export type EmailAuth<Type extends "register" | "login"> = {
-    withPassword?: Type extends "register" ? PasswordRegister : PasswordLogin;
-    withMagicLink?: undefined;
-} | {
-    withPassword?: undefined;
-    withMagicLink?: MagicLinkAuth;
-};
 type LoginSignupOptions = {
     prefferedLogin: "email" | IdentityProvider | undefined;
     loginWithProvider: undefined | WithProviderLogin;
-    login: undefined | EmailAuth<"login">;
-    register: undefined | EmailAuth<"register">;
+    loginType: AuthSocketSchema["loginType"];
+    login: undefined | PasswordLogin;
+    signupWithEmailAndPassword: undefined | PasswordRegister;
     providers: AuthSocketSchema["providers"];
 };
 type AuthStateLoggedOut = LoginSignupOptions & {
@@ -42,6 +34,6 @@ type AuthStateLoggedIn = LoginSignupOptions & {
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
-export declare const postAuthData: (path: string, data: object) => Promise<PasswordRegisterResponse | PasswordRegisterResponse | MagicLinkAuthResponse>;
+export declare const postAuthData: (path: string, data: object) => Promise<any>;
 export {};
 //# sourceMappingURL=Auth.d.ts.map

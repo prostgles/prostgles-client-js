@@ -25,12 +25,13 @@ type ClientAuthSuccess<T> = T & {
   redirect_url?: string;
 };
 
-export type MagicLinkAuthResponse = ClientAuthSuccess<
-  AuthResponse.MagicLinkAuthFailure | AuthResponse.MagicLinkAuthSuccess
->;
-
 export type PasswordLoginResponse = ClientAuthSuccess<
-  AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess
+  | AuthResponse.PasswordLoginFailure
+  | AuthResponse.PasswordLoginSuccess
+  | AuthResponse.MagicLinkAuthSuccess
+  | AuthResponse.MagicLinkAuthFailure
+  | AuthResponse.OAuthRegisterSuccess
+  | AuthResponse.OAuthRegisterFailure
 >;
 export type PasswordRegisterResponse = ClientAuthSuccess<
   AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess
@@ -39,23 +40,13 @@ export type PasswordRegister = (
   params: AuthRequest.RegisterData,
 ) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
-export type MagicLinkAuth = (params: AuthRequest.RegisterData) => Promise<MagicLinkAuthResponse>;
-
-export type EmailAuth<Type extends "register" | "login"> =
-  | {
-      withPassword?: Type extends "register" ? PasswordRegister : PasswordLogin;
-      withMagicLink?: undefined;
-    }
-  | {
-      withPassword?: undefined;
-      withMagicLink?: MagicLinkAuth;
-    };
 
 type LoginSignupOptions = {
   prefferedLogin: "email" | IdentityProvider | undefined;
   loginWithProvider: undefined | WithProviderLogin;
-  login: undefined | EmailAuth<"login">;
-  register: undefined | EmailAuth<"register">;
+  loginType: AuthSocketSchema["loginType"];
+  login: undefined | PasswordLogin;
+  signupWithEmailAndPassword: undefined | PasswordRegister;
   providers: AuthSocketSchema["providers"];
 };
 
@@ -78,14 +69,17 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       if (res?.shouldReload) {
         if (onReload) onReload();
         else if (hasWnd) {
-          window.location.reload();
+          console.log("prostgles page reload due to authguard", res);
+          setTimeout(() => {
+            window.location.reload();
+          }, 200);
         }
       }
     };
     socket.emit(
       CHANNELS.AUTHGUARD,
       JSON.stringify(window.location as AuthGuardLocation),
-      (err: any, res: AuthGuardLocationResponse) => {
+      (_err: any, res: AuthGuardLocationResponse) => {
         doReload(res);
       },
     );
@@ -97,15 +91,16 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   }
 
   const loginSignupOptions: LoginSignupOptions = {
+    loginType: authConfig?.loginType,
     login: undefined,
     prefferedLogin: undefined,
     loginWithProvider: undefined,
-    register: undefined,
+    signupWithEmailAndPassword: undefined,
     providers: authConfig?.providers,
   };
 
   if (authConfig) {
-    const { providers, register, loginType } = authConfig;
+    const { providers, signupWithEmailAndPassword, loginType } = authConfig;
     loginSignupOptions.loginWithProvider =
       isEmpty(providers) ? undefined : (
         providers &&
@@ -122,17 +117,17 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
       return url + search;
     };
 
-    loginSignupOptions.login = loginType && {
-      [loginType]: async (params) => {
+    loginSignupOptions.login =
+      loginType &&
+      (async (params) => {
         return postAuthData(addSearchInCaseItHasReturnUrl("/login"), params);
-      },
-    };
+      });
 
-    loginSignupOptions.register = register?.type && {
-      [register.type]: (params) => {
-        return postAuthData(addSearchInCaseItHasReturnUrl(register.url), params);
-      },
-    };
+    loginSignupOptions.signupWithEmailAndPassword =
+      signupWithEmailAndPassword &&
+      ((params) => {
+        return postAuthData(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+      });
   }
 
   if (!authConfig?.user) {
@@ -153,10 +148,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   } satisfies AuthStateLoggedIn;
 };
 
-export const postAuthData = async (
-  path: string,
-  data: object,
-): Promise<PasswordRegisterResponse | PasswordRegisterResponse | MagicLinkAuthResponse> => {
+export const postAuthData = async (path: string, data: object) => {
   const rawResponse = await fetch(path, {
     method: "POST",
     headers: {
@@ -181,6 +173,7 @@ export const postAuthData = async (
     .json()
     .catch(async () => ({ message: await rawResponse.text() }))
     .catch(() => ({ message: rawResponse.statusText }));
+
   if (rawResponse.redirected) {
     return { ...responseObject, success: true, redirect_url: rawResponse.url };
   }
