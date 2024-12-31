@@ -159,7 +159,7 @@ export const authRequest = async <T extends PasswordRegisterResponse | PasswordL
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    ...(method !== "GET" && { body: JSON.stringify(data) }),
   });
 
   if (!rawResponse.ok) {
