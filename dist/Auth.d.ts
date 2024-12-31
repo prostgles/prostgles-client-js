@@ -34,6 +34,6 @@ type AuthStateLoggedIn = LoginSignupOptions & {
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
-export declare const postAuthData: (path: string, data: object) => Promise<any>;
+export declare const authRequest: (path: string, data: object, method?: "GET") => Promise<any>;
 export {};
 //# sourceMappingURL=Auth.d.ts.map

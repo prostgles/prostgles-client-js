@@ -120,13 +120,13 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
     loginSignupOptions.login =
       loginType &&
       (async (params) => {
-        return postAuthData(addSearchInCaseItHasReturnUrl("/login"), params);
+        return authRequest(addSearchInCaseItHasReturnUrl("/login"), params);
       });
 
     loginSignupOptions.signupWithEmailAndPassword =
       signupWithEmailAndPassword &&
       ((params) => {
-        return postAuthData(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+        return authRequest(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
       });
   }
 
@@ -148,9 +148,13 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   } satisfies AuthStateLoggedIn;
 };
 
-export const postAuthData = async (path: string, data: object) => {
+export const authRequest = async <T extends PasswordRegisterResponse | PasswordLoginResponse>(
+  path: string,
+  data: object,
+  method?: "GET",
+): Promise<T> => {
   const rawResponse = await fetch(path, {
-    method: "POST",
+    method: method ?? "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -164,7 +168,7 @@ export const postAuthData = async (path: string, data: object) => {
       .catch(() => rawResponse.text())
       .catch(() => rawResponse.statusText);
     if (typeof error === "string") {
-      return { success: false, code: "something-went-wrong", message: error };
+      return { success: false, code: "something-went-wrong", message: error } as T;
     }
     return error;
   }

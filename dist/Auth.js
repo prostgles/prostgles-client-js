@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.postAuthData = exports.setupAuth = void 0;
+exports.authRequest = exports.setupAuth = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const prostgles_1 = require("./prostgles");
 const setupAuth = ({ authData: authConfig, socket, onReload }) => {
@@ -50,12 +50,12 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
         loginSignupOptions.login =
             loginType &&
                 (async (params) => {
-                    return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl("/login"), params);
+                    return (0, exports.authRequest)(addSearchInCaseItHasReturnUrl("/login"), params);
                 });
         loginSignupOptions.signupWithEmailAndPassword =
             signupWithEmailAndPassword &&
                 ((params) => {
-                    return (0, exports.postAuthData)(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+                    return (0, exports.authRequest)(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
                 });
     }
     if (!(authConfig === null || authConfig === void 0 ? void 0 : authConfig.user)) {
@@ -75,9 +75,9 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
     };
 };
 exports.setupAuth = setupAuth;
-const postAuthData = async (path, data) => {
+const authRequest = async (path, data, method) => {
     const rawResponse = await fetch(path, {
-        method: "POST",
+        method: method !== null && method !== void 0 ? method : "POST",
         headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
@@ -103,4 +103,4 @@ const postAuthData = async (path, data) => {
     }
     return responseObject;
 };
-exports.postAuthData = postAuthData;
+exports.authRequest = authRequest;
