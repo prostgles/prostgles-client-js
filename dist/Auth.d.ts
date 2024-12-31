@@ -34,6 +34,61 @@ type AuthStateLoggedIn = LoginSignupOptions & {
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
-export declare const authRequest: (path: string, data: object, method?: "GET") => Promise<any>;
+export declare const authRequest: <T extends (import("prostgles-types").CommonAuthFailure & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | ({
+    success: false;
+    code: "no-match";
+    message?: string | undefined;
+} & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | ({
+    success: false;
+    code: "inactive-account";
+    message?: string | undefined;
+} & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | ({
+    success: false;
+    code: "totp-token-missing" | "invalid-username" | "username-missing" | "password-missing" | "invalid-password" | "is-from-OAuth" | "is-from-magic-link" | "invalid-totp-recovery-code" | "invalid-totp-code" | "email-not-confirmed";
+    message?: string | undefined;
+} & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | (AuthResponse.AuthSuccess & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | ({
+    success: false;
+    code: "expired-magic-link" | "invalid-magic-link" | "used-magic-link";
+    message?: string | undefined;
+} & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | ({
+    success: false;
+    code: "provider-issue";
+    message?: string | undefined;
+} & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+})>(path: string, data: object, method?: "GET") => Promise<T>;
 export {};
 //# sourceMappingURL=Auth.d.ts.map
