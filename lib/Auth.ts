@@ -34,7 +34,7 @@ export type PasswordLoginResponse = ClientAuthSuccess<
   | AuthResponse.OAuthRegisterFailure
 >;
 export type PasswordRegisterResponse = ClientAuthSuccess<
-  AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess
+  AuthResponse.PasswordRegisterSuccess | AuthResponse.PasswordRegisterFailure
 >;
 export type PasswordRegister = (
   params: AuthRequest.RegisterData,

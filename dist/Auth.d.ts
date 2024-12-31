@@ -12,7 +12,7 @@ type ClientAuthSuccess<T> = T & {
     redirect_url?: string;
 };
 export type PasswordLoginResponse = ClientAuthSuccess<AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess | AuthResponse.MagicLinkAuthSuccess | AuthResponse.MagicLinkAuthFailure | AuthResponse.OAuthRegisterSuccess | AuthResponse.OAuthRegisterFailure>;
-export type PasswordRegisterResponse = ClientAuthSuccess<AuthResponse.PasswordLoginFailure | AuthResponse.PasswordLoginSuccess>;
+export type PasswordRegisterResponse = ClientAuthSuccess<AuthResponse.PasswordRegisterSuccess | AuthResponse.PasswordRegisterFailure>;
 export type PasswordRegister = (params: AuthRequest.RegisterData) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
 type LoginSignupOptions = {
@@ -83,6 +83,20 @@ export declare const authRequest: <T extends (import("prostgles-types").CommonAu
 }) | ({
     success: false;
     code: "provider-issue";
+    message?: string | undefined;
+} & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | (AuthResponse.PasswordRegisterSuccess & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
+}) | ({
+    success: false;
+    code: "username-missing" | "password-missing" | "weak-password" | "user-already-registered" | "invalid-email-confirmation-code" | "expired-email-confirmation-code" | "inactive-account";
     message?: string | undefined;
 } & {
     /**
