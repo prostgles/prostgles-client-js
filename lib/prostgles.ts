@@ -22,13 +22,12 @@ import type {
   ViewHandler,
 } from "prostgles-types";
 
-import { CHANNELS, asName, getJoinHandlers } from "prostgles-types";
+import { CHANNELS, asName, getJoinHandlers, isEqual } from "prostgles-types";
 
 import { type AuthHandler, setupAuth } from "./Auth";
 import { getDBO } from "./getDbHandler";
 import { getMethods } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
-import { isEqual } from "./react-hooks";
 import { getSubscriptionHandler } from "./getSubscriptionHandler";
 import type {
   Sync,

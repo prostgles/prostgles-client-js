@@ -4,7 +4,6 @@ import type { TableHandlerClient } from "./prostgles";
 type ReactT = typeof import("react");
 export declare const getReact: (throwError?: boolean) => ReactT;
 export declare const getIO: (throwError?: boolean) => typeof import("socket.io-client").io;
-export declare const isEqual: (x: any, y: any) => boolean;
 export declare const useDeepCompareMemoize: (value: any) => undefined;
 export declare const useMemoDeep: typeof import("react").useMemo;
 export declare const useEffectDeep: typeof import("react").useEffect;

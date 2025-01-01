@@ -25,7 +25,6 @@ const Auth_1 = require("./Auth");
 const getDbHandler_1 = require("./getDbHandler");
 const getMethods_1 = require("./getMethods");
 const getSqlHandler_1 = require("./getSqlHandler");
-const react_hooks_1 = require("./react-hooks");
 const getSubscriptionHandler_1 = require("./getSubscriptionHandler");
 const getSyncHandler_1 = require("./getSyncHandler");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -76,7 +75,7 @@ function prostgles(initOpts, syncedTable) {
             const { joinTables = [], ...clientSchema } = args;
             const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
-            const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, react_hooks_1.isEqual)(schemaAge.clientSchema, clientSchema);
+            const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, prostgles_types_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
                 syncHandler
                     .destroySyncs()

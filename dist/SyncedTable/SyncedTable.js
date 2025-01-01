@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.quickClone = exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
-const prostgles_1 = require("../prostgles");
 const getMultiSyncSubscription_1 = require("./getMultiSyncSubscription");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
@@ -722,7 +721,7 @@ class SyncedTable {
                 const deltaProp = { [k]: n[k] };
                 /** If object then compare with stringify */
                 if (n[k] && o[k] && typeof o[k] === "object") {
-                    if (!(0, prostgles_1.isEqual)(n[k], o[k])) {
+                    if (!(0, prostgles_types_1.isEqual)(n[k], o[k])) {
                         delta = deltaProp;
                     }
                 }

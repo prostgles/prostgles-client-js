@@ -1,6 +1,6 @@
 import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter } from "prostgles-types";
 import { WAL } from "prostgles-types";
-import { type DBHandlerClient } from "../prostgles";
+import type { DBHandlerClient } from "../prostgles";
 export declare const debug: any;
 type OmittedSyncProps = "onDebug" | "name" | "filter" | "db" | "onError";
 export type SyncOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & {

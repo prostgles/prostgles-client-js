@@ -1,4 +1,4 @@
-import { type SubscriptionHandler, getKeys, isObject } from "prostgles-types";
+import { type SubscriptionHandler, getKeys, isEqual, isObject } from "prostgles-types";
 import type { TableHandlerClient } from "./prostgles";
 type ReactT = typeof import("react");
 let React: ReactT;
@@ -35,28 +35,6 @@ export const getIO = (throwError = false) => {
   } catch (err) {}
   if (throwError) throw new Error("Must install socket.io-client");
   return {} as IO;
-};
-export const isEqual = function (x, y) {
-  if (x === y) {
-    return true;
-  } else if (typeof x == "object" && x != null && typeof y == "object" && y != null) {
-    if (Object.keys(x).length != Object.keys(y).length) {
-      return false;
-    }
-
-    for (const prop in x) {
-      // eslint-disable-next-line no-prototype-builtins
-      if (y.hasOwnProperty(prop)) {
-        if (!isEqual(x[prop], y[prop])) {
-          return false;
-        }
-      } else return false;
-    }
-
-    return true;
-  } else {
-    return false;
-  }
 };
 
 export const useDeepCompareMemoize = (value: any) => {

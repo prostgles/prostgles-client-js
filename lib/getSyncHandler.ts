@@ -1,13 +1,13 @@
-import { CHANNELS, omitKeys, type ClientSyncHandles } from "prostgles-types";
-import type { AnyFunction, CoreParams, InitOptions, SyncInfo } from "./prostgles";
-import { debug, isEqual } from "./prostgles";
+import { CHANNELS, isEqual, type ClientSyncHandles } from "prostgles-types";
 import { FunctionQueuer } from "./FunctionQueuer";
-import type { DbTableSync, SyncOptions } from "./SyncedTable/SyncedTable";
+import type { AnyFunction, CoreParams, InitOptions, SyncInfo } from "./prostgles";
+import { debug } from "./prostgles";
+import type { DbTableSync } from "./SyncedTable/SyncedTable";
 
 type SyncConfig = CoreParams & {
   onCall: AnyFunction;
   syncInfo: SyncInfo;
-  triggers: ClientSyncHandles[]
+  triggers: ClientSyncHandles[];
 };
 type Syncs = {
   [channelName: string]: SyncConfig;
@@ -16,7 +16,6 @@ type Syncs = {
 const preffix = CHANNELS._preffix;
 
 export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" | "onDebug">) => {
-
   let syncedTables: Record<string, any> = {};
   let syncs: Syncs = {};
 
@@ -27,17 +26,18 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
       if (s && s.destroy) s.destroy();
     });
     syncedTables = {};
-  }
+  };
 
   function _unsync(channelName: string, triggers: ClientSyncHandles) {
-    debug("_unsync", { channelName, triggers })
+    debug("_unsync", { channelName, triggers });
     return new Promise((resolve, reject) => {
       if (syncs[channelName]) {
-        syncs[channelName]!.triggers = syncs[channelName]!.triggers.filter(tr => (
-          tr.onPullRequest !== triggers.onPullRequest &&
-          tr.onSyncRequest !== triggers.onSyncRequest &&
-          tr.onUpdates !== triggers.onUpdates
-        ));
+        syncs[channelName]!.triggers = syncs[channelName]!.triggers.filter(
+          (tr) =>
+            tr.onPullRequest !== triggers.onPullRequest &&
+            tr.onSyncRequest !== triggers.onSyncRequest &&
+            tr.onUpdates !== triggers.onUpdates,
+        );
 
         if (!syncs[channelName]!.triggers.length) {
           socket.emit(channelName + "unsync", {}, (err: any, res: any) => {
@@ -50,7 +50,10 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
       }
     });
   }
-  function addServerSync({ tableName, command, param1, param2 }: CoreParams, onSyncRequest: ClientSyncHandles["onSyncRequest"]): Promise<SyncInfo> {
+  function addServerSync(
+    { tableName, command, param1, param2 }: CoreParams,
+    onSyncRequest: ClientSyncHandles["onSyncRequest"],
+  ): Promise<SyncInfo> {
     return new Promise((resolve, reject) => {
       socket.emit(preffix, { tableName, command, param1, param2 }, (err: any, res: SyncInfo) => {
         if (err) {
@@ -70,42 +73,48 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
 
   const addSyncQueuer = new FunctionQueuer(_addSync, ([{ tableName }]) => tableName);
   async function addSync(params: CoreParams, triggers: ClientSyncHandles): Promise<any> {
-    return addSyncQueuer.run([params, triggers])
+    return addSyncQueuer.run([params, triggers]);
   }
-  async function _addSync({ tableName, command, param1, param2 }: CoreParams, triggers: ClientSyncHandles): Promise<any> {
+  async function _addSync(
+    { tableName, command, param1, param2 }: CoreParams,
+    triggers: ClientSyncHandles,
+  ): Promise<any> {
     const { onSyncRequest } = triggers;
 
     function makeHandler(channelName: string) {
       const unsync = function () {
         _unsync(channelName, triggers);
-      }
+      };
 
       const syncData: DbTableSync["syncData"] = function (data, deleted, cb) {
-        socket.emit(channelName,
+        socket.emit(
+          channelName,
           {
             onSyncRequest: {
               ...onSyncRequest({}),
-              ...({ data }),
-              ...({ deleted })
+              ...{ data },
+              ...{ deleted },
             },
           },
-          !cb ? null : (response?: any) => {
-            cb(response)
-          }
+          !cb ? null : (
+            (response?: any) => {
+              cb(response);
+            }
+          ),
         );
-      }
+      };
 
       return Object.freeze({ unsync, syncData });
     }
 
-    const existingChannel = Object.keys(syncs).find(ch => {
+    const existingChannel = Object.keys(syncs).find((ch) => {
       const s = syncs[ch];
       return (
         s &&
         s.tableName === tableName &&
         s.command === command &&
         isEqual(s.param1, param1) &&
-        isEqual(s.param2, param2) 
+        isEqual(s.param2, param2)
       );
     });
 
@@ -131,33 +140,30 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
           if (data.data) {
             Promise.resolve(onUpdates(data))
               .then(() => {
-                cb({ ok: true })
+                cb({ ok: true });
               })
-              .catch(err => {
+              .catch((err) => {
                 cb({ err });
               });
           } else if (data.onSyncRequest) {
             Promise.resolve(onSyncRequest(data.onSyncRequest))
-              .then(res => cb({ onSyncRequest: res }))
-              .catch(err => {
+              .then((res) => cb({ onSyncRequest: res }))
+              .catch((err) => {
                 cb({ err });
-              })
-
+              });
           } else if (data.onPullRequest) {
             Promise.resolve(onPullRequest(data.onPullRequest))
-              .then(arr => {
+              .then((arr) => {
                 cb({ data: arr });
               })
-              .catch(err => {
+              .catch((err) => {
                 cb({ err });
-              })
+              });
           } else {
-            console.log("unexpected response")
+            console.log("unexpected response");
           }
-        })
-
-
-      }
+        });
+      };
       syncs[channelName] = {
         tableName,
         command,
@@ -165,8 +171,8 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
         param2,
         triggers: [triggers],
         syncInfo: sync_info,
-        onCall
-      }
+        onCall,
+      };
 
       socket.on(channelName, onCall);
       return makeHandler(channelName);
@@ -177,25 +183,25 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     let reAttached = 0;
     Object.entries(syncs).forEach(async ([ch, s]) => {
       const firstTrigger = s.triggers[0];
-      if(firstTrigger){
-        try { 
+      if (firstTrigger) {
+        try {
           await addServerSync(s, firstTrigger.onSyncRequest);
           socket.on(ch, s.onCall);
           reAttached++;
         } catch (err) {
-          console.error("There was an issue reconnecting olf subscriptions", err)
+          console.error("There was an issue reconnecting olf subscriptions", err);
         }
       }
     });
-    if(reAttached){
+    if (reAttached) {
       console.log("reAttached", reAttached, " syncs", syncs);
     }
-  }
+  };
 
-  return { 
-    destroySyncs, 
+  return {
+    destroySyncs,
     syncedTables,
     addSync,
     reAttachAll,
   };
-}
+};

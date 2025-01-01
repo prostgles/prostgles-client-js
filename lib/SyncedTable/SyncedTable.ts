@@ -8,8 +8,8 @@ import type {
   TableHandler,
   EqualityFilter,
 } from "prostgles-types";
-import { getTextPatch, isEmpty, WAL, getKeys, isObject } from "prostgles-types";
-import { isEqual, type DBHandlerClient } from "../prostgles";
+import { getTextPatch, isEmpty, WAL, getKeys, isObject, isEqual } from "prostgles-types";
+import type { DBHandlerClient } from "../prostgles";
 import { getMultiSyncSubscription } from "./getMultiSyncSubscription";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";

@@ -71,6 +71,11 @@ export declare const authRequest: <T extends (import("prostgles-types").CommonAu
      * This is a client-only property that is obtained from server redirect response
      */
     redirect_url?: string | undefined;
+}) | (AuthResponse.MagicLinkAuthSuccess & {
+    /**
+     * This is a client-only property that is obtained from server redirect response
+     */
+    redirect_url?: string | undefined;
 }) | ({
     success: false;
     code: "expired-magic-link" | "invalid-magic-link" | "used-magic-link";

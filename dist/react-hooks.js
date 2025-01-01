@@ -1,7 +1,7 @@
 "use strict";
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useMemoDeep = exports.useDeepCompareMemoize = exports.isEqual = exports.getIO = exports.getReact = void 0;
+exports.__prglReactInstalled = exports.useFetch = exports.useSync = exports.useSubscribe = exports.usePromise = exports.useIsMounted = exports.useEffectAsync = exports.useAsyncEffectQueue = exports.useEffectDeep = exports.useMemoDeep = exports.useDeepCompareMemoize = exports.getIO = exports.getReact = void 0;
 const prostgles_types_1 = require("prostgles-types");
 let React;
 const alertNoReact = (...args) => {
@@ -37,34 +37,9 @@ const getIO = (throwError = false) => {
     return {};
 };
 exports.getIO = getIO;
-const isEqual = function (x, y) {
-    if (x === y) {
-        return true;
-    }
-    else if (typeof x == "object" && x != null && typeof y == "object" && y != null) {
-        if (Object.keys(x).length != Object.keys(y).length) {
-            return false;
-        }
-        for (const prop in x) {
-            // eslint-disable-next-line no-prototype-builtins
-            if (y.hasOwnProperty(prop)) {
-                if (!(0, exports.isEqual)(x[prop], y[prop])) {
-                    return false;
-                }
-            }
-            else
-                return false;
-        }
-        return true;
-    }
-    else {
-        return false;
-    }
-};
-exports.isEqual = isEqual;
 const useDeepCompareMemoize = (value) => {
     const ref = useRef();
-    if (!(0, exports.isEqual)(value, ref.current)) {
+    if (!(0, prostgles_types_1.isEqual)(value, ref.current)) {
         ref.current = value;
     }
     return ref.current;
