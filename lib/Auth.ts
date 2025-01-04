@@ -42,7 +42,7 @@ export type PasswordRegister = (
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
 
 type LoginSignupOptions = {
-  prefferedLogin: "email" | IdentityProvider | undefined;
+  preferredLogin: "email" | IdentityProvider | undefined;
   loginWithProvider: undefined | WithProviderLogin;
   loginType: AuthSocketSchema["loginType"];
   login: undefined | PasswordLogin;
@@ -93,7 +93,7 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   const loginSignupOptions: LoginSignupOptions = {
     loginType: authConfig?.loginType,
     login: undefined,
-    prefferedLogin: undefined,
+    preferredLogin: authConfig?.preferredLogin,
     loginWithProvider: undefined,
     signupWithEmailAndPassword: undefined,
     providers: authConfig?.providers,

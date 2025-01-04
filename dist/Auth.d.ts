@@ -16,7 +16,7 @@ export type PasswordRegisterResponse = ClientAuthSuccess<AuthResponse.PasswordRe
 export type PasswordRegister = (params: AuthRequest.RegisterData) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
 type LoginSignupOptions = {
-    prefferedLogin: "email" | IdentityProvider | undefined;
+    preferredLogin: "email" | IdentityProvider | undefined;
     loginWithProvider: undefined | WithProviderLogin;
     loginType: AuthSocketSchema["loginType"];
     login: undefined | PasswordLogin;

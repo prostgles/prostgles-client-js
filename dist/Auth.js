@@ -28,7 +28,7 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
     const loginSignupOptions = {
         loginType: authConfig === null || authConfig === void 0 ? void 0 : authConfig.loginType,
         login: undefined,
-        prefferedLogin: undefined,
+        preferredLogin: authConfig === null || authConfig === void 0 ? void 0 : authConfig.preferredLogin,
         loginWithProvider: undefined,
         signupWithEmailAndPassword: undefined,
         providers: authConfig === null || authConfig === void 0 ? void 0 : authConfig.providers,
