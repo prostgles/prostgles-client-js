@@ -59,7 +59,7 @@ export declare const authRequest: <T extends (import("prostgles-types").CommonAu
     redirect_url?: string | undefined;
 }) | ({
     success: false;
-    code: "totp-token-missing" | "invalid-username" | "username-missing" | "password-missing" | "invalid-password" | "is-from-OAuth" | "is-from-magic-link" | "invalid-totp-recovery-code" | "invalid-totp-code" | "email-not-confirmed";
+    code: "totp-token-missing" | "invalid-username" | "username-missing" | "invalid-email" | "password-missing" | "invalid-password" | "is-from-OAuth" | "is-from-magic-link" | "invalid-totp-recovery-code" | "invalid-totp-code" | "email-not-confirmed";
     message?: string | undefined;
 } & {
     /**
