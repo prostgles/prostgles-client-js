@@ -41,13 +41,10 @@ export type PasswordRegister = (
 ) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
 
-type LoginSignupOptions = {
-  preferredLogin: "email" | IdentityProvider | undefined;
+type LoginSignupOptions = Pick<AuthSocketSchema, "loginType" | "providers" | "preferredLogin"> & {
   loginWithProvider: undefined | WithProviderLogin;
-  loginType: AuthSocketSchema["loginType"];
   login: undefined | PasswordLogin;
   signupWithEmailAndPassword: undefined | PasswordRegister;
-  providers: AuthSocketSchema["providers"];
 };
 
 type AuthStateLoggedOut = LoginSignupOptions & {

@@ -15,13 +15,10 @@ export type PasswordLoginResponse = ClientAuthSuccess<AuthResponse.PasswordLogin
 export type PasswordRegisterResponse = ClientAuthSuccess<AuthResponse.PasswordRegisterSuccess | AuthResponse.PasswordRegisterFailure>;
 export type PasswordRegister = (params: AuthRequest.RegisterData) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
-type LoginSignupOptions = {
-    preferredLogin: "email" | IdentityProvider | undefined;
+type LoginSignupOptions = Pick<AuthSocketSchema, "loginType" | "providers" | "preferredLogin"> & {
     loginWithProvider: undefined | WithProviderLogin;
-    loginType: AuthSocketSchema["loginType"];
     login: undefined | PasswordLogin;
     signupWithEmailAndPassword: undefined | PasswordRegister;
-    providers: AuthSocketSchema["providers"];
 };
 type AuthStateLoggedOut = LoginSignupOptions & {
     isLoggedin: false;
