@@ -28,7 +28,7 @@ import { type AuthHandler, setupAuth } from "./Auth";
 import { getDBO } from "./getDbHandler";
 import { getMethods } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
-import { getSubscriptionHandler } from "./getSubscriptionHandler";
+import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
 import type {
   Sync,
   SyncDataItem,
@@ -62,6 +62,13 @@ export type AsyncResult<T> =
   | { data?: undefined; isLoading: true; error?: undefined }
   | { data: T; isLoading: boolean; error?: any };
 
+export type HookOptions = {
+  /**
+   * Used to prevent the hook from fetching data
+   */
+  skip?: boolean;
+};
+
 export type ViewHandlerClient<
   T extends AnyObject = AnyObject,
   S extends DBSchema | void = void,
@@ -75,6 +82,7 @@ export type ViewHandlerClient<
   useSync?: (
     basicFilter: EqualityFilter<T>,
     syncOptions: SyncOptions,
+    hookOptions?: HookOptions,
   ) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
 
   sync?: Sync<T>;
@@ -89,6 +97,7 @@ export type ViewHandlerClient<
   useSyncOne?: (
     basicFilter: EqualityFilter<T>,
     syncOptions: SyncOneOptions,
+    hookOptions?: HookOptions,
   ) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
 
   /**
@@ -104,6 +113,7 @@ export type ViewHandlerClient<
   useSubscribe: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>,
     options?: SubParams,
+    hookOptions?: HookOptions,
   ) => AsyncResult<SelectReturnType<S, SubParams, T, true> | undefined>;
 
   /**
@@ -112,6 +122,7 @@ export type ViewHandlerClient<
   useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(
     filter?: FullFilter<T, S>,
     options?: SubParams,
+    hookOptions?: HookOptions,
   ) => AsyncResult<SelectReturnType<S, SubParams, T, false> | undefined>;
 
   /**
@@ -120,6 +131,7 @@ export type ViewHandlerClient<
   useFind: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
+    hookOptions?: HookOptions,
   ) => AsyncResult<SelectReturnType<S, P, T, true> | undefined>;
 
   /**
@@ -128,6 +140,7 @@ export type ViewHandlerClient<
   useFindOne: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
+    hookOptions?: HookOptions,
   ) => AsyncResult<SelectReturnType<S, P, T, false> | undefined>;
 
   /**
@@ -136,6 +149,7 @@ export type ViewHandlerClient<
   useCount: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
+    hookOptions?: HookOptions,
   ) => AsyncResult<number | undefined>;
 
   /**
@@ -144,6 +158,7 @@ export type ViewHandlerClient<
   useSize: <P extends SelectParams<T, S>>(
     filter?: FullFilter<T, S>,
     selectParams?: P,
+    hookOptions?: HookOptions,
   ) => AsyncResult<string | undefined>;
 };
 
@@ -186,9 +201,20 @@ type SyncDebugEvent = {
 };
 type DebugEvent =
   | {
+      type: "subscriptions";
+      command: "reAttachAll.start";
+      subscriptions: Record<string, Subscription>;
+    }
+  | {
+      type: "subscriptions";
+      command: "reAttachAll.end";
+      subscriptions: Record<string, Subscription>;
+    }
+  | {
       type: "table";
       command: "unsubscribe";
       tableName: string;
+      handlers: AnyFunction[];
       /**
        * If defined then the server will be asked to unsubscribe
        */

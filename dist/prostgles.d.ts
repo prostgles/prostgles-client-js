@@ -1,6 +1,7 @@
 import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./Auth";
+import { type Subscription } from "./getSubscriptionHandler";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 import type { Socket } from "socket.io-client";
 export declare const hasWnd: boolean;
@@ -23,6 +24,12 @@ export type AsyncResult<T> = {
     isLoading: boolean;
     error?: any;
 };
+export type HookOptions = {
+    /**
+     * Used to prevent the hook from fetching data
+     */
+    skip?: boolean;
+};
 export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandler<T, S> & {
     /**
      * Retrieves rows matching the filter and keeps them in sync
@@ -30,7 +37,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * - any changes to the row using the $update method will be reflected instantly
      *    to all sync subscribers that were initiated with the same syncOptions
      */
-    useSync?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOptions) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
+    useSync?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOptions, hookOptions?: HookOptions) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
     sync?: Sync<T>;
     syncOne?: SyncOne<T>;
     /**
@@ -39,7 +46,7 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
      * - any changes to the row using the $update method will be reflected instantly
      *    to all sync subscribers that were initiated with the same syncOptions
      */
-    useSyncOne?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOneOptions) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
+    useSyncOne?: (basicFilter: EqualityFilter<T>, syncOptions: SyncOneOptions, hookOptions?: HookOptions) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
     /**
      * Used internally to setup sync
      */
@@ -49,27 +56,27 @@ export type ViewHandlerClient<T extends AnyObject = AnyObject, S extends DBSchem
     /**
      * Retrieves a list of matching records from the view/table and subscribes to changes
      */
-    useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => AsyncResult<SelectReturnType<S, SubParams, T, true> | undefined>;
+    useSubscribe: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, hookOptions?: HookOptions) => AsyncResult<SelectReturnType<S, SubParams, T, true> | undefined>;
     /**
      * Retrieves a matching record from the view/table and subscribes to changes
      */
-    useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams) => AsyncResult<SelectReturnType<S, SubParams, T, false> | undefined>;
+    useSubscribeOne: <SubParams extends SubscribeParams<T, S>>(filter?: FullFilter<T, S>, options?: SubParams, hookOptions?: HookOptions) => AsyncResult<SelectReturnType<S, SubParams, T, false> | undefined>;
     /**
      * Retrieves a list of matching records from the view/table
      */
-    useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => AsyncResult<SelectReturnType<S, P, T, true> | undefined>;
+    useFind: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P, hookOptions?: HookOptions) => AsyncResult<SelectReturnType<S, P, T, true> | undefined>;
     /**
      * Retrieves first matching record from the view/table
      */
-    useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => AsyncResult<SelectReturnType<S, P, T, false> | undefined>;
+    useFindOne: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P, hookOptions?: HookOptions) => AsyncResult<SelectReturnType<S, P, T, false> | undefined>;
     /**
      * Returns the total number of rows matching the filter
      */
-    useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => AsyncResult<number | undefined>;
+    useCount: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P, hookOptions?: HookOptions) => AsyncResult<number | undefined>;
     /**
      * Returns result size in bits matching the filter and selectParams
      */
-    useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P) => AsyncResult<string | undefined>;
+    useSize: <P extends SelectParams<T, S>>(filter?: FullFilter<T, S>, selectParams?: P, hookOptions?: HookOptions) => AsyncResult<string | undefined>;
 };
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = ViewHandlerClient<T, S> & TableHandler<T, S> & {
     _syncInfo?: any;
@@ -98,9 +105,18 @@ type SyncDebugEvent = {
     data: AnyObject;
 };
 type DebugEvent = {
+    type: "subscriptions";
+    command: "reAttachAll.start";
+    subscriptions: Record<string, Subscription>;
+} | {
+    type: "subscriptions";
+    command: "reAttachAll.end";
+    subscriptions: Record<string, Subscription>;
+} | {
     type: "table";
     command: "unsubscribe";
     tableName: string;
+    handlers: AnyFunction[];
     /**
      * If defined then the server will be asked to unsubscribe
      */

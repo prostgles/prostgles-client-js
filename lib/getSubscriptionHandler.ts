@@ -10,7 +10,7 @@ import {
 import { debug, type AnyFunction, type CoreParams, type InitOptions } from "./prostgles";
 import { FunctionQueuer } from "./FunctionQueuer";
 
-type Subscription = CoreParams & {
+export type Subscription = CoreParams & {
   lastData: any;
   onCall: AnyFunction;
   handlers: AnyFunction[];
@@ -50,12 +50,18 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
   ): Promise<true> {
     debug("_unsubscribe", { channelName, handler });
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const sub = subscriptions[channelName];
       if (sub) {
         sub.handlers = sub.handlers.filter((h) => h !== handler);
+        onDebug?.({
+          type: "table",
+          command: "unsubscribe",
+          tableName: sub.tableName,
+          unsubChannel,
+          handlers: sub.handlers,
+        });
         if (!sub.handlers.length) {
-          onDebug?.({ type: "table", command: "unsubscribe", tableName: sub.tableName });
           removeServerSub(unsubChannel);
           socket.removeListener(channelName, sub.onCall);
           delete subscriptions[channelName];
@@ -63,12 +69,6 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
           /* Not waiting for server confirmation to speed things up */
           resolve(true);
         } else {
-          onDebug?.({
-            type: "table",
-            command: "unsubscribe",
-            tableName: sub.tableName,
-            unsubChannel,
-          });
           resolve(true);
         }
       } else {
@@ -232,6 +232,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
    * Used when connection is lost and re-established or schema changes
    */
   const reAttachAll = async () => {
+    await onDebug?.({ type: "subscriptions", command: "reAttachAll.start", subscriptions });
     for await (const s of Object.values(subscriptions)) {
       try {
         await s.reAttach();
@@ -240,6 +241,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
         Object.values(s.errorHandlers).forEach((h) => h?.(err));
       }
     }
+    await onDebug?.({ type: "subscriptions", command: "reAttachAll.end", subscriptions });
   };
 
   return {

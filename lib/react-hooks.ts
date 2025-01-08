@@ -1,5 +1,5 @@
 import { type SubscriptionHandler, getKeys, isEqual, isObject } from "prostgles-types";
-import type { TableHandlerClient } from "./prostgles";
+import type { HookOptions, TableHandlerClient } from "./prostgles";
 type ReactT = typeof import("react");
 let React: ReactT;
 
@@ -73,20 +73,6 @@ type AsyncEffectQueue = {
 };
 
 type EffectFunc = () => Promise<void | (() => void)>;
-
-// class CEffect {
-//   private effect: EffectFunc;
-//   constructor(effect: EffectFunc) {
-//     this.effect = effect;
-//   }
-//   private cleanupFunc: VoidFunction | void;
-//   run = async () => {
-//     this.cleanupFunc = await this.effect();
-//   }
-//   cleanup = async () => {
-//     await this.cleanupFunc?.();
-//   }
-// }
 
 /**
  * Debounce with execute first
@@ -205,7 +191,7 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(
     const data = {} as Record<keyof Val, any>;
     const keys = getKeys(val);
     for await (const key of keys) {
-      const prop = val[key] as string | Function | Promise<any>;
+      const prop = val[key] as string | ((...args: any[]) => any) | Promise<any>;
       try {
         data[key] = typeof prop === "function" ? await prop() : await prop;
       } catch (e) {
@@ -250,12 +236,14 @@ export const useSubscribe = (
   expectsOne: boolean,
   filter: any,
   options: any,
+  hookOptions?: HookOptions,
 ) => {
+  const { skip } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
-    if (!getIsMounted()) return;
+    if (!getIsMounted() || skip) return;
     setResult(defaultLoadingResult);
     const setError = (newError) => {
       if (!getIsMounted()) return;
@@ -279,7 +267,7 @@ export const useSubscribe = (
     } catch (error) {
       setError(error);
     }
-  }, [subFunc, filter, options]);
+  }, [subFunc, filter, options, skip]);
 
   return { data, error, isLoading };
 };
@@ -288,12 +276,14 @@ export const useSync = (
   syncFunc: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"],
   basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0],
   syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1],
+  hookOptions?: HookOptions,
 ) => {
+  const { skip } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
-    if (!getIsMounted()) return;
+    if (!getIsMounted() || skip) return;
     const setError = (newError) => {
       if (!getIsMounted()) return;
       setResult({ data: undefined, error: newError, isLoading: false });
@@ -312,16 +302,21 @@ export const useSync = (
     } catch (error) {
       setError(error);
     }
-  }, [syncFunc, basicFilter, syncOptions]);
+  }, [syncFunc, basicFilter, syncOptions, skip]);
   return { data, error, isLoading };
 };
 
-export const useFetch = (fetchFunc: (...args: any) => Promise<any>, args: any[] = []) => {
+export const useFetch = (
+  fetchFunc: (...args: any) => Promise<any>,
+  args: any[] = [],
+  hookOptions?: HookOptions,
+) => {
+  const { skip } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
-    if (!getIsMounted()) return;
+    if (!getIsMounted() || skip) return;
     setResult(defaultLoadingResult);
     try {
       const newData = await fetchFunc(...args);

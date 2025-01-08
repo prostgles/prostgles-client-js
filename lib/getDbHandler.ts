@@ -1,7 +1,6 @@
 import {
   type AnyObject,
   CHANNELS,
-  type ClientSchema,
   type DBSchemaTable,
   getKeys,
   getObjectEntries,
@@ -9,14 +8,16 @@ import {
   omitKeys,
   type TableSchemaForClient,
 } from "prostgles-types";
+import type { getSubscriptionHandler } from "./getSubscriptionHandler";
+import type { getSyncHandler } from "./getSyncHandler";
 import {
-  type InitOptions,
-  type TableHandlerClient,
   type AnyFunction,
   type DBHandlerClient,
-  useSync,
-  useSubscribe,
+  type InitOptions,
+  type TableHandlerClient,
   useFetch,
+  useSubscribe,
+  useSync,
 } from "./prostgles";
 import {
   quickClone,
@@ -25,8 +26,6 @@ import {
   type SyncOne,
   type SyncOptions,
 } from "./SyncedTable/SyncedTable";
-import type { getSyncHandler } from "./getSyncHandler";
-import type { getSubscriptionHandler } from "./getSubscriptionHandler";
 
 type Args = {
   schema: TableSchemaForClient;
@@ -151,11 +150,12 @@ export const getDBO = ({
             };
             dboTable.sync = sync;
             dboTable.syncOne = syncOne;
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            dboTable.useSync = (basicFilter, options) => useSync(sync, basicFilter, options) as any;
-            dboTable.useSyncOne = (basicFilter, options) =>
+            dboTable.useSync = (basicFilter, options, hookOptions) =>
               // eslint-disable-next-line react-hooks/rules-of-hooks
-              useSync(syncOne, basicFilter, options) as any;
+              useSync(sync, basicFilter, options, hookOptions);
+            dboTable.useSyncOne = (basicFilter, options, hookOptions) =>
+              // eslint-disable-next-line react-hooks/rules-of-hooks
+              useSync(syncOne, basicFilter, options, hookOptions);
           }
 
           dboTable._sync = async function (param1, param2, syncHandles) {
@@ -194,9 +194,9 @@ export const getDBO = ({
             : command === "subscribeOne" ? "useSubscribeOne"
             : undefined;
           if (handlerName) {
-            dboTable[handlerName] = (filter, options) =>
+            dboTable[handlerName] = (filter, options, hookOptions) =>
               // eslint-disable-next-line react-hooks/rules-of-hooks
-              useSubscribe(subFunc, command === SUBONE, filter, options);
+              useSubscribe(subFunc, command === SUBONE, filter, options, hookOptions);
           }
 
           if (command === SUBONE || !subscribeCommands.includes(SUBONE)) {
@@ -254,9 +254,9 @@ export const getDBO = ({
             : command === "size" ? "useSize"
             : undefined;
           if (methodName) {
-            dboTable[methodName] = (param1, param2, param3?) =>
+            dboTable[methodName] = (param1, param2, hookOptions) =>
               // eslint-disable-next-line react-hooks/rules-of-hooks
-              useFetch(method, [param1, param2, param3]);
+              useFetch(method, [param1, param2], hookOptions);
           }
         }
       });

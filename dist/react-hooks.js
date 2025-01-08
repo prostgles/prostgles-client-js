@@ -53,19 +53,6 @@ exports.useEffectDeep = ((callback, deps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(callback, deps === null || deps === void 0 ? void 0 : deps.map(exports.useDeepCompareMemoize));
 });
-// class CEffect {
-//   private effect: EffectFunc;
-//   constructor(effect: EffectFunc) {
-//     this.effect = effect;
-//   }
-//   private cleanupFunc: VoidFunction | void;
-//   run = async () => {
-//     this.cleanupFunc = await this.effect();
-//   }
-//   cleanup = async () => {
-//     await this.cleanupFunc?.();
-//   }
-// }
 /**
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up
@@ -209,12 +196,13 @@ const usePromise = (f, deps = []) => {
     return result;
 };
 exports.usePromise = usePromise;
-const useSubscribe = (subFunc, expectsOne, filter, options) => {
+const useSubscribe = (subFunc, expectsOne, filter, options, hookOptions) => {
+    const { skip } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
-        if (!getIsMounted())
+        if (!getIsMounted() || skip)
             return;
         setResult(defaultLoadingResult);
         const setError = (newError) => {
@@ -237,16 +225,17 @@ const useSubscribe = (subFunc, expectsOne, filter, options) => {
         catch (error) {
             setError(error);
         }
-    }, [subFunc, filter, options]);
+    }, [subFunc, filter, options, skip]);
     return { data, error, isLoading };
 };
 exports.useSubscribe = useSubscribe;
-const useSync = (syncFunc, basicFilter, syncOptions) => {
+const useSync = (syncFunc, basicFilter, syncOptions, hookOptions) => {
+    const { skip } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
-        if (!getIsMounted())
+        if (!getIsMounted() || skip)
             return;
         const setError = (newError) => {
             if (!getIsMounted())
@@ -264,16 +253,17 @@ const useSync = (syncFunc, basicFilter, syncOptions) => {
         catch (error) {
             setError(error);
         }
-    }, [syncFunc, basicFilter, syncOptions]);
+    }, [syncFunc, basicFilter, syncOptions, skip]);
     return { data, error, isLoading };
 };
 exports.useSync = useSync;
-const useFetch = (fetchFunc, args = []) => {
+const useFetch = (fetchFunc, args = [], hookOptions) => {
+    const { skip } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
-        if (!getIsMounted())
+        if (!getIsMounted() || skip)
             return;
         setResult(defaultLoadingResult);
         try {
