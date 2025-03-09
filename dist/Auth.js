@@ -4,12 +4,12 @@ exports.authRequest = exports.setupAuth = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const prostgles_1 = require("./prostgles");
 const setupAuth = ({ authData: authConfig, socket, onReload }) => {
-    if ((authConfig === null || authConfig === void 0 ? void 0 : authConfig.pathGuard) && prostgles_1.hasWnd) {
+    if ((authConfig === null || authConfig === void 0 ? void 0 : authConfig.pathGuard) && prostgles_1.isClientSide) {
         const doReload = (res) => {
             if (res === null || res === void 0 ? void 0 : res.shouldReload) {
                 if (onReload)
                     onReload();
-                else if (prostgles_1.hasWnd) {
+                else if (prostgles_1.isClientSide) {
                     console.log("prostgles page reload due to authguard", res);
                     setTimeout(() => {
                         window.location.reload();
@@ -43,10 +43,6 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
                     };
                     return acc;
                 }, {}));
-        const addSearchInCaseItHasReturnUrl = (url) => {
-            const { search } = window.location;
-            return url + search;
-        };
         loginSignupOptions.login =
             loginType &&
                 (async (params) => {
@@ -68,13 +64,17 @@ const setupAuth = ({ authData: authConfig, socket, onReload }) => {
     return {
         isLoggedin: true,
         user: authConfig.user,
-        logout: () => {
-            window.location.assign("/logout");
+        logout: async () => {
+            return (0, exports.authRequest)(addSearchInCaseItHasReturnUrl("/logout"), {}, "POST");
         },
         ...loginSignupOptions,
     };
 };
 exports.setupAuth = setupAuth;
+const addSearchInCaseItHasReturnUrl = (url) => {
+    const { search } = window.location;
+    return url + search;
+};
 const authRequest = async (path, data, method) => {
     const rawResponse = await fetch(path, {
         method: method !== null && method !== void 0 ? method : "POST",

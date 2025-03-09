@@ -4,7 +4,7 @@ import { type AuthHandler } from "./Auth";
 import { type Subscription } from "./getSubscriptionHandler";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 import type { Socket } from "socket.io-client";
-export declare const hasWnd: boolean;
+export declare const isClientSide: boolean;
 export declare const debug: any;
 export * from "./react-hooks";
 export * from "./useProstglesClient";

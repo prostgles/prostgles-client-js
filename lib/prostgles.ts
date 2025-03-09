@@ -41,9 +41,9 @@ import { getSyncHandler } from "./getSyncHandler";
 import type { Socket } from "socket.io-client";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
-export const hasWnd = typeof window !== "undefined";
+export const isClientSide = typeof window !== "undefined";
 export const debug: any = function (...args: any[]) {
-  if (hasWnd && (window as any)[DEBUG_KEY]) {
+  if (isClientSide && (window as any)[DEBUG_KEY]) {
     (window as any)[DEBUG_KEY](...args);
   }
 };

@@ -18,7 +18,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = exports.asName = exports.debug = exports.hasWnd = void 0;
+exports.prostgles = exports.asName = exports.debug = exports.isClientSide = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
 const Auth_1 = require("./Auth");
@@ -28,9 +28,9 @@ const getSqlHandler_1 = require("./getSqlHandler");
 const getSubscriptionHandler_1 = require("./getSubscriptionHandler");
 const getSyncHandler_1 = require("./getSyncHandler");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
-exports.hasWnd = typeof window !== "undefined";
+exports.isClientSide = typeof window !== "undefined";
 const debug = function (...args) {
-    if (exports.hasWnd && window[DEBUG_KEY]) {
+    if (exports.isClientSide && window[DEBUG_KEY]) {
         window[DEBUG_KEY](...args);
     }
 };

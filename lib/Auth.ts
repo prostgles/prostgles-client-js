@@ -8,7 +8,7 @@ import type {
   AuthRequest,
 } from "prostgles-types";
 import { CHANNELS, isEmpty } from "prostgles-types";
-import { hasWnd } from "./prostgles";
+import { isClientSide } from "./prostgles";
 
 type Args = {
   socket: any;
@@ -55,17 +55,17 @@ type AuthStateLoggedOut = LoginSignupOptions & {
 type AuthStateLoggedIn = LoginSignupOptions & {
   isLoggedin: true;
   user: AnyObject;
-  logout: VoidFunction;
+  logout: () => Promise<any>;
 };
 
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 
 export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): AuthHandler => {
-  if (authConfig?.pathGuard && hasWnd) {
+  if (authConfig?.pathGuard && isClientSide) {
     const doReload = (res?: AuthGuardLocationResponse) => {
       if (res?.shouldReload) {
         if (onReload) onReload();
-        else if (hasWnd) {
+        else if (isClientSide) {
           console.log("prostgles page reload due to authguard", res);
           setTimeout(() => {
             window.location.reload();
@@ -109,11 +109,6 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
         }, {})
       );
 
-    const addSearchInCaseItHasReturnUrl = (url: string) => {
-      const { search } = window.location;
-      return url + search;
-    };
-
     loginSignupOptions.login =
       loginType &&
       (async (params) => {
@@ -138,17 +133,22 @@ export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): Aut
   return {
     isLoggedin: true,
     user: authConfig.user,
-    logout: () => {
-      window.location.assign("/logout");
+    logout: async () => {
+      return authRequest(addSearchInCaseItHasReturnUrl("/logout"), {}, "POST");
     },
     ...loginSignupOptions,
   } satisfies AuthStateLoggedIn;
 };
 
+const addSearchInCaseItHasReturnUrl = (url: string) => {
+  const { search } = window.location;
+  return url + search;
+};
+
 export const authRequest = async <T extends PasswordRegisterResponse | PasswordLoginResponse>(
   path: string,
   data: object,
-  method?: "GET",
+  method?: "GET" | "POST",
 ): Promise<T> => {
   const rawResponse = await fetch(path, {
     method: method ?? "POST",

@@ -27,7 +27,7 @@ type AuthStateLoggedOut = LoginSignupOptions & {
 type AuthStateLoggedIn = LoginSignupOptions & {
     isLoggedin: true;
     user: AnyObject;
-    logout: VoidFunction;
+    logout: () => Promise<any>;
 };
 export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
 export declare const setupAuth: ({ authData: authConfig, socket, onReload }: Args) => AuthHandler;
@@ -105,6 +105,6 @@ export declare const authRequest: <T extends (import("prostgles-types").CommonAu
      * This is a client-only property that is obtained from server redirect response
      */
     redirect_url?: string | undefined;
-})>(path: string, data: object, method?: "GET") => Promise<T>;
+})>(path: string, data: object, method?: "GET" | "POST") => Promise<T>;
 export {};
 //# sourceMappingURL=Auth.d.ts.map
