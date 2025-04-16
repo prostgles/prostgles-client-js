@@ -79,7 +79,6 @@ type EffectFunc = () => Promise<void | (() => void)>;
  * Used to ensure subscriptions are always cleaned up
  */
 export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
-  // const newEffect = { effect, deps, didCleanup: false }
   const queue = useRef<AsyncEffectQueue>({
     activeEffect: undefined,
     newEffect: undefined,
@@ -103,14 +102,18 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
     queue.current.newEffect = newEffect;
     queue.current.history.push(newEffect);
 
-    /** Need to wait to ensure activeEffect cleanup finished */
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    /**
+     * Await and cleanup previous effect
+     * Need to wait to ensure activeEffect cleanup finished
+     * */
     await (await queue.current.activeEffect?.resolvedCleanup)?.run?.()?.catch(console.error);
 
     queue.current.activeEffect = newEffect;
-    queue.current.activeEffect.resolvedCleanup = queue.current.activeEffect
-      .effect()
-      .then((run) => ({ run }));
+    queue.current.newEffect = undefined;
+    /**
+     * Execute the new effect
+     */
+    queue.current.activeEffect.resolvedCleanup = newEffect.effect().then((run) => ({ run }));
   };
 
   useEffectDeep(() => {
@@ -240,14 +243,20 @@ export const useSubscribe = (
 ) => {
   const { skip } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-  const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
+  const [{ data, isLoading, error }, setHookResult] = useState<HookResult>(defaultLoadingResult);
+  const hookResult = { data, isLoading, error };
+  const hookResultRef = useRef(hookResult);
+  hookResultRef.current = hookResult;
+
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
     if (!getIsMounted() || skip) return;
-    setResult(defaultLoadingResult);
+    if (!isEqual(hookResultRef.current, defaultLoadingResult)) {
+      setHookResult(defaultLoadingResult);
+    }
     const setError = (newError) => {
       if (!getIsMounted()) return;
-      setResult({ data: undefined, error: newError, isLoading: false });
+      setHookResult({ data: undefined, error: newError, isLoading: false });
     };
     try {
       const sub = await subFunc(
@@ -255,7 +264,7 @@ export const useSubscribe = (
         options,
         (newData) => {
           if (!getIsMounted()) return;
-          setResult({
+          setHookResult({
             data: expectsOne ? newData[0] : newData,
             error: undefined,
             isLoading: false,
@@ -263,7 +272,9 @@ export const useSubscribe = (
         },
         setError,
       );
-      return sub.unsubscribe;
+      return () => {
+        sub.unsubscribe();
+      };
     } catch (error) {
       setError(error);
     }

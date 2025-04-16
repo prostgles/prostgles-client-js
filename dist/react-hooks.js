@@ -58,7 +58,6 @@ exports.useEffectDeep = ((callback, deps) => {
  * Used to ensure subscriptions are always cleaned up
  */
 const useAsyncEffectQueue = (effect, deps) => {
-    // const newEffect = { effect, deps, didCleanup: false }
     const queue = useRef({
         activeEffect: undefined,
         newEffect: undefined,
@@ -81,13 +80,17 @@ const useAsyncEffectQueue = (effect, deps) => {
         var _a, _b, _c, _d;
         queue.current.newEffect = newEffect;
         queue.current.history.push(newEffect);
-        /** Need to wait to ensure activeEffect cleanup finished */
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        /**
+         * Await and cleanup previous effect
+         * Need to wait to ensure activeEffect cleanup finished
+         * */
         await ((_d = (_c = (_b = (await ((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvedCleanup))) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b)) === null || _d === void 0 ? void 0 : _d.catch(console.error));
         queue.current.activeEffect = newEffect;
-        queue.current.activeEffect.resolvedCleanup = queue.current.activeEffect
-            .effect()
-            .then((run) => ({ run }));
+        queue.current.newEffect = undefined;
+        /**
+         * Execute the new effect
+         */
+        queue.current.activeEffect.resolvedCleanup = newEffect.effect().then((run) => ({ run }));
     };
     (0, exports.useEffectDeep)(() => {
         const newEffect = { effect, deps, didCleanup: false };
@@ -199,28 +202,35 @@ exports.usePromise = usePromise;
 const useSubscribe = (subFunc, expectsOne, filter, options, hookOptions) => {
     const { skip } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-    const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
+    const [{ data, isLoading, error }, setHookResult] = useState(defaultLoadingResult);
+    const hookResult = { data, isLoading, error };
+    const hookResultRef = useRef(hookResult);
+    hookResultRef.current = hookResult;
     const getIsMounted = (0, exports.useIsMounted)();
     (0, exports.useAsyncEffectQueue)(async () => {
         if (!getIsMounted() || skip)
             return;
-        setResult(defaultLoadingResult);
+        if (!(0, prostgles_types_1.isEqual)(hookResultRef.current, defaultLoadingResult)) {
+            setHookResult(defaultLoadingResult);
+        }
         const setError = (newError) => {
             if (!getIsMounted())
                 return;
-            setResult({ data: undefined, error: newError, isLoading: false });
+            setHookResult({ data: undefined, error: newError, isLoading: false });
         };
         try {
             const sub = await subFunc(filter, options, (newData) => {
                 if (!getIsMounted())
                     return;
-                setResult({
+                setHookResult({
                     data: expectsOne ? newData[0] : newData,
                     error: undefined,
                     isLoading: false,
                 });
             }, setError);
-            return sub.unsubscribe;
+            return () => {
+                sub.unsubscribe();
+            };
         }
         catch (error) {
             setError(error);
