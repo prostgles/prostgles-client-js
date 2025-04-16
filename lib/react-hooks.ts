@@ -61,14 +61,13 @@ type AsyncCleanup = void | (() => void | Promise<void>);
 type AsyncActiveEffect = {
   effect: () => Promise<AsyncCleanup>;
   deps: any[];
-  resolvedCleanup?: Promise<{
+  resolvingCleanup?: Promise<{
     run: AsyncCleanup;
   }>;
 };
 type AsyncEffectQueue = {
   newEffect: undefined | AsyncActiveEffect;
   activeEffect: undefined | (AsyncActiveEffect & { finishedCleanup?: boolean });
-  history: Pick<AsyncActiveEffect, "effect" | "deps">[];
 };
 
 type EffectFunc = () => Promise<void | (() => void)>;
@@ -81,36 +80,34 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
   const queue = useRef<AsyncEffectQueue>({
     activeEffect: undefined,
     newEffect: undefined,
-    history: [],
   });
 
-  const onCleanup = async (effectFunc: EffectFunc) => {
-    /** New effect did not start. Just remove */
-    if (queue.current.newEffect?.effect === effectFunc) {
-      queue.current.newEffect = undefined;
+  // const onCleanup = async (effectFunc: EffectFunc) => {
+  //   /** New effect did not start. Just remove */
+  //   if (queue.current.newEffect?.effect === effectFunc) {
+  //     queue.current.newEffect = undefined;
 
-      /** Very likely it's an unmount */
-    } else if (queue.current.activeEffect?.effect === effectFunc) {
-      await (await queue.current.activeEffect.resolvedCleanup)?.run?.()?.catch(console.error);
-    }
-  };
+  //     /** Very likely it's an unmount */
+  //   } else if (queue.current.activeEffect?.effect === effectFunc) {
+  //     await (await queue.current.activeEffect.resolvingCleanup)?.run?.()?.catch(console.error);
+  //   }
+  // };
 
-  const onRender = async (newEffect: AsyncActiveEffect) => {
+  const onRender = async (newEffect: AsyncActiveEffect | undefined) => {
     queue.current.newEffect = newEffect;
-    queue.current.history.push(newEffect);
 
     /**
-     * Await and cleanup previous effect
-     * Need to wait to ensure activeEffect cleanup finished
+     * Await and cleanup existing effect
      * */
-    await (await queue.current.activeEffect?.resolvedCleanup)?.run?.()?.catch(console.error);
+    await (await queue.current.activeEffect?.resolvingCleanup)?.run?.()?.catch(console.error);
 
-    queue.current.activeEffect = newEffect;
+    if (!newEffect) return;
     queue.current.newEffect = undefined;
     /**
      * Execute the new effect
      */
-    queue.current.activeEffect.resolvedCleanup = newEffect.effect().then((run) => {
+    queue.current.activeEffect = newEffect;
+    queue.current.activeEffect.resolvingCleanup = newEffect.effect().then((run) => {
       return {
         /**
          * Wrapped in a promise to ensure cleanup is awaited
@@ -126,7 +123,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
     const newEffect = { effect, deps };
     onRender(newEffect);
     return () => {
-      onCleanup(effect);
+      onRender(undefined);
     };
   }, deps);
 };
