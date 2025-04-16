@@ -71,8 +71,6 @@ const useAsyncEffectQueue = (effect, deps) => {
             /** Very likely it's an unmount */
         }
         else if (((_b = queue.current.activeEffect) === null || _b === void 0 ? void 0 : _b.effect) === effectFunc) {
-            queue.current.activeEffect.didCleanup = true;
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             await ((_e = (_d = (_c = (await queue.current.activeEffect.resolvedCleanup)) === null || _c === void 0 ? void 0 : _c.run) === null || _d === void 0 ? void 0 : _d.call(_c)) === null || _e === void 0 ? void 0 : _e.catch(console.error));
         }
     };
@@ -90,10 +88,19 @@ const useAsyncEffectQueue = (effect, deps) => {
         /**
          * Execute the new effect
          */
-        queue.current.activeEffect.resolvedCleanup = newEffect.effect().then((run) => ({ run }));
+        queue.current.activeEffect.resolvedCleanup = newEffect.effect().then((run) => {
+            return {
+                /**
+                 * Wrapped in a promise to ensure cleanup is awaited
+                 */
+                run: async () => {
+                    await (run === null || run === void 0 ? void 0 : run());
+                },
+            };
+        });
     };
     (0, exports.useEffectDeep)(() => {
-        const newEffect = { effect, deps, didCleanup: false };
+        const newEffect = { effect, deps };
         onRender(newEffect);
         return () => {
             onCleanup(effect);
