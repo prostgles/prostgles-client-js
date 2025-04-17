@@ -66,8 +66,8 @@ const useAsyncEffectQueue = (effect, deps) => {
          * Await and cleanup previous effect
          * */
         if (((_a = activeEffect.current) === null || _a === void 0 ? void 0 : _a.state) === "resolved") {
-            const { cleanup, effect, id } = activeEffect.current;
-            activeEffect.current = { state: "cleaning", effect, id };
+            const { cleanup, effect } = activeEffect.current;
+            activeEffect.current = { state: "cleaning", effect };
             await cleanup().catch(console.error);
             activeEffect.current = undefined;
         }
@@ -75,8 +75,9 @@ const useAsyncEffectQueue = (effect, deps) => {
          * Start new effect
          */
         if (newEffect.current && !activeEffect.current) {
-            const { effect, id } = newEffect.current;
-            activeEffect.current = { state: "resolving", effect, id };
+            const currentEffect = newEffect.current;
+            const { effect } = currentEffect;
+            activeEffect.current = { state: "resolving", effect };
             const cleanup = await effect()
                 .then((run) => {
                 /**
@@ -90,15 +91,14 @@ const useAsyncEffectQueue = (effect, deps) => {
                 console.error(e);
                 return async () => { };
             });
-            activeEffect.current = { state: "resolved", effect, cleanup, id };
-            if (id !== newEffect.current.id) {
+            activeEffect.current = { state: "resolved", effect, cleanup };
+            if (currentEffect !== newEffect.current) {
                 onRender();
             }
         }
     };
     (0, exports.useEffectDeep)(() => {
-        var _a, _b;
-        newEffect.current = { effect, deps, id: ((_b = (_a = newEffect.current) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : 0) + 1 };
+        newEffect.current = { effect, deps };
         onRender();
         return () => {
             newEffect.current = undefined;

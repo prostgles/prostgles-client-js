@@ -66,7 +66,7 @@ type AsyncActiveEffect = {
   }>;
 };
 
-type EffectData = { effect: EffectFunc; deps: any[]; id: number };
+type EffectData = { effect: EffectFunc; deps: any[] };
 
 type EffectFunc = () => Promise<void | (() => void)>;
 
@@ -81,15 +81,15 @@ type ActiveEffect =
  */
 export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
   const newEffect = useRef<EffectData>();
-  const activeEffect = useRef<ActiveEffect & { id: number }>();
+  const activeEffect = useRef<ActiveEffect>();
 
   const onRender = async () => {
     /**
      * Await and cleanup previous effect
      * */
     if (activeEffect.current?.state === "resolved") {
-      const { cleanup, effect, id } = activeEffect.current;
-      activeEffect.current = { state: "cleaning", effect, id };
+      const { cleanup, effect } = activeEffect.current;
+      activeEffect.current = { state: "cleaning", effect };
       await cleanup().catch(console.error);
       activeEffect.current = undefined;
     }
@@ -98,8 +98,9 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
      * Start new effect
      */
     if (newEffect.current && !activeEffect.current) {
-      const { effect, id } = newEffect.current;
-      activeEffect.current = { state: "resolving", effect, id };
+      const currentEffect = newEffect.current;
+      const { effect } = currentEffect;
+      activeEffect.current = { state: "resolving", effect };
       const cleanup = await effect()
         .then((run) => {
           /**
@@ -113,15 +114,15 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
           console.error(e);
           return async () => {};
         });
-      activeEffect.current = { state: "resolved", effect, cleanup, id };
-      if (id !== newEffect.current.id) {
+      activeEffect.current = { state: "resolved", effect, cleanup };
+      if (currentEffect !== newEffect.current) {
         onRender();
       }
     }
   };
 
   useEffectDeep(() => {
-    newEffect.current = { effect, deps, id: (newEffect.current?.id ?? 0) + 1 };
+    newEffect.current = { effect, deps };
     onRender();
     return () => {
       newEffect.current = undefined;
@@ -129,6 +130,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
     };
   }, deps);
 };
+
 export const useEffectAsync = (effect: () => Promise<void | (() => void)>, inputs: any[]) => {
   const onCleanup = useRef({
     cleanup: undefined as undefined | (() => void),
