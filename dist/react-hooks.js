@@ -58,49 +58,51 @@ exports.useEffectDeep = ((callback, deps) => {
  * Used to ensure subscriptions are always cleaned up
  */
 const useAsyncEffectQueue = (effect, deps) => {
-    const queue = useRef({
-        activeEffect: undefined,
-        newEffect: undefined,
-    });
-    // const onCleanup = async (effectFunc: EffectFunc) => {
-    //   /** New effect did not start. Just remove */
-    //   if (queue.current.newEffect?.effect === effectFunc) {
-    //     queue.current.newEffect = undefined;
-    //     /** Very likely it's an unmount */
-    //   } else if (queue.current.activeEffect?.effect === effectFunc) {
-    //     await (await queue.current.activeEffect.resolvingCleanup)?.run?.()?.catch(console.error);
-    //   }
-    // };
-    const onRender = async (newEffect) => {
-        var _a, _b, _c, _d;
-        queue.current.newEffect = newEffect;
+    const newEffect = useRef();
+    const activeEffect = useRef();
+    const onRender = async () => {
+        var _a;
         /**
-         * Await and cleanup existing effect
+         * Await and cleanup previous effect
          * */
-        await ((_d = (_c = (_b = (await ((_a = queue.current.activeEffect) === null || _a === void 0 ? void 0 : _a.resolvingCleanup))) === null || _b === void 0 ? void 0 : _b.run) === null || _c === void 0 ? void 0 : _c.call(_b)) === null || _d === void 0 ? void 0 : _d.catch(console.error));
-        if (!newEffect)
-            return;
-        queue.current.newEffect = undefined;
+        if (((_a = activeEffect.current) === null || _a === void 0 ? void 0 : _a.state) === "resolved") {
+            const { cleanup, effect, id } = activeEffect.current;
+            activeEffect.current = { state: "cleaning", effect, id };
+            await cleanup().catch(console.error);
+            activeEffect.current = undefined;
+        }
         /**
-         * Execute the new effect
+         * Start new effect
          */
-        queue.current.activeEffect = newEffect;
-        queue.current.activeEffect.resolvingCleanup = newEffect.effect().then((run) => {
-            return {
+        if (newEffect.current && !activeEffect.current) {
+            const { effect, id } = newEffect.current;
+            activeEffect.current = { state: "resolving", effect, id };
+            const cleanup = await effect()
+                .then((run) => {
                 /**
                  * Wrapped in a promise to ensure cleanup is awaited
                  */
-                run: async () => {
+                return async () => {
                     await (run === null || run === void 0 ? void 0 : run());
-                },
-            };
-        });
+                };
+            })
+                .catch((e) => {
+                console.error(e);
+                return async () => { };
+            });
+            activeEffect.current = { state: "resolved", effect, cleanup, id };
+            if (id !== newEffect.current.id) {
+                onRender();
+            }
+        }
     };
     (0, exports.useEffectDeep)(() => {
-        const newEffect = { effect, deps };
-        onRender(newEffect);
+        var _a, _b;
+        newEffect.current = { effect, deps, id: ((_b = (_a = newEffect.current) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : 0) + 1 };
+        onRender();
         return () => {
-            onRender(undefined);
+            newEffect.current = undefined;
+            onRender();
         };
     }, deps);
 };
