@@ -50,6 +50,10 @@ function prostgles(initOpts, syncedTable) {
     const sqlHandler = (0, getSqlHandler_1.getSqlHandler)(initOpts);
     let state;
     return new Promise((resolve, reject) => {
+        socket.removeAllListeners("connect_error");
+        socket.on("connect_error", (err) => {
+            reject(err);
+        });
         socket.removeAllListeners(prostgles_types_1.CHANNELS.CONNECTION);
         socket.on(prostgles_types_1.CHANNELS.CONNECTION, (error) => {
             reject(error);

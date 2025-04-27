@@ -363,6 +363,10 @@ export function prostgles<DBSchema>(
   let state: undefined | "connected" | "disconnected" | "reconnected";
 
   return new Promise((resolve, reject) => {
+    socket.removeAllListeners("connect_error");
+    socket.on("connect_error", (err) => {
+      reject(err);
+    });
     socket.removeAllListeners(CHANNELS.CONNECTION);
     socket.on(CHANNELS.CONNECTION, (error) => {
       reject(error);
