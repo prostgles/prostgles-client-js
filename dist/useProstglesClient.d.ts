@@ -33,6 +33,6 @@ type ProstglesClientState<PGC> = {
     hasError: true;
     error: Error | string;
 };
-export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1, UserLike>>;
+export declare const useProstglesClient: <DBSchema_1, U extends UserLike = UserLike>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1, U>>;
 export {};
 //# sourceMappingURL=useProstglesClient.d.ts.map

@@ -40,11 +40,11 @@ type ProstglesClientState<PGC> =
   | ({ isLoading: false; hasError?: false; error?: undefined } & PGC)
   | { isLoading: false; hasError: true; error: Error | string };
 
-export const useProstglesClient = <DBSchema>({
+export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
   skip,
   socketOptions: socketPathOrOptions,
   ...initOpts
-}: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema>> => {
+}: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, U>> => {
   const { useRef, useState } = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = useState<ProstglesClientState<OnReadyParams<DBSchema>>>({
     isLoading: true,
@@ -100,5 +100,5 @@ export const useProstglesClient = <DBSchema>({
     };
   }, [initOpts, socketPathOrOptions, skip]);
 
-  return onReadyArgs;
+  return onReadyArgs as ProstglesClientState<OnReadyParams<DBSchema, U>>;
 };
