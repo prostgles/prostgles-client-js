@@ -20,6 +20,7 @@ import type {
   SubscribeParams,
   TableHandler,
   ViewHandler,
+  UserLike,
 } from "prostgles-types";
 
 import { CHANNELS, asName, getJoinHandlers, isEqual } from "prostgles-types";
@@ -251,7 +252,7 @@ type DebugEvent =
       state: "connected" | "disconnected" | "reconnected" | undefined;
     };
 
-export type InitOptions<DBSchema = void> = {
+export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
   /**
    * Socket.io client instance
    */
@@ -276,7 +277,7 @@ export type InitOptions<DBSchema = void> = {
    * - the client reconnects
    * - server requests a reload
    */
-  onReady: OnReadyCallback<DBSchema>;
+  onReady: OnReadyCallback<DBSchema, U>;
 
   /**
    * Custom handler in case of websocket re-connection.
@@ -297,7 +298,7 @@ export type InitOptions<DBSchema = void> = {
   onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
 
-type OnReadyCallback<DBSchema = void> = (
+type OnReadyCallback<DBSchema = void, U extends UserLike = UserLike> = (
   /**
    * The database handler object.
    * Only allowed tables and table methods are defined
@@ -317,7 +318,7 @@ type OnReadyCallback<DBSchema = void> = (
   /**
    * Handlers for authentication that are configured on the server through the "auth" options
    */
-  auth: AuthHandler,
+  auth: AuthHandler<U>,
   isReconnect: boolean,
 ) => void | Promise<void>;
 

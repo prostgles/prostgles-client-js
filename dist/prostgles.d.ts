@@ -1,4 +1,4 @@
-import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler } from "prostgles-types";
+import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, UserLike } from "prostgles-types";
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./Auth";
 import { type Subscription } from "./getSubscriptionHandler";
@@ -145,7 +145,7 @@ type DebugEvent = {
     data: OnReadyArgs;
     state: "connected" | "disconnected" | "reconnected" | undefined;
 };
-export type InitOptions<DBSchema = void> = {
+export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
     /**
      * Socket.io client instance
      */
@@ -167,7 +167,7 @@ export type InitOptions<DBSchema = void> = {
      * - the client reconnects
      * - server requests a reload
      */
-    onReady: OnReadyCallback<DBSchema>;
+    onReady: OnReadyCallback<DBSchema, U>;
     /**
      * Custom handler in case of websocket re-connection.
      * If not provided will fire onReady
@@ -184,7 +184,7 @@ export type InitOptions<DBSchema = void> = {
      */
     onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
-type OnReadyCallback<DBSchema = void> = (
+type OnReadyCallback<DBSchema = void, U extends UserLike = UserLike> = (
 /**
  * The database handler object.
  * Only allowed tables and table methods are defined
@@ -201,7 +201,7 @@ tableSchema: DBSchemaTable[] | undefined,
 /**
  * Handlers for authentication that are configured on the server through the "auth" options
  */
-auth: AuthHandler, isReconnect: boolean) => void | Promise<void>;
+auth: AuthHandler<U>, isReconnect: boolean) => void | Promise<void>;
 export type AnyFunction = (...args: any[]) => any;
 export type CoreParams = {
     tableName: string;

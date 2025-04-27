@@ -1,6 +1,6 @@
 {
   "name": "prostgles-client",
-  "version": "4.0.235",
+  "version": "4.0.236",
   "description": "Reactive client for Postgres",
   "main": "dist/prostgles-full.js",
   "types": "dist/prostgles-full.d.ts",
