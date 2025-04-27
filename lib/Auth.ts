@@ -6,6 +6,7 @@ import type {
   IdentityProvider,
   AuthResponse,
   AuthRequest,
+  UserLike,
 } from "prostgles-types";
 import { CHANNELS, isEmpty } from "prostgles-types";
 import { isClientSide } from "./prostgles";
@@ -52,13 +53,13 @@ type AuthStateLoggedOut = LoginSignupOptions & {
   user?: undefined;
 };
 
-type AuthStateLoggedIn = LoginSignupOptions & {
+type AuthStateLoggedIn<U extends UserLike = UserLike> = LoginSignupOptions & {
   isLoggedin: true;
-  user: AnyObject;
+  user: U;
   logout: () => Promise<any>;
 };
 
-export type AuthHandler = AuthStateLoggedOut | AuthStateLoggedIn;
+export type AuthHandler<U extends UserLike = UserLike> = AuthStateLoggedOut | AuthStateLoggedIn<U>;
 
 export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): AuthHandler => {
   if (authConfig?.pathGuard && isClientSide) {

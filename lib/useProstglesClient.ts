@@ -3,7 +3,13 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { omitKeys, type DBSchema, type DBSchemaTable, type MethodHandler } from "prostgles-types";
+import {
+  omitKeys,
+  type DBSchema,
+  type DBSchemaTable,
+  type MethodHandler,
+  type UserLike,
+} from "prostgles-types";
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import type { AuthHandler } from "./Auth";
@@ -11,11 +17,11 @@ import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
 import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 
-type OnReadyParams<DBSchema> = {
+type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   dbo: DBHandlerClient<DBSchema>;
   methods: MethodHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
-  auth: AuthHandler | undefined;
+  auth: AuthHandler<U> | undefined;
   isReconnect: boolean;
   socket: Socket;
 };

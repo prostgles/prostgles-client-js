@@ -1,12 +1,12 @@
-import { type DBSchema, type DBSchemaTable, type MethodHandler } from "prostgles-types";
+import { type DBSchema, type DBSchemaTable, type MethodHandler, type UserLike } from "prostgles-types";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import type { AuthHandler } from "./Auth";
 import { type DBHandlerClient, type InitOptions } from "./prostgles";
-type OnReadyParams<DBSchema> = {
+type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
     dbo: DBHandlerClient<DBSchema>;
     methods: MethodHandler | undefined;
     tableSchema: DBSchemaTable[] | undefined;
-    auth: AuthHandler | undefined;
+    auth: AuthHandler<U> | undefined;
     isReconnect: boolean;
     socket: Socket;
 };
@@ -33,6 +33,6 @@ type ProstglesClientState<PGC> = {
     hasError: true;
     error: Error | string;
 };
-export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1>>;
+export declare const useProstglesClient: <DBSchema_1>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1, UserLike>>;
 export {};
 //# sourceMappingURL=useProstglesClient.d.ts.map
