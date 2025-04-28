@@ -1,6 +1,6 @@
 import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, UserLike } from "prostgles-types";
 import { asName } from "prostgles-types";
-import { type AuthHandler } from "./Auth";
+import { type AuthHandler } from "./getAuthHandler";
 import { type Subscription } from "./getSubscriptionHandler";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 import type { Socket } from "socket.io-client";

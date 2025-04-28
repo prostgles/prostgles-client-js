@@ -21,7 +21,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prostgles = exports.asName = exports.debug = exports.isClientSide = void 0;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
-const Auth_1 = require("./Auth");
+const getAuthHandler_1 = require("./getAuthHandler");
 const getDbHandler_1 = require("./getDbHandler");
 const getMethods_1 = require("./getMethods");
 const getSqlHandler_1 = require("./getSqlHandler");
@@ -104,7 +104,7 @@ function prostgles(initOpts, syncedTable) {
             }
             const isReconnect = state === "reconnected";
             state = "connected";
-            const auth = (0, Auth_1.setupAuth)({ authData: authConfig, socket, onReload });
+            const auth = (0, getAuthHandler_1.getAuthHandler)({ authData: authConfig, socket, onReload });
             const { methodsObj } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
             const { dbo } = (0, getDbHandler_1.getDBO)({
                 schema,

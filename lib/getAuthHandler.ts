@@ -61,7 +61,7 @@ type AuthStateLoggedIn<U extends UserLike = UserLike> = LoginSignupOptions & {
 
 export type AuthHandler<U extends UserLike = UserLike> = AuthStateLoggedOut | AuthStateLoggedIn<U>;
 
-export const setupAuth = ({ authData: authConfig, socket, onReload }: Args): AuthHandler => {
+export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args): AuthHandler => {
   if (authConfig?.pathGuard && isClientSide) {
     const doReload = (res?: AuthGuardLocationResponse) => {
       if (res?.shouldReload) {

@@ -12,7 +12,7 @@ import {
 } from "prostgles-types";
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import type { AuthHandler } from "./Auth";
+import type { AuthHandler } from "./getAuthHandler";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
 import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
@@ -21,7 +21,7 @@ type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   dbo: DBHandlerClient<DBSchema>;
   methods: MethodHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
-  auth: AuthHandler<U> | undefined;
+  auth: AuthHandler<U>;
   isReconnect: boolean;
   socket: Socket;
 };

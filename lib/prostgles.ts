@@ -25,7 +25,7 @@ import type {
 
 import { CHANNELS, asName, getJoinHandlers, isEqual } from "prostgles-types";
 
-import { type AuthHandler, setupAuth } from "./Auth";
+import { type AuthHandler, getAuthHandler } from "./getAuthHandler";
 import { getDBO } from "./getDbHandler";
 import { getMethods } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
@@ -425,7 +425,7 @@ export function prostgles<DBSchema>(
       const isReconnect = state === "reconnected";
       state = "connected";
 
-      const auth = setupAuth({ authData: authConfig, socket, onReload });
+      const auth = getAuthHandler({ authData: authConfig, socket, onReload });
       const { methodsObj } = getMethods({ onDebug, methods, socket });
 
       const { dbo } = getDBO({
