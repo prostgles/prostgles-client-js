@@ -713,23 +713,16 @@ class SyncedTable {
     getDelta(o, n) {
         if ((0, prostgles_types_1.isEmpty)(o))
             return { ...n };
-        return Object.keys({ ...o, ...n })
+        return Object.keys({ ...n })
             .filter((k) => !this.id_fields.includes(k))
-            .reduce((a, k) => {
-            let delta = {};
-            if (k in n && n[k] !== o[k]) {
-                const deltaProp = { [k]: n[k] };
-                /** If object then compare with stringify */
-                if (n[k] && o[k] && typeof o[k] === "object") {
-                    if (!(0, prostgles_types_1.isEqual)(n[k], o[k])) {
-                        delta = deltaProp;
-                    }
-                }
-                else {
-                    delta = deltaProp;
-                }
+            .reduce((acc, k) => {
+            if (!(0, prostgles_types_1.isEqual)(n[k], o[k])) {
+                return {
+                    ...acc,
+                    [k]: n[k],
+                };
             }
-            return { ...a, ...delta };
+            return acc;
         }, {});
     }
     deleteAll() {

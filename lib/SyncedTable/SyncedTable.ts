@@ -788,23 +788,16 @@ export class SyncedTable {
    */
   getDelta(o: AnyObject, n: AnyObject): AnyObject {
     if (isEmpty(o)) return { ...n };
-    return Object.keys({ ...o, ...n })
+    return Object.keys({ ...n })
       .filter((k) => !this.id_fields.includes(k))
-      .reduce((a, k) => {
-        let delta = {};
-        if (k in n && n[k] !== o[k]) {
-          const deltaProp = { [k]: n[k] };
-
-          /** If object then compare with stringify */
-          if (n[k] && o[k] && typeof o[k] === "object") {
-            if (!isEqual(n[k], o[k])) {
-              delta = deltaProp;
-            }
-          } else {
-            delta = deltaProp;
-          }
+      .reduce((acc, k) => {
+        if (!isEqual(n[k], o[k])) {
+          return {
+            ...acc,
+            [k]: n[k],
+          };
         }
-        return { ...a, ...delta };
+        return acc;
       }, {});
   }
 
