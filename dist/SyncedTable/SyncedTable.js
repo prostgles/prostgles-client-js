@@ -713,17 +713,16 @@ class SyncedTable {
     getDelta(o, n) {
         if ((0, prostgles_types_1.isEmpty)(o))
             return { ...n };
-        return Object.keys({ ...n })
-            .filter((k) => !this.id_fields.includes(k))
-            .reduce((acc, k) => {
-            if (!(0, prostgles_types_1.isEqual)(n[k], o[k])) {
-                return {
-                    ...acc,
-                    [k]: n[k],
-                };
+        return Object.fromEntries(Object.entries({ ...n }).filter(([k]) => !this.id_fields.includes(k)))
+            .map(([k, v]) => {
+            if (!(0, prostgles_types_1.isEqual)(v, o[k])) {
+                const vClone = (0, prostgles_types_1.isObject)(v) ? { ...v }
+                    : Array.isArray(v) ? v.slice(0)
+                        : v;
+                return [k, vClone];
             }
-            return acc;
-        }, {});
+        })
+            .filter(prostgles_types_1.isDefined);
     }
     deleteAll() {
         this.getItems().map((d) => this.delete(d));

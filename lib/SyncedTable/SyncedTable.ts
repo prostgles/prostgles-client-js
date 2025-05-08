@@ -8,7 +8,7 @@ import type {
   TableHandler,
   EqualityFilter,
 } from "prostgles-types";
-import { getTextPatch, isEmpty, WAL, getKeys, isObject, isEqual } from "prostgles-types";
+import { getTextPatch, isEmpty, WAL, getKeys, isObject, isEqual, isDefined } from "prostgles-types";
 import type { DBHandlerClient } from "../prostgles";
 import { getMultiSyncSubscription } from "./getMultiSyncSubscription";
 
@@ -788,17 +788,17 @@ export class SyncedTable {
    */
   getDelta(o: AnyObject, n: AnyObject): AnyObject {
     if (isEmpty(o)) return { ...n };
-    return Object.keys({ ...n })
-      .filter((k) => !this.id_fields.includes(k))
-      .reduce((acc, k) => {
-        if (!isEqual(n[k], o[k])) {
-          return {
-            ...acc,
-            [k]: n[k],
-          };
+    return Object.fromEntries(Object.entries({ ...n }).filter(([k]) => !this.id_fields.includes(k)))
+      .map(([k, v]) => {
+        if (!isEqual(v, o[k])) {
+          const vClone =
+            isObject(v) ? { ...v }
+            : Array.isArray(v) ? v.slice(0)
+            : v;
+          return [k, vClone];
         }
-        return acc;
-      }, {});
+      })
+      .filter(isDefined);
   }
 
   deleteAll() {
