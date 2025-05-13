@@ -754,7 +754,7 @@ export class SyncedTable {
     return Boolean(a && b && !this.id_fields.sort().find((k) => a[k] !== b[k]));
   }
 
-  // TODO: offline-first deletes if allow_delete = true
+  // TODO:  offline-first deletes if allow_delete = true
   // setDeleted(idObj, fullArray){
   //     let deleted: object[] = [];
 
