@@ -274,7 +274,7 @@ const useSync = (syncFunc, basicFilter, syncOptions, hookOptions) => {
 };
 exports.useSync = useSync;
 const useFetch = (fetchFunc, args = [], hookOptions) => {
-    const { skip } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
+    const { skip, deps = [] } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
     const [{ data, error, isLoading }, setResult] = useState(defaultLoadingResult);
     const getIsMounted = (0, exports.useIsMounted)();
@@ -293,7 +293,7 @@ const useFetch = (fetchFunc, args = [], hookOptions) => {
                 return;
             setResult({ data: undefined, error, isLoading: false });
         }
-    }, args);
+    }, [...args, ...deps]);
     return { data, error, isLoading };
 };
 exports.useFetch = useFetch;

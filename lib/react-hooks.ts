@@ -329,7 +329,7 @@ export const useFetch = (
   args: any[] = [],
   hookOptions?: HookOptions,
 ) => {
-  const { skip } = hookOptions ?? {};
+  const { skip, deps = [] } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
   const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
@@ -344,7 +344,7 @@ export const useFetch = (
       if (!getIsMounted()) return;
       setResult({ data: undefined, error, isLoading: false });
     }
-  }, args);
+  }, [...args, ...deps]);
   return { data, error, isLoading };
 };
 

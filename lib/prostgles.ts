@@ -68,6 +68,10 @@ export type HookOptions = {
    * Used to prevent the hook from fetching data
    */
   skip?: boolean;
+  /**
+   * Used to trigger re-fetching
+   */
+  deps?: any[];
 };
 
 export type ViewHandlerClient<
