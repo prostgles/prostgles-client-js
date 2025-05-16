@@ -51,10 +51,9 @@ const useProstglesClient = ({ skip, socketOptions: socketPathOrOptions, ...initO
                 (_b = initOpts.onDebug) === null || _b === void 0 ? void 0 : _b.call(initOpts, { type: "onReady", data: onReadyArgs });
                 setOnReadyArgs({ ...onReadyArgs, isLoading: false });
             },
-        }, SyncedTable_1.SyncedTable).catch((err) => {
+        }, SyncedTable_1.SyncedTable).catch((error) => {
             if (!getIsMounted())
                 return;
-            const error = err instanceof Error ? err : new Error(err);
             setOnReadyArgs({ isLoading: false, error, hasError: true });
         });
         return () => {

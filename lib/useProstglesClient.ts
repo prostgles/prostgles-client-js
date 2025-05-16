@@ -38,7 +38,7 @@ export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "s
 type ProstglesClientState<PGC> =
   | { isLoading: true; hasError?: undefined; error?: undefined }
   | ({ isLoading: false; hasError?: false; error?: undefined } & PGC)
-  | { isLoading: false; hasError: true; error: Error | string };
+  | { isLoading: false; hasError: true; error: any };
 
 export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
   skip,
@@ -81,17 +81,16 @@ export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
             socket,
           };
           if (!getIsMounted()) {
-            initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs as any });
+            initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs });
             return;
           }
-          initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
+          initOpts.onDebug?.({ type: "onReady", data: onReadyArgs });
           setOnReadyArgs({ ...onReadyArgs, isLoading: false });
         },
       },
       SyncedTable,
-    ).catch((err) => {
+    ).catch((error) => {
       if (!getIsMounted()) return;
-      const error = err instanceof Error ? err : new Error(err);
       setOnReadyArgs({ isLoading: false, error, hasError: true });
     });
 

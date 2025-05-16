@@ -31,7 +31,7 @@ type ProstglesClientState<PGC> = {
 } & PGC) | {
     isLoading: false;
     hasError: true;
-    error: Error | string;
+    error: any;
 };
 export declare const useProstglesClient: <DBSchema_1, U extends UserLike = UserLike>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1, U>>;
 export {};
