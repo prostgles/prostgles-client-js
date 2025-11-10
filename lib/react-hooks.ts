@@ -11,7 +11,7 @@ const alertNoReactT = <T>(...args: any[]): any => {
 };
 export const getReact = (throwError?: boolean): ReactT => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-require-imports
     React ??= require("react");
   } catch (err) {}
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -30,6 +30,7 @@ const {
 type IO = typeof import("socket.io-client").default;
 export const getIO = (throwError = false) => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const io = require("socket.io-client") as IO;
     return io;
   } catch (err) {}

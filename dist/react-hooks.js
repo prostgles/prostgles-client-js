@@ -12,7 +12,7 @@ const alertNoReactT = (...args) => {
 };
 const getReact = (throwError) => {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-require-imports
         React !== null && React !== void 0 ? React : (React = require("react"));
     }
     catch (err) { }
@@ -28,6 +28,7 @@ const { useEffect = alertNoReact, useCallback = alertNoReact, useRef, useState =
  } = (_a = React) !== null && _a !== void 0 ? _a : {};
 const getIO = (throwError = false) => {
     try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const io = require("socket.io-client");
         return io;
     }
