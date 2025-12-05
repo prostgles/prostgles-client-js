@@ -18,11 +18,20 @@ export declare const useIsMounted: () => () => boolean;
 type PromiseFunc = () => Promise<any>;
 type NamedResult = Record<string, PromiseFunc>;
 export declare const usePromise: <F extends PromiseFunc | NamedResult>(f: F, deps?: any[]) => F extends NamedResult ? { [key in keyof F]: Awaited<ReturnType<F[key]>>; } : F extends PromiseFunc ? Awaited<ReturnType<F>> | undefined : undefined;
-export declare const useSubscribe: (subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>, expectsOne: boolean, filter: any, options: any, hookOptions?: HookOptions) => {
+type HookResult = {
     data: any;
+    error?: undefined;
+    isLoading: false;
+} | {
+    data?: undefined;
     error: any;
-    isLoading: boolean;
+    isLoading: false;
+} | {
+    data?: undefined;
+    error?: undefined;
+    isLoading: true;
 };
+export declare const useSubscribe: (subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>, expectsOne: boolean, filter: any, options: any, hookOptions?: HookOptions) => HookResult;
 export declare const useSync: (syncFunc: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"], basicFilter: Parameters<Required<TableHandlerClient>["sync"]>[0], syncOptions: Parameters<Required<TableHandlerClient>["sync"]>[1], hookOptions?: HookOptions) => {
     data: any;
     error: any;

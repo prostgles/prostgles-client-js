@@ -251,8 +251,7 @@ export const useSubscribe = (
 ) => {
   const { skip } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-  const [{ data, isLoading, error }, setHookResult] = useState<HookResult>(defaultLoadingResult);
-  const hookResult = { data, isLoading, error };
+  const [hookResult, setHookResult] = useState<HookResult>(defaultLoadingResult);
   const hookResultRef = useRef(hookResult);
   hookResultRef.current = hookResult;
 
@@ -288,7 +287,7 @@ export const useSubscribe = (
     }
   }, [subFunc, filter, options, skip]);
 
-  return { data, error, isLoading };
+  return hookResult;
 };
 
 export const useSync = (

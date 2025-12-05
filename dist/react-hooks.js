@@ -209,8 +209,7 @@ exports.usePromise = usePromise;
 const useSubscribe = (subFunc, expectsOne, filter, options, hookOptions) => {
     const { skip } = hookOptions !== null && hookOptions !== void 0 ? hookOptions : {};
     const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-    const [{ data, isLoading, error }, setHookResult] = useState(defaultLoadingResult);
-    const hookResult = { data, isLoading, error };
+    const [hookResult, setHookResult] = useState(defaultLoadingResult);
     const hookResultRef = useRef(hookResult);
     hookResultRef.current = hookResult;
     const getIsMounted = (0, exports.useIsMounted)();
@@ -243,7 +242,7 @@ const useSubscribe = (subFunc, expectsOne, filter, options, hookOptions) => {
             setError(error);
         }
     }, [subFunc, filter, options, skip]);
-    return { data, error, isLoading };
+    return hookResult;
 };
 exports.useSubscribe = useSubscribe;
 const useSync = (syncFunc, basicFilter, syncOptions, hookOptions) => {

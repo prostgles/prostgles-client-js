@@ -195,6 +195,7 @@ export const getDBO = ({
             : undefined;
           if (handlerName) {
             dboTable[handlerName] = (filter, options, hookOptions) =>
+              //@ts-ignore
               // eslint-disable-next-line react-hooks/rules-of-hooks
               useSubscribe(subFunc, command === SUBONE, filter, options, hookOptions);
           }
