@@ -104,9 +104,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
       activeEffect.current = { state: "resolving", effect };
       const cleanup = await effect()
         .then((run) => {
-          /**
-           * Wrapped in a promise to ensure cleanup is awaited
-           */
+          /* Wrapped in a promise to ensure cleanup is awaited */
           return async () => {
             await run?.();
           };
