@@ -293,7 +293,7 @@ const useFetch = (fetchFunc, args = [], hookOptions) => {
                 return;
             setResult({ data: undefined, error, isLoading: false });
         }
-    }, [...args, ...deps]);
+    }, [fetchFunc, ...args, ...deps]);
     return { data, error, isLoading };
 };
 exports.useFetch = useFetch;

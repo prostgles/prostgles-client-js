@@ -344,7 +344,7 @@ export const useFetch = (
       if (!getIsMounted()) return;
       setResult({ data: undefined, error, isLoading: false });
     }
-  }, [...args, ...deps]);
+  }, [fetchFunc, ...args, ...deps]);
   return { data, error, isLoading };
 };
 
