@@ -17,7 +17,7 @@ import { SyncedTable } from "./SyncedTable/SyncedTable";
 import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
 import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 
-type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
+export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   dbo: DBHandlerClient<DBSchema>;
   methods: MethodHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
@@ -35,10 +35,10 @@ export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "s
   socketOptions?: SocketPathOrOptions;
   skip?: boolean;
 };
-type ProstglesClientState<PGC> =
+export type ProstglesClientState<PGC> =
   | { isLoading: true; hasError?: undefined; error?: undefined }
   | ({ isLoading: false; hasError?: false; error?: undefined } & PGC)
-  | { isLoading: false; hasError: true; error: any };
+  | { isLoading: false; hasError: true; error: unknown };
 
 export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
   skip,

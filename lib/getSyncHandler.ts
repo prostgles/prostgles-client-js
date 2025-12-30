@@ -2,7 +2,7 @@ import { CHANNELS, isEqual, type ClientSyncHandles } from "prostgles-types";
 import { FunctionQueuer } from "./FunctionQueuer";
 import type { AnyFunction, CoreParams, InitOptions, SyncInfo } from "./prostgles";
 import { debug } from "./prostgles";
-import type { DbTableSync } from "./SyncedTable/SyncedTable";
+import type { DbTableSync, SyncedTable } from "./SyncedTable/SyncedTable";
 
 type SyncConfig = CoreParams & {
   onCall: AnyFunction;
@@ -16,14 +16,14 @@ type Syncs = {
 const preffix = CHANNELS._preffix;
 
 export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" | "onDebug">) => {
-  let syncedTables: Record<string, any> = {};
+  let syncedTables: Record<string, SyncedTable> = {};
   let syncs: Syncs = {};
 
   const destroySyncs = async () => {
     debug("destroySyncs", { syncedTables });
     syncs = {};
-    Object.values(syncedTables).map((s: any) => {
-      if (s && s.destroy) s.destroy();
+    Object.values(syncedTables).forEach((s) => {
+      s.destroy();
     });
     syncedTables = {};
   };

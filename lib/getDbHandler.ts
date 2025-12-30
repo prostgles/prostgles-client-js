@@ -4,6 +4,7 @@ import {
   type DBSchemaTable,
   getKeys,
   getObjectEntries,
+  includes,
   isObject,
   omitKeys,
   type TableSchemaForClient,
@@ -76,8 +77,7 @@ export const getDBO = ({
     const dboTable = dbo[tableName] as TableHandlerClient;
     allowedCommands
       .sort(
-        (a, b) =>
-          <never>subscribeCommands.includes(a as any) - <never>subscribeCommands.includes(b as any),
+        (a, b) => Number(includes(subscribeCommands, a)) - Number(includes(subscribeCommands, b)),
       )
       .forEach((command) => {
         if (command === "sync") {
@@ -104,17 +104,18 @@ export const getDBO = ({
               onError,
             ) => {
               const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(omitKeys(options, ["handlesOnData"]))}`;
-              if (!syncHandler.syncedTables[syncName]) {
-                syncHandler.syncedTables[syncName] = await syncedTable.create({
+              const syncedTableHandler =
+                syncHandler.syncedTables[syncName] ??
+                (await syncedTable.create({
                   ...options,
                   onDebug: onDebug as any,
                   name: tableName,
                   filter: basicFilter,
                   db: dbo,
                   onError,
-                });
-              }
-              return syncHandler.syncedTables[syncName];
+                }));
+              syncHandler.syncedTables[syncName] = syncedTableHandler;
+              return syncedTableHandler;
             };
             const sync: Sync<AnyObject> = async (
               basicFilter,

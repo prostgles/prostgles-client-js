@@ -23,6 +23,7 @@
     "declarationMap": true,
     "ignoreDeprecations": "5.0",
     "skipLibCheck": true,
+    "jsx": "react",
     "noUncheckedIndexedAccess": true
   },
   "include": ["lib"],

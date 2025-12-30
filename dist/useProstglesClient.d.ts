@@ -2,7 +2,7 @@ import { type DBSchema, type DBSchemaTable, type MethodHandler, type UserLike } 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import type { AuthHandler } from "./getAuthHandler";
 import { type DBHandlerClient, type InitOptions } from "./prostgles";
-type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
+export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
     dbo: DBHandlerClient<DBSchema>;
     methods: MethodHandler | undefined;
     tableSchema: DBSchemaTable[] | undefined;
@@ -20,7 +20,7 @@ export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "s
     socketOptions?: SocketPathOrOptions;
     skip?: boolean;
 };
-type ProstglesClientState<PGC> = {
+export type ProstglesClientState<PGC> = {
     isLoading: true;
     hasError?: undefined;
     error?: undefined;
@@ -31,7 +31,7 @@ type ProstglesClientState<PGC> = {
 } & PGC) | {
     isLoading: false;
     hasError: true;
-    error: any;
+    error: unknown;
 };
 export declare const useProstglesClient: <DBSchema_1, U extends UserLike = UserLike>({ skip, socketOptions: socketPathOrOptions, ...initOpts }?: UseProstglesClientProps) => ProstglesClientState<OnReadyParams<DBSchema_1, U>>;
 export {};
