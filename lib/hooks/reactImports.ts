@@ -26,3 +26,5 @@ const {
 } = React! ?? {};
 
 export { useEffect, useCallback, useRef, useState, React };
+
+export const __prglReactInstalled = () => Boolean((React as any) && useRef);

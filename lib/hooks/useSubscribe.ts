@@ -1,7 +1,9 @@
 import type { HookOptions } from "../prostgles";
-import { useAsyncEffectQueue, useIsMounted, type DataFetchHookResult } from "./react-hooks";
 import { isEqual, type SubscriptionHandler } from "prostgles-types";
 import { useRef, useState } from "./reactImports";
+import type { DataFetchHookResult } from "./useSync";
+import { useIsMounted } from "./useIsMounted";
+import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
 
 export const useSubscribe = (
   subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>,

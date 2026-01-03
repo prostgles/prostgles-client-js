@@ -16,8 +16,6 @@ import {
   type DBHandlerClient,
   type InitOptions,
   type TableHandlerClient,
-  useFetch,
-  useSync,
 } from "./prostgles";
 import {
   quickClone,
@@ -27,6 +25,8 @@ import {
   type SyncOptions,
 } from "./SyncedTable/SyncedTable";
 import { useSubscribe } from "./hooks/useSubscribe";
+import { useSync } from "./hooks/useSync";
+import { useFetch } from "./hooks/useFetch";
 
 type Args = {
   schema: TableSchemaForClient;

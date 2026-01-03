@@ -15,8 +15,20 @@ import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import type { AuthHandler } from "../getAuthHandler";
 import { SyncedTable } from "../SyncedTable/SyncedTable";
 import { prostgles, type DBHandlerClient, type InitOptions } from "../prostgles";
-import { getIO, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
 import { getReact } from "./reactImports";
+import { useIsMounted } from "./useIsMounted";
+import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
+
+type IO = typeof import("socket.io-client").default;
+export const getIO = (throwError = false) => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const io = require("socket.io-client") as IO;
+    return io;
+  } catch (err) {}
+  if (throwError) throw new Error("Must install socket.io-client");
+  return {} as IO;
+};
 
 export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   dbo: DBHandlerClient<DBSchema>;

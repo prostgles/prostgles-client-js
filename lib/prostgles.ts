@@ -49,7 +49,7 @@ export const debug: any = function (...args: any[]) {
   }
 };
 
-export * from "./hooks/react-hooks";
+export * from "./hooks/useEffectDeep";
 export * from "./hooks/useProstglesClient";
 export { MethodHandler, SQLResult, asName };
 
