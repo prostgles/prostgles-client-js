@@ -1,8 +1,16 @@
 import type { UserLike } from "prostgles-types";
 import { type InitOptions } from "./prostgles";
+import { SyncedTable } from "./SyncedTable/SyncedTable";
 declare function prostgles<DBSchema = void, U extends UserLike = UserLike>(params: InitOptions<DBSchema, U>): Promise<unknown>;
-declare namespace prostgles {
-    var SyncedTable: typeof import("./SyncedTable/SyncedTable").SyncedTable;
-}
-export = prostgles;
+export { SyncedTable };
+export * from "./hooks/useSync";
+export * from "./hooks/useSubscribe";
+export * from "./hooks/useProstglesClient";
+export * from "./hooks/usePromise";
+export * from "./hooks/useIsMounted";
+export * from "./hooks/useFetch";
+export * from "./hooks/useEffectDeep";
+export * from "./hooks/useEffectAsync";
+export * from "./hooks/useAsyncEffectQueue";
+export default prostgles;
 //# sourceMappingURL=prostgles-full.d.ts.map
