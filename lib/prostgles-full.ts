@@ -8,13 +8,13 @@ function prostgles<DBSchema = void, U extends UserLike = UserLike>(
   return pgls(params as any, SyncedTable);
 }
 
-export type {
-  DBHandlerClient,
-  OnReadyParams,
-  ProstglesClientState,
-  TableHandlerClient,
-  ViewHandlerClient,
-  InitOptions,
+export {
+  type DBHandlerClient,
+  type OnReadyParams,
+  type ProstglesClientState,
+  type TableHandlerClient,
+  type ViewHandlerClient,
+  type InitOptions,
   asName,
 } from "./prostgles";
 export { SyncedTable };

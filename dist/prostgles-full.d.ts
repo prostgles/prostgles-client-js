@@ -2,6 +2,7 @@ import type { UserLike } from "prostgles-types";
 import { type InitOptions } from "./prostgles";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 declare function prostgles<DBSchema = void, U extends UserLike = UserLike>(params: InitOptions<DBSchema, U>): Promise<unknown>;
+export { type DBHandlerClient, type OnReadyParams, type ProstglesClientState, type TableHandlerClient, type ViewHandlerClient, type InitOptions, asName, } from "./prostgles";
 export { SyncedTable };
 export * from "./hooks/useSync";
 export * from "./hooks/useSubscribe";
