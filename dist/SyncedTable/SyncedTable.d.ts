@@ -226,10 +226,7 @@ export declare class SyncedTable {
      * @param from_server : <boolean> If false then updates will be sent to server
      */
     upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<any>;
-    getItem<T = AnyObject>(idObj: Partial<T>): {
-        data?: T;
-        index: number;
-    };
+    getItem<T = AnyObject>(idObj: Partial<T>): T | undefined;
     /**
      *
      * @param item data to be inserted/updated/deleted. Must include id_fields
@@ -237,7 +234,7 @@ export declare class SyncedTable {
      * @param isFullData
      * @param deleteItem
      */
-    setItem(_item: AnyObject, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
+    setItem(_item: AnyObject, isFullData?: boolean, deleteItem?: boolean): void;
     /**
      * Sets the current data
      */

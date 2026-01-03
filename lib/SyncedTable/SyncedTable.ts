@@ -566,8 +566,8 @@ export class SyncedTable {
     if (!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
     const handles: SingleSyncHandles<T, Full> = {
-      $get: () => this.getItem<T>(idObj).data!,
-      $find: (idObject) => this.getItem<T>(idObject).data,
+      $get: () => this.getItem<T>(idObj),
+      $find: (idObject) => this.getItem<T>(idObject),
       $unsync: () => {
         return this.unsubscribe(onChange as SingleChangeListener | MultiChangeListener);
       },
@@ -817,7 +817,7 @@ export class SyncedTable {
 
   delete = async (item: AnyObject, from_server = false) => {
     const idObj = this.getIdObj(item);
-    this.setItem(idObj, undefined, true, true);
+    this.setItem(idObj, true, true);
     if (!from_server && this.tableHandler?.delete) {
       await this.tableHandler.delete(idObj);
     }
@@ -875,9 +875,7 @@ export class SyncedTable {
           this.checkItemCols({ ...item.delta, ...item.idObj });
         }
 
-        const oItm = this.getItem(idObj),
-          oldIdx = oItm.index,
-          oldItem = oItm.data;
+        const oldItem = this.getItem(idObj);
 
         /* Calc delta if missing or if from server */
         if ((from_server || isEmpty(delta)) && !isEmpty(oldItem)) {
@@ -910,7 +908,7 @@ export class SyncedTable {
           status = "inserted";
         }
 
-        this.setItem(newItem, oldIdx);
+        this.setItem(newItem);
 
         // if(!status) throw "changeInfo status missing"
         const changeInfo: ItemUpdated = { idObj, delta, oldItem, newItem, status, from_server };
@@ -975,17 +973,16 @@ export class SyncedTable {
   };
 
   /* Returns an item by idObj from the local store */
-  getItem<T = AnyObject>(idObj: Partial<T>): { data?: T; index: number } {
-    const index = -1;
+  getItem<T = AnyObject>(idObj: Partial<T>): T | undefined {
     let d;
     if (this.storageType === STORAGE_TYPES.localStorage) {
       const items = this.getItems();
       d = items.find((d) => this.matchesIdObj(d, idObj));
     } else {
-      d = { ...this.itemsMap.get(this.getIdStr(idObj)) };
+      d = this.itemsMap.get(this.getIdStr(idObj));
     }
 
-    return { data: quickClone(d), index };
+    return quickClone(d);
   }
 
   /**
@@ -995,16 +992,28 @@ export class SyncedTable {
    * @param isFullData
    * @param deleteItem
    */
-  setItem(_item: AnyObject, index: number | undefined, isFullData = false, deleteItem = false) {
+  setItem(_item: AnyObject, isFullData = false, deleteItem = false) {
     const item = quickClone(_item);
     if (this.storageType === STORAGE_TYPES.localStorage) {
       let items = this.getItems();
-      if (!deleteItem) {
-        if (index !== undefined && items[index])
-          items[index] = isFullData ? { ...item } : { ...items[index], ...item };
-        else items.push(item);
-      } else items = items.filter((d) => !this.matchesIdObj(d, item));
-      if (hasWnd) window.localStorage.setItem(this.name, JSON.stringify(items));
+      if (deleteItem) {
+        items = items.filter((d) => !this.matchesIdObj(d, item));
+      } else {
+        let exists = false as boolean;
+        items = items.map((d) => {
+          if (this.matchesIdObj(d, item)) {
+            exists = true;
+            return isFullData ? { ...item } : { ...d, ...item };
+          }
+          return d;
+        });
+        if (!exists) {
+          items.push(item);
+        }
+      }
+      if (hasWnd) {
+        window.localStorage.setItem(this.name, JSON.stringify(items));
+      }
     } else {
       const id = this.getIdStr(item);
       if (deleteItem) {

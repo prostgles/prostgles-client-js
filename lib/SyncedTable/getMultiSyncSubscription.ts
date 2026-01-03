@@ -48,12 +48,11 @@ export function getMultiSyncSubscription(this: SyncedTable, { onChange, handlesO
       const allDeltas = [..._allDeltas];
       if (handlesOnData) {
         allItems = allItems.map((item, i) => {
-          const getItem = (d: AnyObject, idObj: Partial<AnyObject>) => ({
+          const getItem = (d: AnyObject | undefined, idObj: Partial<AnyObject>) => ({
             ...d,
             ...this.makeSingleSyncHandles(idObj, onChange),
-            $get: () => getItem(this.getItem(idObj).data!, idObj),
-            $find: (idObject: Partial<AnyObject>) =>
-              getItem(this.getItem(idObject).data!, idObject),
+            $get: () => getItem(this.getItem(idObj), idObj),
+            $find: (idObject: Partial<AnyObject>) => getItem(this.getItem(idObject), idObject),
             $update: (newData: AnyObject, opts: $UpdateOpts): Promise<boolean> => {
               return this.upsert([{ idObj, delta: newData, opts }]).then((r) => true);
             },

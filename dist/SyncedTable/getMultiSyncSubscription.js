@@ -39,8 +39,8 @@ function getMultiSyncSubscription({ onChange, handlesOnData }) {
                     const getItem = (d, idObj) => ({
                         ...d,
                         ...this.makeSingleSyncHandles(idObj, onChange),
-                        $get: () => getItem(this.getItem(idObj).data, idObj),
-                        $find: (idObject) => getItem(this.getItem(idObject).data, idObject),
+                        $get: () => getItem(this.getItem(idObj), idObj),
+                        $find: (idObject) => getItem(this.getItem(idObject), idObject),
                         $update: (newData, opts) => {
                             return this.upsert([{ idObj, delta: newData, opts }]).then((r) => true);
                         },
