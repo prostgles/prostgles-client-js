@@ -92,9 +92,8 @@ export type SubscriptionMulti<T extends AnyObject = AnyObject> = {
     handles?: MultiSyncHandles<T>;
 };
 declare const STORAGE_TYPES: {
-    readonly array: "array";
+    readonly map: "map";
     readonly localStorage: "localStorage";
-    readonly object: "object";
 };
 export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: SyncDataItem<T>[], delta: DeepPartial<T>[]) => any;
 export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (item: SyncDataItem<T, Full>, delta?: DeepPartial<T>) => any;
@@ -165,9 +164,8 @@ export declare class SyncedTable {
     set singleSubscriptions(sSubs: SubscriptionSingle[]);
     get singleSubscriptions(): SubscriptionSingle[];
     dbSync?: DbTableSync;
-    items: AnyObject[];
     storageType?: StorageType;
-    itemsObj: AnyObject;
+    itemsMap: Map<string, AnyObject>;
     patchText: boolean;
     patchJSON: boolean;
     isSynced: boolean;
@@ -242,7 +240,6 @@ export declare class SyncedTable {
     setItem(_item: AnyObject, index: number | undefined, isFullData?: boolean, deleteItem?: boolean): void;
     /**
      * Sets the current data
-     * @param items data
      */
     setItems: (_items: AnyObject[]) => void;
     /**
@@ -251,16 +248,14 @@ export declare class SyncedTable {
     getItems: <T extends AnyObject = AnyObject>() => T[];
     /**
      * Sync data request
-     * @param param0: SyncBatchRequest
      */
     getBatch: ({ from_synced, to_synced, offset, limit }?: SyncBatchParams) => {
         [x: string]: any;
     }[];
 }
-/**
- * immutable args
- */
-export default function mergeDeep(_target: any, _source: any): any;
-export declare function quickClone<T>(obj: T): T;
+export declare const mergeDeep: (_target: Record<string, unknown> | undefined, _source: Record<string, unknown> | undefined) => {
+    [x: string]: unknown;
+};
+export declare const quickClone: <T>(obj: T) => T;
 export {};
 //# sourceMappingURL=SyncedTable.d.ts.map

@@ -35,8 +35,8 @@ const debug = function (...args) {
     }
 };
 exports.debug = debug;
-__exportStar(require("./react-hooks"), exports);
-__exportStar(require("./useProstglesClient"), exports);
+__exportStar(require("./hooks/react-hooks"), exports);
+__exportStar(require("./hooks/useProstglesClient"), exports);
 function prostgles(initOpts, syncedTable) {
     const { socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug } = initOpts;
     let schemaAge;

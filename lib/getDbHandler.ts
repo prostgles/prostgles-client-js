@@ -17,7 +17,6 @@ import {
   type InitOptions,
   type TableHandlerClient,
   useFetch,
-  useSubscribe,
   useSync,
 } from "./prostgles";
 import {
@@ -27,6 +26,7 @@ import {
   type SyncOne,
   type SyncOptions,
 } from "./SyncedTable/SyncedTable";
+import { useSubscribe } from "./hooks/useSubscribe";
 
 type Args = {
   schema: TableSchemaForClient;
@@ -196,9 +196,8 @@ export const getDBO = ({
             : undefined;
           if (handlerName) {
             dboTable[handlerName] = (filter, options, hookOptions) =>
-              //@ts-ignore
               // eslint-disable-next-line react-hooks/rules-of-hooks
-              useSubscribe(subFunc, command === SUBONE, filter, options, hookOptions);
+              useSubscribe(subFunc, command === SUBONE, filter, options, hookOptions) as any;
           }
 
           if (command === SUBONE || !subscribeCommands.includes(SUBONE)) {

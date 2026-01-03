@@ -6,8 +6,8 @@ import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTa
 import type { Socket } from "socket.io-client";
 export declare const isClientSide: boolean;
 export declare const debug: any;
-export * from "./react-hooks";
-export * from "./useProstglesClient";
+export * from "./hooks/react-hooks";
+export * from "./hooks/useProstglesClient";
 export { MethodHandler, SQLResult, asName };
 /**
  * Async result type:

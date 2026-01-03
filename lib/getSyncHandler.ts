@@ -15,7 +15,7 @@ type Syncs = {
 
 const preffix = CHANNELS._preffix;
 
-export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" | "onDebug">) => {
+export const getSyncHandler = ({ socket }: Pick<InitOptions, "socket">) => {
   let syncedTables: Record<string, SyncedTable> = {};
   let syncs: Syncs = {};
 

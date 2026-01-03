@@ -157,9 +157,9 @@ export type SubscriptionMulti<T extends AnyObject = AnyObject> = {
 };
 
 const STORAGE_TYPES = {
-  array: "array",
+  map: "map",
   localStorage: "localStorage",
-  object: "object",
+  // object: "object",
 } as const;
 
 export type MultiChangeListener<T extends AnyObject = AnyObject> = (
@@ -258,9 +258,8 @@ export class SyncedTable {
   }
 
   dbSync?: DbTableSync;
-  items: AnyObject[] = [];
   storageType?: StorageType;
-  itemsObj: AnyObject = {};
+  itemsMap = new Map<string, AnyObject>();
   patchText: boolean;
   patchJSON: boolean;
   isSynced = false;
@@ -276,7 +275,7 @@ export class SyncedTable {
     db,
     skipFirstTrigger = false,
     select = "*",
-    storageType = "object",
+    storageType = "map",
     patchText = false,
     patchJSON = false,
     onError,
@@ -295,9 +294,9 @@ export class SyncedTable {
       throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
     if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
       console.warn(
-        "Could not set storageType to localStorage: window object missing\nStorage changed to object",
+        "Could not set storageType to localStorage: window object missing\nStorage changed to map",
       );
-      storageType = "object";
+      storageType = "map";
     }
     this.storageType = storageType;
     this.patchText = patchText;
@@ -737,8 +736,7 @@ export class SyncedTable {
     this.unsync();
     this.multiSubscriptions = [];
     this.singleSubscriptions = [];
-    this.itemsObj = {};
-    this.items = [];
+    this.itemsMap.clear();
     this.onChange = undefined;
   };
 
@@ -983,11 +981,8 @@ export class SyncedTable {
     if (this.storageType === STORAGE_TYPES.localStorage) {
       const items = this.getItems();
       d = items.find((d) => this.matchesIdObj(d, idObj));
-    } else if (this.storageType === STORAGE_TYPES.array) {
-      d = this.items.find((d) => this.matchesIdObj(d, idObj));
     } else {
-      // this.itemsObj = this.itemsObj || {};
-      d = { ...this.itemsObj }[this.getIdStr(idObj)];
+      d = { ...this.itemsMap.get(this.getIdStr(idObj)) };
     }
 
     return { data: quickClone(d), index };
@@ -1010,28 +1005,19 @@ export class SyncedTable {
         else items.push(item);
       } else items = items.filter((d) => !this.matchesIdObj(d, item));
       if (hasWnd) window.localStorage.setItem(this.name, JSON.stringify(items));
-    } else if (this.storageType === STORAGE_TYPES.array) {
-      if (!deleteItem) {
-        if (index !== undefined && !this.items[index]) {
-          this.items.push(item);
-        } else if (index !== undefined) {
-          this.items[index] = isFullData ? { ...item } : { ...this.items[index], ...item };
-        }
-      } else this.items = this.items.filter((d) => !this.matchesIdObj(d, item));
     } else {
-      // this.itemsObj = this.itemsObj || {};
-      if (!deleteItem) {
-        const existing = this.itemsObj[this.getIdStr(item)] || {};
-        this.itemsObj[this.getIdStr(item)] = isFullData ? { ...item } : { ...existing, ...item };
+      const id = this.getIdStr(item);
+      if (deleteItem) {
+        this.itemsMap.delete(id);
       } else {
-        delete this.itemsObj[this.getIdStr(item)];
+        const existing = this.itemsMap.get(id) ?? {};
+        this.itemsMap.set(id, isFullData ? { ...item } : { ...existing, ...item });
       }
     }
   }
 
   /**
    * Sets the current data
-   * @param items data
    */
   setItems = (_items: AnyObject[]): void => {
     const items = quickClone(_items);
@@ -1039,15 +1025,12 @@ export class SyncedTable {
       if (!hasWnd)
         throw "Cannot access window object. Choose another storage method (array OR object)";
       window.localStorage.setItem(this.name, JSON.stringify(items));
-    } else if (this.storageType === STORAGE_TYPES.array) {
-      this.items = items;
-    } else {
-      this.itemsObj = items.reduce(
-        (a, v) => ({
-          ...a,
-          [this.getIdStr(v)]: { ...v },
+    } else if (this.storageType === STORAGE_TYPES.map) {
+      this.itemsMap = new Map(
+        items.map((item) => {
+          const id = this.getIdStr(item);
+          return [id, { ...item }];
         }),
-        {},
       );
     }
   };
@@ -1056,7 +1039,7 @@ export class SyncedTable {
    * Returns the current data ordered by synced_field ASC and matching the main filter;
    */
   getItems = <T extends AnyObject = AnyObject>(): T[] => {
-    let items: AnyObject[] = [];
+    let items: T[] = [];
 
     if (this.storageType === STORAGE_TYPES.localStorage) {
       if (!hasWnd)
@@ -1069,25 +1052,15 @@ export class SyncedTable {
           console.error(e);
         }
       }
-    } else if (this.storageType === STORAGE_TYPES.array) {
-      items = this.items.map((d) => ({ ...d }));
-    } else {
-      items = Object.values({ ...this.itemsObj });
+    } else if (this.storageType === STORAGE_TYPES.map) {
+      items = Array.from(this.itemsMap.values()).map((d) => ({ ...(d as T) }));
     }
 
     if (this.id_fields.length && this.synced_field) {
       const s_fields = [this.synced_field, ...this.id_fields.sort()];
       items = items
         .filter((d) => {
-          return (
-            !this.filter ||
-            !getKeys(this.filter).find(
-              (key) => d[key] !== this.filter![key],
-              // typeof d[key] === typeof this.filter[key] &&
-              // d[key].toString && this.filter[key].toString &&
-              // d[key].toString() !== this.filter[key].toString()
-            )
-          );
+          return !this.filter || !getKeys(this.filter).find((key) => d[key] !== this.filter![key]);
         })
         .sort((a, b) =>
           s_fields
@@ -1100,20 +1073,17 @@ export class SyncedTable {
             .find((v) => v),
         );
     } else throw "id_fields AND/OR synced_field missing";
-    // this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
-    return quickClone(items) as any;
+
+    return quickClone(items);
   };
 
   /**
    * Sync data request
-   * @param param0: SyncBatchRequest
    */
   getBatch = (
     { from_synced, to_synced, offset, limit }: SyncBatchParams = { offset: 0, limit: undefined },
   ) => {
     const items = this.getItems();
-    // params = params || {};
-    // const { from_synced, to_synced, offset = 0, limit = null } = params;
     let res = items
       .map((c) => ({ ...c }))
       .filter(
@@ -1128,30 +1098,29 @@ export class SyncedTable {
   };
 }
 
-/**
- * immutable args
- */
-export default function mergeDeep(_target, _source) {
+export const mergeDeep = (
+  _target: Record<string, unknown> | undefined,
+  _source: Record<string, unknown> | undefined,
+) => {
   const target = _target ? quickClone(_target) : _target;
   const source = _source ? quickClone(_source) : _source;
-  const output = Object.assign({}, target);
+  const output = isObject(target) ? { ...target } : {};
   if (isObject(target) && isObject(source)) {
-    Object.keys(source).forEach((key) => {
-      if (isObject(source[key])) {
-        if (!(key in target)) {
-          Object.assign(output, { [key]: source[key] });
-        } else {
-          output[key] = mergeDeep(target[key], source[key]);
-        }
+    Object.keys(source).forEach((sourceKey) => {
+      const sourceValue = source[sourceKey];
+      const targetValue = target[sourceKey];
+
+      if (isObject(sourceValue) && isObject(targetValue)) {
+        output[sourceKey] = mergeDeep(targetValue, sourceValue);
       } else {
-        Object.assign(output, { [key]: source[key] });
+        output[sourceKey] = quickClone(sourceValue);
       }
     });
   }
   return output;
-}
+};
 
-export function quickClone<T>(obj: T): T {
+export const quickClone = <T>(obj: T): T => {
   if (hasWnd && "structuredClone" in window && typeof window.structuredClone === "function") {
     return window.structuredClone(obj);
   }
@@ -1166,7 +1135,7 @@ export function quickClone<T>(obj: T): T {
   }
 
   return obj;
-}
+};
 
 /**
  * Type tests

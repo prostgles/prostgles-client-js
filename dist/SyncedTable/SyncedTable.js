@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.quickClone = exports.SyncedTable = exports.debug = void 0;
+exports.quickClone = exports.mergeDeep = exports.SyncedTable = exports.debug = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const getMultiSyncSubscription_1 = require("./getMultiSyncSubscription");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -12,9 +12,9 @@ const debug = function (...args) {
 };
 exports.debug = debug;
 const STORAGE_TYPES = {
-    array: "array",
+    map: "map",
     localStorage: "localStorage",
-    object: "object",
+    // object: "object",
 };
 class SyncedTable {
     /**
@@ -34,15 +34,14 @@ class SyncedTable {
     get singleSubscriptions() {
         return this._singleSubscriptions;
     }
-    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger = false, select = "*", storageType = "object", patchText = false, patchJSON = false, onError, }) {
+    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger = false, select = "*", storageType = "map", patchText = false, patchJSON = false, onError, }) {
         this.throttle = 100;
         this.batch_size = 50;
         this.skipFirstTrigger = false;
         this.columns = [];
         this._multiSubscriptions = [];
         this._singleSubscriptions = [];
-        this.items = [];
-        this.itemsObj = {};
+        this.itemsMap = new Map();
         this.isSynced = false;
         /**
          * Will update text/json fields through patching method
@@ -168,8 +167,7 @@ class SyncedTable {
             this.unsync();
             this.multiSubscriptions = [];
             this.singleSubscriptions = [];
-            this.itemsObj = {};
-            this.items = [];
+            this.itemsMap.clear();
             this.onChange = undefined;
         };
         this.delete = async (item, from_server = false) => {
@@ -243,7 +241,7 @@ class SyncedTable {
                      * Merge deep
                      */
                     if ((_a = item.opts) === null || _a === void 0 ? void 0 : _a.deepMerge) {
-                        newItem = mergeDeep({ ...oldItem, ...idObj }, { ...delta });
+                        newItem = (0, exports.mergeDeep)({ ...oldItem, ...idObj }, { ...delta });
                     }
                 }
                 /* Update existing -> Expecting delta */
@@ -311,23 +309,19 @@ class SyncedTable {
         };
         /**
          * Sets the current data
-         * @param items data
          */
         this.setItems = (_items) => {
-            const items = quickClone(_items);
+            const items = (0, exports.quickClone)(_items);
             if (this.storageType === STORAGE_TYPES.localStorage) {
                 if (!hasWnd)
                     throw "Cannot access window object. Choose another storage method (array OR object)";
                 window.localStorage.setItem(this.name, JSON.stringify(items));
             }
-            else if (this.storageType === STORAGE_TYPES.array) {
-                this.items = items;
-            }
-            else {
-                this.itemsObj = items.reduce((a, v) => ({
-                    ...a,
-                    [this.getIdStr(v)]: { ...v },
-                }), {});
+            else if (this.storageType === STORAGE_TYPES.map) {
+                this.itemsMap = new Map(items.map((item) => {
+                    const id = this.getIdStr(item);
+                    return [id, { ...item }];
+                }));
             }
         };
         /**
@@ -348,18 +342,14 @@ class SyncedTable {
                     }
                 }
             }
-            else if (this.storageType === STORAGE_TYPES.array) {
-                items = this.items.map((d) => ({ ...d }));
-            }
-            else {
-                items = Object.values({ ...this.itemsObj });
+            else if (this.storageType === STORAGE_TYPES.map) {
+                items = Array.from(this.itemsMap.values()).map((d) => ({ ...d }));
             }
             if (this.id_fields.length && this.synced_field) {
                 const s_fields = [this.synced_field, ...this.id_fields.sort()];
                 items = items
                     .filter((d) => {
-                    return (!this.filter ||
-                        !(0, prostgles_types_1.getKeys)(this.filter).find((key) => d[key] !== this.filter[key]));
+                    return !this.filter || !(0, prostgles_types_1.getKeys)(this.filter).find((key) => d[key] !== this.filter[key]);
                 })
                     .sort((a, b) => s_fields
                     .map((key) => (a[key] < b[key] ? -1
@@ -369,17 +359,13 @@ class SyncedTable {
             }
             else
                 throw "id_fields AND/OR synced_field missing";
-            // this.items = items.filter(d => isEmpty(this.filter) || this.matchesFilter(d));
-            return quickClone(items);
+            return (0, exports.quickClone)(items);
         };
         /**
          * Sync data request
-         * @param param0: SyncBatchRequest
          */
         this.getBatch = ({ from_synced, to_synced, offset, limit } = { offset: 0, limit: undefined }) => {
             const items = this.getItems();
-            // params = params || {};
-            // const { from_synced, to_synced, offset = 0, limit = null } = params;
             let res = items
                 .map((c) => ({ ...c }))
                 .filter((c) => (!Number.isFinite(from_synced) || +c[this.synced_field] >= +from_synced) &&
@@ -399,8 +385,8 @@ class SyncedTable {
         if (!STORAGE_TYPES[storageType])
             throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
         if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
-            console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to object");
-            storageType = "object";
+            console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to map");
+            storageType = "map";
         }
         this.storageType = storageType;
         this.patchText = patchText;
@@ -743,14 +729,10 @@ class SyncedTable {
             const items = this.getItems();
             d = items.find((d) => this.matchesIdObj(d, idObj));
         }
-        else if (this.storageType === STORAGE_TYPES.array) {
-            d = this.items.find((d) => this.matchesIdObj(d, idObj));
-        }
         else {
-            // this.itemsObj = this.itemsObj || {};
-            d = { ...this.itemsObj }[this.getIdStr(idObj)];
+            d = { ...this.itemsMap.get(this.getIdStr(idObj)) };
         }
-        return { data: quickClone(d), index };
+        return { data: (0, exports.quickClone)(d), index };
     }
     /**
      *
@@ -760,7 +742,8 @@ class SyncedTable {
      * @param deleteItem
      */
     setItem(_item, index, isFullData = false, deleteItem = false) {
-        const item = quickClone(_item);
+        var _a;
+        const item = (0, exports.quickClone)(_item);
         if (this.storageType === STORAGE_TYPES.localStorage) {
             let items = this.getItems();
             if (!deleteItem) {
@@ -774,72 +757,54 @@ class SyncedTable {
             if (hasWnd)
                 window.localStorage.setItem(this.name, JSON.stringify(items));
         }
-        else if (this.storageType === STORAGE_TYPES.array) {
-            if (!deleteItem) {
-                if (index !== undefined && !this.items[index]) {
-                    this.items.push(item);
-                }
-                else if (index !== undefined) {
-                    this.items[index] = isFullData ? { ...item } : { ...this.items[index], ...item };
-                }
-            }
-            else
-                this.items = this.items.filter((d) => !this.matchesIdObj(d, item));
-        }
         else {
-            // this.itemsObj = this.itemsObj || {};
-            if (!deleteItem) {
-                const existing = this.itemsObj[this.getIdStr(item)] || {};
-                this.itemsObj[this.getIdStr(item)] = isFullData ? { ...item } : { ...existing, ...item };
+            const id = this.getIdStr(item);
+            if (deleteItem) {
+                this.itemsMap.delete(id);
             }
             else {
-                delete this.itemsObj[this.getIdStr(item)];
+                const existing = (_a = this.itemsMap.get(id)) !== null && _a !== void 0 ? _a : {};
+                this.itemsMap.set(id, isFullData ? { ...item } : { ...existing, ...item });
             }
         }
     }
 }
 exports.SyncedTable = SyncedTable;
-/**
- * immutable args
- */
-function mergeDeep(_target, _source) {
-    const target = _target ? quickClone(_target) : _target;
-    const source = _source ? quickClone(_source) : _source;
-    const output = Object.assign({}, target);
+const mergeDeep = (_target, _source) => {
+    const target = _target ? (0, exports.quickClone)(_target) : _target;
+    const source = _source ? (0, exports.quickClone)(_source) : _source;
+    const output = (0, prostgles_types_1.isObject)(target) ? { ...target } : {};
     if ((0, prostgles_types_1.isObject)(target) && (0, prostgles_types_1.isObject)(source)) {
-        Object.keys(source).forEach((key) => {
-            if ((0, prostgles_types_1.isObject)(source[key])) {
-                if (!(key in target)) {
-                    Object.assign(output, { [key]: source[key] });
-                }
-                else {
-                    output[key] = mergeDeep(target[key], source[key]);
-                }
+        Object.keys(source).forEach((sourceKey) => {
+            const sourceValue = source[sourceKey];
+            const targetValue = target[sourceKey];
+            if ((0, prostgles_types_1.isObject)(sourceValue) && (0, prostgles_types_1.isObject)(targetValue)) {
+                output[sourceKey] = (0, exports.mergeDeep)(targetValue, sourceValue);
             }
             else {
-                Object.assign(output, { [key]: source[key] });
+                output[sourceKey] = (0, exports.quickClone)(sourceValue);
             }
         });
     }
     return output;
-}
-exports.default = mergeDeep;
-function quickClone(obj) {
+};
+exports.mergeDeep = mergeDeep;
+const quickClone = (obj) => {
     if (hasWnd && "structuredClone" in window && typeof window.structuredClone === "function") {
         return window.structuredClone(obj);
     }
     if (Array.isArray(obj)) {
-        return obj.slice(0).map((v) => quickClone(v));
+        return obj.slice(0).map((v) => (0, exports.quickClone)(v));
     }
     else if ((0, prostgles_types_1.isObject)(obj)) {
         const result = {};
         (0, prostgles_types_1.getKeys)(obj).map((k) => {
-            result[k] = quickClone(obj[k]);
+            result[k] = (0, exports.quickClone)(obj[k]);
         });
         return result;
     }
     return obj;
-}
+};
 exports.quickClone = quickClone;
 /**
  * Type tests

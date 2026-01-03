@@ -4,7 +4,7 @@ import {
   useEffectAsync,
   useIsMounted,
   __prglReactInstalled,
-} from "prostgles-client/dist/react-hooks";
+} from "prostgles-client/dist/hooks/react-hooks";
 import { test } from "node:test";
 
 test("exports work", () => {

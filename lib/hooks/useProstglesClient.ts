@@ -12,10 +12,11 @@ import {
 } from "prostgles-types";
 
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import type { AuthHandler } from "./getAuthHandler";
-import { SyncedTable } from "./SyncedTable/SyncedTable";
-import { prostgles, type DBHandlerClient, type InitOptions } from "./prostgles";
-import { getIO, getReact, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
+import type { AuthHandler } from "../getAuthHandler";
+import { SyncedTable } from "../SyncedTable/SyncedTable";
+import { prostgles, type DBHandlerClient, type InitOptions } from "../prostgles";
+import { getIO, useAsyncEffectQueue, useIsMounted } from "./react-hooks";
+import { getReact } from "./reactImports";
 
 export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   dbo: DBHandlerClient<DBSchema>;
@@ -96,6 +97,9 @@ export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
 
     return () => {
       socket.disconnect();
+      socket.emit = () => {
+        throw "Socket disconnected";
+      };
     };
   }, [initOpts, socketPathOrOptions, skip]);
 

@@ -1,31 +1,6 @@
-import { type SubscriptionHandler, getKeys, isEqual, isObject } from "prostgles-types";
-import type { HookOptions, TableHandlerClient } from "./prostgles";
-type ReactT = typeof import("react");
-let React: ReactT;
-
-const alertNoReact = (...args: any[]): any => {
-  throw "Must install react";
-};
-const alertNoReactT = <T>(...args: any[]): any => {
-  throw "Must install react";
-};
-export const getReact = (throwError?: boolean): ReactT => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-require-imports
-    React ??= require("react");
-  } catch (err) {}
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (throwError && !React) throw new Error("Must install react");
-  return React as any;
-};
-getReact();
-const {
-  useEffect = alertNoReact as (typeof React)["useEffect"],
-  useCallback = alertNoReact as (typeof React)["useCallback"],
-  useRef,
-  useState = alertNoReactT as (typeof React)["useState"],
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-} = React! ?? {};
+import { getKeys, isEqual, isObject } from "prostgles-types";
+import type { HookOptions, TableHandlerClient } from "../prostgles";
+import { useRef, React, useEffect, type ReactT, useCallback, useState } from "./reactImports";
 
 type IO = typeof import("socket.io-client").default;
 export const getIO = (throwError = false) => {
@@ -38,8 +13,8 @@ export const getIO = (throwError = false) => {
   return {} as IO;
 };
 
-export const useDeepCompareMemoize = (value: any) => {
-  const ref = useRef();
+export const useDeepCompareMemoize = (value: unknown) => {
+  const ref = useRef<unknown>();
 
   if (!isEqual(value, ref.current)) {
     ref.current = value;
@@ -57,15 +32,6 @@ export const useEffectDeep = ((callback, deps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(callback, deps?.map(useDeepCompareMemoize));
 }) as ReactT["useEffect"];
-
-type AsyncCleanup = void | (() => void | Promise<void>);
-type AsyncActiveEffect = {
-  effect: () => Promise<AsyncCleanup>;
-  deps: any[];
-  resolvedCleanup?: Promise<{
-    run: AsyncCleanup;
-  }>;
-};
 
 type EffectData = { effect: EffectFunc; deps: any[] };
 
@@ -186,7 +152,7 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(
     }
     return false;
   };
-  const isNamedObj = (val: any): val is NamedResult => {
+  const isNamedObj = (val: unknown): val is NamedResult => {
     try {
       return isObject(val) && !isPromiseFunc(val);
     } catch (e) {
@@ -235,58 +201,10 @@ export const usePromise = <F extends PromiseFunc | NamedResult>(
   return result as any;
 };
 
-type HookResult =
+export type DataFetchHookResult =
   | { data: any; error?: undefined; isLoading: false }
   | { data?: undefined; error: any; isLoading: false }
   | { data?: undefined; error?: undefined; isLoading: true };
-
-export const useSubscribe = (
-  subFunc: (filter: any, options: any, onData: any, onError: any) => Promise<SubscriptionHandler>,
-  expectsOne: boolean,
-  filter: any,
-  options: any,
-  hookOptions?: HookOptions,
-) => {
-  const { skip } = hookOptions ?? {};
-  const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-  const [hookResult, setHookResult] = useState<HookResult>(defaultLoadingResult);
-  const hookResultRef = useRef(hookResult);
-  hookResultRef.current = hookResult;
-
-  const getIsMounted = useIsMounted();
-  useAsyncEffectQueue(async () => {
-    if (!getIsMounted() || skip) return;
-    if (!isEqual(hookResultRef.current, defaultLoadingResult)) {
-      setHookResult(defaultLoadingResult);
-    }
-    const setError = (newError) => {
-      if (!getIsMounted()) return;
-      setHookResult({ data: undefined, error: newError, isLoading: false });
-    };
-    try {
-      const sub = await subFunc(
-        filter,
-        options,
-        (newData) => {
-          if (!getIsMounted()) return;
-          setHookResult({
-            data: expectsOne ? newData[0] : newData,
-            error: undefined,
-            isLoading: false,
-          });
-        },
-        setError,
-      );
-      return () => {
-        sub.unsubscribe();
-      };
-    } catch (error) {
-      setError(error);
-    }
-  }, [subFunc, filter, options, skip]);
-
-  return hookResult;
-};
 
 export const useSync = (
   syncFunc: Required<TableHandlerClient>["sync"] | Required<TableHandlerClient>["syncOne"],
@@ -296,7 +214,8 @@ export const useSync = (
 ) => {
   const { skip } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-  const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
+  const [{ data, error, isLoading }, setResult] =
+    useState<DataFetchHookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
     if (!getIsMounted() || skip) return;
@@ -329,7 +248,8 @@ export const useFetch = (
 ) => {
   const { skip, deps = [] } = hookOptions ?? {};
   const defaultLoadingResult = { data: undefined, error: undefined, isLoading: true };
-  const [{ data, error, isLoading }, setResult] = useState<HookResult>(defaultLoadingResult);
+  const [{ data, error, isLoading }, setResult] =
+    useState<DataFetchHookResult>(defaultLoadingResult);
   const getIsMounted = useIsMounted();
   useAsyncEffectQueue(async () => {
     if (!getIsMounted() || skip) return;
