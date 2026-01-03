@@ -8,6 +8,15 @@ function prostgles<DBSchema = void, U extends UserLike = UserLike>(
   return pgls(params as any, SyncedTable);
 }
 
+export type {
+  DBHandlerClient,
+  OnReadyParams,
+  ProstglesClientState,
+  TableHandlerClient,
+  ViewHandlerClient,
+  InitOptions,
+  asName,
+} from "./prostgles";
 export { SyncedTable };
 export * from "./hooks/useSync";
 export * from "./hooks/useSubscribe";
@@ -18,4 +27,5 @@ export * from "./hooks/useFetch";
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useEffectAsync";
 export * from "./hooks/useAsyncEffectQueue";
+
 export default prostgles;
