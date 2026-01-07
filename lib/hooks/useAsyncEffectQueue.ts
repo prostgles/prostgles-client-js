@@ -1,20 +1,21 @@
 import { useEffectDeep } from "./useEffectDeep";
 import { useRef } from "./reactImports";
 
-type EffectData = { effect: EffectFunc; deps: any[] };
+type EffectData = { id: number; effect: EffectFunc; deps: any[] };
 
 type EffectFunc = () => Promise<void | (() => void)>;
 
 type ActiveEffect =
-  | { state: "resolving"; effect: EffectFunc }
-  | { state: "resolved"; effect: EffectFunc; cleanup: () => Promise<void> }
-  | { state: "cleaning"; effect: EffectFunc };
+  | { id: number; state: "resolving"; effect: EffectFunc }
+  | { id: number; state: "resolved"; effect: EffectFunc; cleanup: () => Promise<void> }
+  | { id: number; state: "cleaning"; effect: EffectFunc };
 
 /**
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up
  */
 export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
+  const idRef = useRef(0);
   const newEffect = useRef<EffectData>();
   const activeEffect = useRef<ActiveEffect>();
 
@@ -23,8 +24,8 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
      * Await and cleanup previous effect
      * */
     if (activeEffect.current?.state === "resolved") {
-      const { cleanup, effect } = activeEffect.current;
-      activeEffect.current = { state: "cleaning", effect };
+      const { cleanup, effect, id } = activeEffect.current;
+      activeEffect.current = { id, state: "cleaning", effect };
       await cleanup().catch(console.error);
       activeEffect.current = undefined;
     }
@@ -34,8 +35,8 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
      */
     if (newEffect.current && !activeEffect.current) {
       const currentEffect = newEffect.current;
-      const { effect } = currentEffect;
-      activeEffect.current = { state: "resolving", effect };
+      const { effect, id } = currentEffect;
+      activeEffect.current = { id, state: "resolving", effect };
       const cleanup = await effect()
         .then((run) => {
           /* Wrapped in a promise to ensure cleanup is awaited */
@@ -47,7 +48,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
           console.error(e);
           return async () => {};
         });
-      activeEffect.current = { state: "resolved", effect, cleanup };
+      activeEffect.current = { id, state: "resolved", effect, cleanup };
       if (currentEffect !== newEffect.current) {
         onRender();
       }
@@ -55,10 +56,10 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
   };
 
   useEffectDeep(() => {
-    newEffect.current = { effect, deps };
+    newEffect.current = { effect, deps, id: ++idRef.current };
     onRender();
     return () => {
-      newEffect.current = undefined;
+      // newEffect.current = undefined;
       onRender();
     };
   }, deps);
