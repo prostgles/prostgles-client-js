@@ -13,8 +13,9 @@ export type SyncOneOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>>
 type SyncDebugEvent = {
     type: "sync";
     tableName: string;
-    command: keyof ClientSyncHandles;
+    command: keyof ClientSyncHandles | "notifySubscribers";
     data: AnyObject;
+    info?: string;
 };
 type OnErrorHandler = (error: any) => void;
 /**

@@ -103,8 +103,14 @@ class SyncedTable {
          * @param newData -> updates. Must include id_fields + updates
          */
         this._notifySubscribers = (changes = []) => {
-            if (!this.isSynced)
+            var _a, _b;
+            if (!this.isSynced) {
+                (_a = this.onDebug) === null || _a === void 0 ? void 0 : _a.call(this, { command: "notifySubscribers", data: [], info: "not synced yet" });
                 return;
+            }
+            else {
+                (_b = this.onDebug) === null || _b === void 0 ? void 0 : _b.call(this, { command: "notifySubscribers", data: changes });
+            }
             /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
             const items = [], deltas = [], ids = [];
             changes.map(({ idObj, newItem, delta }) => {

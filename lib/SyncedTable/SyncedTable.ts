@@ -33,8 +33,9 @@ export type SyncOneOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>>
 type SyncDebugEvent = {
   type: "sync";
   tableName: string;
-  command: keyof ClientSyncHandles;
+  command: keyof ClientSyncHandles | "notifySubscribers";
   data: AnyObject;
+  info?: string;
 };
 
 type OnErrorHandler = (error: any) => void;
@@ -645,7 +646,12 @@ export class SyncedTable {
    * @param newData -> updates. Must include id_fields + updates
    */
   _notifySubscribers = (changes: Pick<ItemUpdated, "idObj" | "newItem" | "delta">[] = []) => {
-    if (!this.isSynced) return;
+    if (!this.isSynced) {
+      this.onDebug?.({ command: "notifySubscribers", data: [], info: "not synced yet" });
+      return;
+    } else {
+      this.onDebug?.({ command: "notifySubscribers", data: changes });
+    }
 
     /* Deleted items (changes = []) do not trigger singleSubscriptions notify because it might break things */
     const items: AnyObject[] = [],
