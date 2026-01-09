@@ -16,6 +16,7 @@ type ActiveEffect =
  */
 export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
   const idRef = useRef(0);
+  const isMounted = useRef(true);
   const newEffect = useRef<EffectData>();
   const activeEffect = useRef<ActiveEffect>();
 
@@ -49,16 +50,18 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
           return async () => {};
         });
       activeEffect.current = { id, state: "resolved", effect, cleanup };
-      if (currentEffect !== newEffect.current) {
+      if (!isMounted.current || currentEffect !== newEffect.current) {
         onRender();
       }
     }
   };
 
   useEffectDeep(() => {
+    isMounted.current = true;
     newEffect.current = { effect, deps, id: ++idRef.current };
     onRender();
     return () => {
+      isMounted.current = false;
       onRender();
     };
   }, deps);
