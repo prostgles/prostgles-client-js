@@ -59,7 +59,6 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
     newEffect.current = { effect, deps, id: ++idRef.current };
     onRender();
     return () => {
-      // newEffect.current = undefined;
       onRender();
     };
   }, deps);

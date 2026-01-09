@@ -1,11 +1,11 @@
 import type {
-  AnyObject,
   AuthGuardLocation,
   AuthGuardLocationResponse,
+  AuthRequest,
+  AuthResponse,
   AuthSocketSchema,
   IdentityProvider,
-  AuthResponse,
-  AuthRequest,
+  LocalLoginMode,
   UserLike,
 } from "prostgles-types";
 import { CHANNELS, isEmpty } from "prostgles-types";
@@ -42,10 +42,14 @@ export type PasswordRegister = (
 ) => Promise<PasswordRegisterResponse>;
 export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
 
-type LoginSignupOptions = Pick<AuthSocketSchema, "loginType" | "providers" | "preferredLogin"> & {
+type LoginSignupOptions = Pick<AuthSocketSchema, "providers" | "preferredLogin"> & {
   loginWithProvider: undefined | WithProviderLogin;
   login: undefined | PasswordLogin;
+  loginType: LocalLoginMode | undefined;
   signupWithEmailAndPassword: undefined | PasswordRegister;
+  confirmEmail:
+    | undefined
+    | ((data: AuthRequest.ConfirmEmailData) => Promise<PasswordRegisterResponse>);
 };
 
 type AuthStateLoggedOut = LoginSignupOptions & {
@@ -89,16 +93,17 @@ export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args)
   }
 
   const loginSignupOptions: LoginSignupOptions = {
-    loginType: authConfig?.loginType,
+    loginType: authConfig?.login?.mode,
     login: undefined,
     preferredLogin: authConfig?.preferredLogin,
     loginWithProvider: undefined,
     signupWithEmailAndPassword: undefined,
+    confirmEmail: undefined,
     providers: authConfig?.providers,
   };
 
   if (authConfig) {
-    const { providers, signupWithEmailAndPassword, loginType } = authConfig;
+    const { providers, signupWithEmailAndPassword, login } = authConfig;
     loginSignupOptions.loginWithProvider =
       isEmpty(providers) ? undefined : (
         providers &&
@@ -111,15 +116,21 @@ export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args)
       );
 
     loginSignupOptions.login =
-      loginType &&
+      login &&
       (async (params) => {
-        return authRequest(addSearchInCaseItHasReturnUrl("/login"), params);
+        return authRequest(addSearchInCaseItHasReturnUrl(login.loginRoute), params);
       });
 
     loginSignupOptions.signupWithEmailAndPassword =
       signupWithEmailAndPassword &&
       ((params) => {
         return authRequest(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+      });
+    loginSignupOptions.confirmEmail =
+      signupWithEmailAndPassword &&
+      ((data) => {
+        // return authRequest(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+        return authRequest(signupWithEmailAndPassword.emailConfirmationRoute, data);
       });
   }
 
@@ -135,7 +146,9 @@ export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args)
     isLoggedin: true,
     user: authConfig.user,
     logout: async () => {
-      return authRequest(addSearchInCaseItHasReturnUrl("/logout"), {}, "POST");
+      const { logoutRoute } = authConfig.login ?? {};
+      if (!logoutRoute) throw new Error("Unexpected");
+      return authRequest(addSearchInCaseItHasReturnUrl(logoutRoute), {}, "POST");
     },
     ...loginSignupOptions,
   } satisfies AuthStateLoggedIn;

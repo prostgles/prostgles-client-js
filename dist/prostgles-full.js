@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SyncedTable = exports.asName = void 0;
+exports.ERR_CODE_MESSAGES = exports.useAuthState = exports.SyncedTable = exports.asName = void 0;
 const prostgles_1 = require("./prostgles");
 const SyncedTable_1 = require("./SyncedTable/SyncedTable");
 Object.defineProperty(exports, "SyncedTable", { enumerable: true, get: function () { return SyncedTable_1.SyncedTable; } });
@@ -32,4 +32,7 @@ __exportStar(require("./hooks/useFetch"), exports);
 __exportStar(require("./hooks/useEffectDeep"), exports);
 __exportStar(require("./hooks/useEffectAsync"), exports);
 __exportStar(require("./hooks/useAsyncEffectQueue"), exports);
+var useAuthState_1 = require("./auth/useAuthState");
+Object.defineProperty(exports, "useAuthState", { enumerable: true, get: function () { return useAuthState_1.useAuthState; } });
+Object.defineProperty(exports, "ERR_CODE_MESSAGES", { enumerable: true, get: function () { return useAuthState_1.ERR_CODE_MESSAGES; } });
 exports.default = prostgles;

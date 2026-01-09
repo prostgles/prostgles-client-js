@@ -27,5 +27,6 @@ export * from "./hooks/useFetch";
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useEffectAsync";
 export * from "./hooks/useAsyncEffectQueue";
+export { useAuthState, ERR_CODE_MESSAGES } from "./auth/useAuthState";
 
 export default prostgles;
