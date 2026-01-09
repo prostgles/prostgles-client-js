@@ -8,7 +8,8 @@ type EffectFunc = () => Promise<void | (() => void)>;
 type ActiveEffect =
   | { id: number; state: "resolving"; effect: EffectFunc }
   | { id: number; state: "resolved"; effect: EffectFunc; cleanup: () => Promise<void> }
-  | { id: number; state: "cleaning"; effect: EffectFunc };
+  | { id: number; state: "cleaning"; effect: EffectFunc }
+  | { id: number; state: "cleaned"; effect: EffectFunc };
 
 /**
  * Debounce with execute first
@@ -28,13 +29,13 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
       const { cleanup, effect, id } = activeEffect.current;
       activeEffect.current = { id, state: "cleaning", effect };
       await cleanup().catch(console.error);
-      activeEffect.current = undefined;
+      activeEffect.current = { id, state: "cleaned", effect };
     }
 
     /**
      * Start new effect
      */
-    if (newEffect.current && !activeEffect.current) {
+    if (newEffect.current && activeEffect.current?.effect !== newEffect.current.effect) {
       const currentEffect = newEffect.current;
       const { effect, id } = currentEffect;
       activeEffect.current = { id, state: "resolving", effect };
