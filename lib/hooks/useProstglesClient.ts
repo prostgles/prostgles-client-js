@@ -94,6 +94,8 @@ export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
     await prostgles<DBSchema>(
       {
         socket,
+        endpoint,
+        project,
         ...initOpts,
         onReady: (...args) => {
           const [dbo, methods, tableSchema, auth, isReconnect] = args;
