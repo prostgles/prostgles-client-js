@@ -35,7 +35,11 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
     /**
      * Start new effect
      */
-    if (newEffect.current && activeEffect.current?.effect !== newEffect.current.effect) {
+    if (
+      newEffect.current &&
+      (!activeEffect.current || activeEffect.current.state === "cleaned") &&
+      activeEffect.current?.effect !== newEffect.current.effect
+    ) {
       const currentEffect = newEffect.current;
       const { effect, id } = currentEffect;
       activeEffect.current = { id, state: "resolving", effect };
