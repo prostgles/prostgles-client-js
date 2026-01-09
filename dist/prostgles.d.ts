@@ -151,6 +151,14 @@ type DebugEvent = {
 };
 export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
     /**
+     * Prostgles UI host url
+     */
+    endpoint?: string;
+    /**
+     * Project path from the API section
+     */
+    project?: string;
+    /**
      * Socket.io client instance
      */
     socket: Socket;

@@ -258,6 +258,16 @@ type DebugEvent =
 
 export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
   /**
+   * Prostgles UI host url
+   */
+  endpoint?: string;
+
+  /**
+   * Project path from the API section
+   */
+  project?: string;
+
+  /**
    * Socket.io client instance
    */
   socket: Socket;
@@ -352,8 +362,17 @@ export function prostgles<DBSchema>(
   initOpts: InitOptions<DBSchema>,
   syncedTable: typeof SyncedTable | undefined,
 ) {
-  const { socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug } =
-    initOpts;
+  const {
+    endpoint,
+    project,
+    socket,
+    onReady,
+    onDisconnect,
+    onReconnect,
+    onSchemaChange,
+    onReload,
+    onDebug,
+  } = initOpts;
   let schemaAge: CurrentClientSchema | undefined;
   debug("prostgles", { initOpts });
   if (onSchemaChange) {
@@ -429,7 +448,7 @@ export function prostgles<DBSchema>(
       const isReconnect = state === "reconnected";
       state = "connected";
 
-      const auth = getAuthHandler({ authData: authConfig, socket, onReload });
+      const auth = getAuthHandler({ authData: authConfig, socket, onReload, project, endpoint });
       const { methodsObj } = getMethods({ onDebug, methods, socket });
 
       const { dbo } = getDBO({

@@ -39,12 +39,13 @@ export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   socket: Socket;
 };
 
-type SocketPathOrOptions = string | (Partial<ManagerOptions & SocketOptions> & { uri?: string });
+type SocketPathOrOptions = Partial<ManagerOptions & SocketOptions>;
 
 export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
   /**
-   * Socket.IO path or options
+   * Websocket API token
    */
+  token?: string;
   socketOptions?: SocketPathOrOptions;
   skip?: boolean;
 };
@@ -56,6 +57,9 @@ export type ProstglesClientState<PGC> =
 export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
   skip,
   socketOptions: socketPathOrOptions,
+  endpoint,
+  project,
+  token,
   ...initOpts
 }: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, U>> => {
   const { useRef, useState } = getReact(true);
@@ -72,12 +76,20 @@ export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
     const io = getIO();
     const socketOptions =
       typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
-    const opts = {
+    const opts: SocketPathOrOptions = {
+      ...socketOptions,
       reconnectionDelay: 1000,
       reconnection: true,
-      ...omitKeys(socketOptions ?? {}, ["uri"]),
     };
-    const socket = typeof socketOptions?.uri === "string" ? io(socketOptions.uri, opts) : io(opts);
+
+    if (project) {
+      opts.path = `/ws-api-db/${project}`;
+    }
+    if (token) {
+      opts.query ??= {};
+      opts.query.sid_token = token;
+    }
+    const socket = endpoint ? io(endpoint, opts) : io(opts);
     socketRef.current = socket;
     await prostgles<DBSchema>(
       {

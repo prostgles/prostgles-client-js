@@ -15,6 +15,8 @@ type Args = {
   socket: any;
   authData: AuthSocketSchema | undefined;
   onReload: VoidFunction | undefined;
+  endpoint: string | undefined;
+  project: string | undefined;
 };
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
@@ -65,7 +67,20 @@ type AuthStateLoggedIn<U extends UserLike = UserLike> = LoginSignupOptions & {
 
 export type AuthHandler<U extends UserLike = UserLike> = AuthStateLoggedOut | AuthStateLoggedIn<U>;
 
-export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args): AuthHandler => {
+export const getAuthHandler = ({
+  authData: authConfig,
+  socket,
+  onReload,
+  endpoint,
+  project,
+}: Args): AuthHandler => {
+  const urlWithEndpointAndSearch = (route: string) => {
+    const { search } = window.location;
+    let url = route + search;
+    if (project) url = `/${project}${route}`;
+    if (endpoint) url = `${endpoint}${url}`;
+    return url;
+  };
   if (authConfig?.pathGuard && isClientSide) {
     const doReload = (res?: AuthGuardLocationResponse) => {
       if (res?.shouldReload) {
@@ -118,19 +133,21 @@ export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args)
     loginSignupOptions.login =
       login &&
       (async (params) => {
-        return authRequest(addSearchInCaseItHasReturnUrl(login.loginRoute), params);
+        return authRequest(urlWithEndpointAndSearch(login.loginRoute), params);
       });
 
     loginSignupOptions.signupWithEmailAndPassword =
       signupWithEmailAndPassword &&
       ((params) => {
-        return authRequest(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
+        return authRequest(urlWithEndpointAndSearch(signupWithEmailAndPassword.url), params);
       });
     loginSignupOptions.confirmEmail =
       signupWithEmailAndPassword &&
       ((data) => {
-        // return authRequest(addSearchInCaseItHasReturnUrl(signupWithEmailAndPassword.url), params);
-        return authRequest(signupWithEmailAndPassword.emailConfirmationRoute, data);
+        return authRequest(
+          urlWithEndpointAndSearch(signupWithEmailAndPassword.emailConfirmationRoute),
+          data,
+        );
       });
   }
 
@@ -148,15 +165,10 @@ export const getAuthHandler = ({ authData: authConfig, socket, onReload }: Args)
     logout: async () => {
       const { logoutRoute } = authConfig.login ?? {};
       if (!logoutRoute) throw new Error("Unexpected");
-      return authRequest(addSearchInCaseItHasReturnUrl(logoutRoute), {}, "POST");
+      return authRequest(urlWithEndpointAndSearch(logoutRoute), {}, "POST");
     },
     ...loginSignupOptions,
   } satisfies AuthStateLoggedIn;
-};
-
-const addSearchInCaseItHasReturnUrl = (url: string) => {
-  const { search } = window.location;
-  return url + search;
 };
 
 export const authRequest = async <T extends PasswordRegisterResponse | PasswordLoginResponse>(

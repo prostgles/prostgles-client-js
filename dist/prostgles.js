@@ -38,7 +38,7 @@ exports.debug = debug;
 __exportStar(require("./hooks/useEffectDeep"), exports);
 __exportStar(require("./hooks/useProstglesClient"), exports);
 function prostgles(initOpts, syncedTable) {
-    const { socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug } = initOpts;
+    const { endpoint, project, socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug, } = initOpts;
     let schemaAge;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
@@ -104,7 +104,7 @@ function prostgles(initOpts, syncedTable) {
             }
             const isReconnect = state === "reconnected";
             state = "connected";
-            const auth = (0, getAuthHandler_1.getAuthHandler)({ authData: authConfig, socket, onReload });
+            const auth = (0, getAuthHandler_1.getAuthHandler)({ authData: authConfig, socket, onReload, project, endpoint });
             const { methodsObj } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
             const { dbo } = (0, getDbHandler_1.getDBO)({
                 schema,
