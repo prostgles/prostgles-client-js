@@ -27,7 +27,7 @@ import { CHANNELS, asName, getJoinHandlers, isEqual } from "prostgles-types";
 
 import { type AuthHandler, getAuthHandler } from "./getAuthHandler";
 import { getDBO } from "./getDbHandler";
-import { getMethods } from "./getMethods";
+import { getMethods, type ClientFunctionHandler } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
 import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
 import type {
@@ -191,7 +191,8 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ?
 
 type OnReadyArgs = {
   dbo: DBHandlerClient | any;
-  methods: ServerFunctionHandler | undefined;
+  methods: ClientFunctionHandler | undefined;
+  methodSchema: ServerFunctionHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
   auth: AuthHandler;
   isReconnect: boolean;
@@ -256,7 +257,11 @@ type DebugEvent =
       state: "connected" | "disconnected" | "reconnected" | undefined;
     };
 
-export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
+export type InitOptions<
+  DBSchema = void,
+  FuncSchema = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+> = {
   /**
    * Prostgles UI host url
    */
@@ -291,7 +296,7 @@ export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
    * - the client reconnects
    * - server requests a reload
    */
-  onReady: OnReadyCallback<DBSchema, U>;
+  onReady: OnReadyCallback<DBSchema, FuncSchema, U>;
 
   /**
    * Custom handler in case of websocket re-connection.
@@ -312,7 +317,11 @@ export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
   onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
 
-type OnReadyCallback<DBSchema = void, U extends UserLike = UserLike> = (
+type OnReadyCallback<
+  DBSchema = void,
+  FuncSchema = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+> = (
   /**
    * The database handler object.
    * Only allowed tables and table methods are defined
@@ -322,7 +331,8 @@ type OnReadyCallback<DBSchema = void, U extends UserLike = UserLike> = (
   /**
    * Custom server-side TS methods
    */
-  methods: ServerFunctionHandler | undefined,
+  methods: FuncSchema | undefined,
+  methodSchema: ServerFunctionHandler | undefined,
 
   /**
    * Table schema together with column permission details the client has access to
@@ -358,8 +368,8 @@ type CurrentClientSchema = {
   clientSchema: Omit<ClientSchema, "joinTables">;
 };
 
-export function prostgles<DBSchema>(
-  initOpts: InitOptions<DBSchema>,
+export function prostgles<DBSchema, FuncSchema>(
+  initOpts: InitOptions<DBSchema, FuncSchema>,
   syncedTable: typeof SyncedTable | undefined,
 ) {
   const {
@@ -449,7 +459,7 @@ export function prostgles<DBSchema>(
       state = "connected";
 
       const auth = getAuthHandler({ authData: authConfig, socket, onReload, project, endpoint });
-      const { methodsObj } = getMethods({ onDebug, methods, socket });
+      const { methodHandlers, methodSchema } = getMethods({ onDebug, methods, socket });
 
       const { dbo } = getDBO({
         schema,
@@ -482,11 +492,19 @@ export function prostgles<DBSchema>(
 
       (async () => {
         try {
-          const onReadyArgs = { dbo, methods: methodsObj, tableSchema, auth, isReconnect };
+          const onReadyArgs = {
+            dbo,
+            methods: methodHandlers,
+            methodSchema,
+            tableSchema,
+            auth,
+            isReconnect,
+          };
           await onDebug?.({ type: "onReady.call", data: onReadyArgs, state });
           await onReady(
             dbo as DBHandlerClient<DBSchema>,
-            methodsObj,
+            methodHandlers as FuncSchema,
+            methodSchema,
             tableSchema,
             auth,
             isReconnect,

@@ -18,6 +18,7 @@ import { prostgles, type DBHandlerClient, type InitOptions } from "../prostgles"
 import { getReact } from "./reactImports";
 import { useIsMounted } from "./useIsMounted";
 import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
+import type { ClientFunctionHandler } from "lib/getMethods";
 
 type IO = typeof import("socket.io-client").default;
 export const getIO = (throwError = false) => {
@@ -30,9 +31,14 @@ export const getIO = (throwError = false) => {
   return {} as IO;
 };
 
-export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
+export type OnReadyParams<
+  DBSchema,
+  FunctionSchema extends ClientFunctionHandler = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+> = {
   dbo: DBHandlerClient<DBSchema>;
-  methods: ServerFunctionHandler | undefined;
+  methods: FunctionSchema | undefined;
+  methodSchema: ServerFunctionHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
   auth: AuthHandler<U>;
   isReconnect: boolean;
@@ -54,7 +60,11 @@ export type ProstglesClientState<PGC> =
   | ({ isLoading: false; hasError?: false; error?: undefined } & PGC)
   | { isLoading: false; hasError: true; error: unknown };
 
-export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
+export const useProstglesClient = <
+  DBSchema,
+  FuncSchema extends ClientFunctionHandler = never,
+  U extends UserLike = UserLike,
+>({
   skip,
   socketOptions: socketPathOrOptions,
   endpoint,
@@ -63,7 +73,9 @@ export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
   ...initOpts
 }: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, U>> => {
   const { useRef, useState } = getReact(true);
-  const [onReadyArgs, setOnReadyArgs] = useState<ProstglesClientState<OnReadyParams<DBSchema>>>({
+  const [onReadyArgs, setOnReadyArgs] = useState<
+    ProstglesClientState<OnReadyParams<DBSchema, FuncSchema>>
+  >({
     isLoading: true,
   });
   const getIsMounted = useIsMounted();
@@ -91,17 +103,18 @@ export const useProstglesClient = <DBSchema, U extends UserLike = UserLike>({
     }
     const socket = endpoint ? io(endpoint, opts) : io(opts);
     socketRef.current = socket;
-    await prostgles<DBSchema>(
+    await prostgles<DBSchema, FuncSchema>(
       {
         socket,
         endpoint,
         project,
         ...initOpts,
         onReady: (...args) => {
-          const [dbo, methods, tableSchema, auth, isReconnect] = args;
-          const onReadyArgs: OnReadyParams<DBSchema> = {
+          const [dbo, methods, methodSchema, tableSchema, auth, isReconnect] = args;
+          const onReadyArgs: OnReadyParams<DBSchema, FuncSchema> = {
             dbo,
             methods,
+            methodSchema,
             tableSchema,
             auth,
             isReconnect,

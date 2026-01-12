@@ -105,7 +105,7 @@ function prostgles(initOpts, syncedTable) {
             const isReconnect = state === "reconnected";
             state = "connected";
             const auth = (0, getAuthHandler_1.getAuthHandler)({ authData: authConfig, socket, onReload, project, endpoint });
-            const { methodsObj } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
+            const { methodHandlers, methodSchema } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
             const { dbo } = (0, getDbHandler_1.getDBO)({
                 schema,
                 onDebug,
@@ -135,9 +135,16 @@ function prostgles(initOpts, syncedTable) {
             });
             (async () => {
                 try {
-                    const onReadyArgs = { dbo, methods: methodsObj, tableSchema, auth, isReconnect };
+                    const onReadyArgs = {
+                        dbo,
+                        methods: methodHandlers,
+                        methodSchema,
+                        tableSchema,
+                        auth,
+                        isReconnect,
+                    };
                     await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "onReady.call", data: onReadyArgs, state }));
-                    await onReady(dbo, methodsObj, tableSchema, auth, isReconnect);
+                    await onReady(dbo, methodHandlers, methodSchema, tableSchema, auth, isReconnect);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);

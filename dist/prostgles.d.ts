@@ -1,6 +1,7 @@
 import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, ServerFunctionHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, UserLike } from "prostgles-types";
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./getAuthHandler";
+import { type ClientFunctionHandler } from "./getMethods";
 import { type Subscription } from "./getSubscriptionHandler";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 import type { Socket } from "socket.io-client";
@@ -96,7 +97,8 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
 } & DbJoinMaker;
 type OnReadyArgs = {
     dbo: DBHandlerClient | any;
-    methods: ServerFunctionHandler | undefined;
+    methods: ClientFunctionHandler | undefined;
+    methodSchema: ServerFunctionHandler | undefined;
     tableSchema: DBSchemaTable[] | undefined;
     auth: AuthHandler;
     isReconnect: boolean;
@@ -149,7 +151,7 @@ type DebugEvent = {
     data: OnReadyArgs;
     state: "connected" | "disconnected" | "reconnected" | undefined;
 };
-export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
+export type InitOptions<DBSchema = void, FuncSchema = ClientFunctionHandler, U extends UserLike = UserLike> = {
     /**
      * Prostgles UI host url
      */
@@ -179,7 +181,7 @@ export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
      * - the client reconnects
      * - server requests a reload
      */
-    onReady: OnReadyCallback<DBSchema, U>;
+    onReady: OnReadyCallback<DBSchema, FuncSchema, U>;
     /**
      * Custom handler in case of websocket re-connection.
      * If not provided will fire onReady
@@ -196,7 +198,7 @@ export type InitOptions<DBSchema = void, U extends UserLike = UserLike> = {
      */
     onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
-type OnReadyCallback<DBSchema = void, U extends UserLike = UserLike> = (
+type OnReadyCallback<DBSchema = void, FuncSchema = ClientFunctionHandler, U extends UserLike = UserLike> = (
 /**
  * The database handler object.
  * Only allowed tables and table methods are defined
@@ -205,7 +207,7 @@ dbo: DBHandlerClient<DBSchema>,
 /**
  * Custom server-side TS methods
  */
-methods: ServerFunctionHandler | undefined, 
+methods: FuncSchema | undefined, methodSchema: ServerFunctionHandler | undefined, 
 /**
  * Table schema together with column permission details the client has access to
  */
@@ -230,5 +232,5 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema>(initOpts: InitOptions<DBSchema>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
+export declare function prostgles<DBSchema, FuncSchema>(initOpts: InitOptions<DBSchema, FuncSchema>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map

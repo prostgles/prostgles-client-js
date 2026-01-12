@@ -2,12 +2,16 @@ import type { ClientSchema, ServerFunctionHandler, SocketFunctionCall } from "pr
 import { CHANNELS } from "prostgles-types";
 import type { InitOptions } from "./prostgles";
 
+export type FunctionHandle = (args?: Record<string, unknown>) => Promise<unknown>;
+export type ClientFunctionHandler = Partial<Record<string, FunctionHandle>>;
+
 export const getMethods = ({
   onDebug,
   methods,
   socket,
 }: Pick<InitOptions, "onDebug" | "socket"> & Pick<ClientSchema, "methods">) => {
-  let methodsObj: ServerFunctionHandler = {};
+  let methodSchema: ServerFunctionHandler = {};
+  const methodHandlers = {} as ClientFunctionHandler;
   const _methods: typeof methods = JSON.parse(JSON.stringify(methods));
   _methods.map(({ name, description, input, output }) => {
     const onRun = async function (input?: unknown) {
@@ -19,14 +23,15 @@ export const getMethods = ({
         });
       });
     };
-    methodsObj[name] = {
+    methodSchema[name] = {
       description,
       input,
       output,
       run: onRun,
     };
+    methodHandlers[name] = onRun;
   });
-  methodsObj = Object.freeze(methodsObj);
+  methodSchema = Object.freeze(methodSchema);
 
-  return { methodsObj };
+  return { methodSchema, methodHandlers };
 };
