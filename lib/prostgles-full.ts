@@ -1,10 +1,13 @@
 import type { UserLike } from "prostgles-types";
 import { prostgles as pgls, type InitOptions } from "./prostgles";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
+import type { ClientFunctionHandler } from "./getMethods";
 
-function prostgles<DBSchema = void, FuncSchema = void, U extends UserLike = UserLike>(
-  params: InitOptions<DBSchema, FuncSchema, U>,
-) {
+function prostgles<
+  DBSchema = void,
+  FuncSchema = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+>(params: InitOptions<DBSchema, FuncSchema, U>) {
   return pgls(params as any, SyncedTable);
 }
 

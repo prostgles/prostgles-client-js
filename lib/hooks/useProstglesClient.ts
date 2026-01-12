@@ -62,7 +62,7 @@ export type ProstglesClientState<PGC> =
 
 export const useProstglesClient = <
   DBSchema,
-  FuncSchema extends ClientFunctionHandler = never,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
 >({
   skip,
