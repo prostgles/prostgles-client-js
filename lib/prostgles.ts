@@ -13,7 +13,7 @@ import type {
   EqualityFilter,
   FullFilter,
   SelectReturnType,
-  MethodHandler,
+  ServerFunctionHandler,
   SQLHandler,
   SQLResult,
   SelectParams,
@@ -51,7 +51,7 @@ export const debug: any = function (...args: any[]) {
 
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useProstglesClient";
-export { MethodHandler, SQLResult, asName };
+export { ServerFunctionHandler, SQLResult, asName };
 
 /**
  * Async result type:
@@ -191,7 +191,7 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ?
 
 type OnReadyArgs = {
   dbo: DBHandlerClient | any;
-  methods: MethodHandler | undefined;
+  methods: ServerFunctionHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
   auth: AuthHandler;
   isReconnect: boolean;
@@ -322,7 +322,7 @@ type OnReadyCallback<DBSchema = void, U extends UserLike = UserLike> = (
   /**
    * Custom server-side TS methods
    */
-  methods: MethodHandler | undefined,
+  methods: ServerFunctionHandler | undefined,
 
   /**
    * Table schema together with column permission details the client has access to

@@ -7,7 +7,7 @@ import {
   omitKeys,
   type DBSchema,
   type DBSchemaTable,
-  type MethodHandler,
+  type ServerFunctionHandler,
   type UserLike,
 } from "prostgles-types";
 
@@ -32,7 +32,7 @@ export const getIO = (throwError = false) => {
 
 export type OnReadyParams<DBSchema, U extends UserLike = UserLike> = {
   dbo: DBHandlerClient<DBSchema>;
-  methods: MethodHandler | undefined;
+  methods: ServerFunctionHandler | undefined;
   tableSchema: DBSchemaTable[] | undefined;
   auth: AuthHandler<U>;
   isReconnect: boolean;

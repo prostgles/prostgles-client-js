@@ -1,4 +1,4 @@
-import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, MethodHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, UserLike } from "prostgles-types";
+import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, ServerFunctionHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, UserLike } from "prostgles-types";
 import { asName } from "prostgles-types";
 import { type AuthHandler } from "./getAuthHandler";
 import { type Subscription } from "./getSubscriptionHandler";
@@ -8,7 +8,7 @@ export declare const isClientSide: boolean;
 export declare const debug: any;
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useProstglesClient";
-export { MethodHandler, SQLResult, asName };
+export { ServerFunctionHandler, SQLResult, asName };
 /**
  * Async result type:
  * - data: the expected data
@@ -96,7 +96,7 @@ export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
 } & DbJoinMaker;
 type OnReadyArgs = {
     dbo: DBHandlerClient | any;
-    methods: MethodHandler | undefined;
+    methods: ServerFunctionHandler | undefined;
     tableSchema: DBSchemaTable[] | undefined;
     auth: AuthHandler;
     isReconnect: boolean;
@@ -205,7 +205,7 @@ dbo: DBHandlerClient<DBSchema>,
 /**
  * Custom server-side TS methods
  */
-methods: MethodHandler | undefined, 
+methods: ServerFunctionHandler | undefined, 
 /**
  * Table schema together with column permission details the client has access to
  */
