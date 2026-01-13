@@ -15,5 +15,6 @@ export * from "./hooks/useEffectDeep";
 export * from "./hooks/useEffectAsync";
 export * from "./hooks/useAsyncEffectQueue";
 export { useAuthState, ERR_CODE_MESSAGES } from "./auth/useAuthState";
+export type { ClientFunctionHandler, FunctionHandle } from "./getMethods";
 export default prostgles;
 //# sourceMappingURL=prostgles-full.d.ts.map

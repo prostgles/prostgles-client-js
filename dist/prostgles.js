@@ -104,7 +104,13 @@ function prostgles(initOpts, syncedTable) {
             }
             const isReconnect = state === "reconnected";
             state = "connected";
-            const auth = (0, getAuthHandler_1.getAuthHandler)({ authData: authConfig, socket, onReload, project, endpoint });
+            const auth = (0, getAuthHandler_1.getAuthHandler)({
+                authData: authConfig,
+                socket,
+                onReload,
+                project,
+                endpoint,
+            });
             const { methodHandlers, methodSchema } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
             const { dbo } = (0, getDbHandler_1.getDBO)({
                 schema,

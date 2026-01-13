@@ -368,8 +368,8 @@ type CurrentClientSchema = {
   clientSchema: Omit<ClientSchema, "joinTables">;
 };
 
-export function prostgles<DBSchema, FuncSchema>(
-  initOpts: InitOptions<DBSchema, FuncSchema>,
+export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
+  initOpts: InitOptions<DBSchema, FuncSchema, U>,
   syncedTable: typeof SyncedTable | undefined,
 ) {
   const {
@@ -458,7 +458,13 @@ export function prostgles<DBSchema, FuncSchema>(
       const isReconnect = state === "reconnected";
       state = "connected";
 
-      const auth = getAuthHandler({ authData: authConfig, socket, onReload, project, endpoint });
+      const auth = getAuthHandler({
+        authData: authConfig,
+        socket,
+        onReload,
+        project,
+        endpoint,
+      }) as AuthHandler<U>;
       const { methodHandlers, methodSchema } = getMethods({ onDebug, methods, socket });
 
       const { dbo } = getDBO({

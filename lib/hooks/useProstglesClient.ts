@@ -71,10 +71,10 @@ export const useProstglesClient = <
   project,
   token,
   ...initOpts
-}: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, U>> => {
+}: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, FuncSchema, U>> => {
   const { useRef, useState } = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = useState<
-    ProstglesClientState<OnReadyParams<DBSchema, FuncSchema>>
+    ProstglesClientState<OnReadyParams<DBSchema, FuncSchema, U>>
   >({
     isLoading: true,
   });
@@ -103,7 +103,7 @@ export const useProstglesClient = <
     }
     const socket = endpoint ? io(endpoint, opts) : io(opts);
     socketRef.current = socket;
-    await prostgles<DBSchema, FuncSchema>(
+    await prostgles<DBSchema, FuncSchema, U>(
       {
         socket,
         endpoint,
@@ -111,7 +111,7 @@ export const useProstglesClient = <
         ...initOpts,
         onReady: (...args) => {
           const [dbo, methods, methodSchema, tableSchema, auth, isReconnect] = args;
-          const onReadyArgs: OnReadyParams<DBSchema, FuncSchema> = {
+          const onReadyArgs: OnReadyParams<DBSchema, FuncSchema, U> = {
             dbo,
             methods,
             methodSchema,
@@ -142,5 +142,5 @@ export const useProstglesClient = <
     };
   }, [initOpts, socketPathOrOptions, skip]);
 
-  return onReadyArgs as ProstglesClientState<OnReadyParams<DBSchema, U>>;
+  return onReadyArgs;
 };

@@ -232,5 +232,5 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema, FuncSchema>(initOpts: InitOptions<DBSchema, FuncSchema>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
+export declare function prostgles<DBSchema, FuncSchema, U extends UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map
