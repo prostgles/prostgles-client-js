@@ -181,9 +181,9 @@ export const authRequest = async <T extends PasswordRegisterResponse | PasswordL
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      credentials: "include",
     },
     ...(method !== "GET" && { body: JSON.stringify(data) }),
+    credentials: "include",
   });
 
   if (!rawResponse.ok) {
