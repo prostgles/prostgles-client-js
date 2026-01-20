@@ -89,6 +89,7 @@ export const useProstglesClient = <
     const socketOptions =
       typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
     const opts: SocketPathOrOptions = {
+      withCredentials: true,
       ...socketOptions,
       reconnectionDelay: 1000,
       reconnection: true,
