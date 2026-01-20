@@ -5,7 +5,7 @@ import { useIsMounted } from "./useIsMounted";
 
 export type DataFetchHookResult =
   | { data: any; error?: undefined; isLoading: false }
-  | { data?: undefined; error: any; isLoading: false }
+  | { data?: undefined; error: unknown; isLoading: false }
   | { data?: undefined; error?: undefined; isLoading: true };
 
 export const useSync = (
