@@ -20,6 +20,13 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
   const isMounted = useRef(true);
   const newEffect = useRef<EffectData>();
   const activeEffect = useRef<ActiveEffect>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRender = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onRender();
+    }, 80);
+  };
 
   const onRender = async () => {
     /**
@@ -64,10 +71,10 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
   useEffectDeep(() => {
     isMounted.current = true;
     newEffect.current = { effect, deps, id: ++idRef.current };
-    onRender();
+    scheduleRender();
     return () => {
       isMounted.current = false;
-      onRender();
+      scheduleRender();
     };
   }, deps);
 };
