@@ -95,7 +95,7 @@ export const useProstglesClient = <
     };
 
     if (endpoint) {
-      opts.path = `/ws-api-db`;
+      opts.path ??= `/ws-api`;
     }
     if (token) {
       opts.query ??= {};
