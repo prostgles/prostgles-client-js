@@ -94,12 +94,9 @@ export const useProstglesClient = <
       reconnection: true,
     };
 
-    if (endpoint) {
-      opts.path ??= `/ws-api`;
-    }
+    opts.path ??= `/ws-api`;
     if (token) {
-      opts.query ??= {};
-      opts.query.token = token;
+      opts.auth = { token };
     }
     const socket = endpoint ? io(endpoint, opts) : io(opts);
     socketRef.current = socket;
