@@ -9,14 +9,15 @@ import type {
   UserLike,
 } from "prostgles-types";
 import { CHANNELS, isEmpty } from "prostgles-types";
-import { isClientSide } from "./prostgles";
+import { isClientSide, type InitOptions } from "./prostgles";
+import type { Socket } from "socket.io-client";
+type OptionalToUndefined<T> = { [K in {} & keyof T]: T[K] };
 
-type Args = {
-  socket: any;
+type Args = Pick<OptionalToUndefined<InitOptions>, "credentials" | "redirect"> & {
+  socket: Socket;
   authData: AuthSocketSchema | undefined;
   onReload: VoidFunction | undefined;
   endpoint: string | undefined;
-  project: string | undefined;
 };
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
@@ -72,12 +73,11 @@ export const getAuthHandler = ({
   socket,
   onReload,
   endpoint,
-  project,
+  ...authOpts
 }: Args): AuthHandler => {
   const urlWithEndpointAndSearch = (route: string) => {
     const { search } = window.location;
     let url = route + search;
-    if (project) url = `/${project}${route}`;
     if (endpoint) url = `${endpoint}${url}`;
     return url;
   };
@@ -133,13 +133,18 @@ export const getAuthHandler = ({
     loginSignupOptions.login =
       login &&
       (async (params) => {
-        return authRequest(urlWithEndpointAndSearch(login.loginRoute), params);
+        return authRequest(urlWithEndpointAndSearch(login.loginRoute), params, "POST", authOpts);
       });
 
     loginSignupOptions.signupWithEmailAndPassword =
       signupWithEmailAndPassword &&
       ((params) => {
-        return authRequest(urlWithEndpointAndSearch(signupWithEmailAndPassword.url), params);
+        return authRequest(
+          urlWithEndpointAndSearch(signupWithEmailAndPassword.url),
+          params,
+          "POST",
+          authOpts,
+        );
       });
     loginSignupOptions.confirmEmail =
       signupWithEmailAndPassword &&
@@ -147,6 +152,8 @@ export const getAuthHandler = ({
         return authRequest(
           urlWithEndpointAndSearch(signupWithEmailAndPassword.emailConfirmationRoute),
           data,
+          "POST",
+          authOpts,
         );
       });
   }
@@ -165,7 +172,7 @@ export const getAuthHandler = ({
     logout: async () => {
       const { logoutRoute } = authConfig.login ?? {};
       if (!logoutRoute) throw new Error("Unexpected");
-      return authRequest(urlWithEndpointAndSearch(logoutRoute), {}, "POST");
+      return authRequest(urlWithEndpointAndSearch(logoutRoute), {}, "POST", authOpts);
     },
     ...loginSignupOptions,
   } satisfies AuthStateLoggedIn;
@@ -174,16 +181,18 @@ export const getAuthHandler = ({
 export const authRequest = async <T extends PasswordRegisterResponse | PasswordLoginResponse>(
   path: string,
   data: object,
-  method?: "GET" | "POST",
+  method: "GET" | "POST",
+  { credentials, redirect }: Pick<Partial<Request>, "credentials" | "redirect">,
 ): Promise<T> => {
   const rawResponse = await fetch(path, {
-    method: method ?? "POST",
+    method: method,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
     ...(method !== "GET" && { body: JSON.stringify(data) }),
-    credentials: "include",
+    credentials,
+    redirect,
   });
 
   if (!rawResponse.ok) {

@@ -267,10 +267,8 @@ export type InitOptions<
    */
   endpoint?: string;
 
-  /**
-   * Project path from the API section
-   */
-  project?: string;
+  credentials?: RequestCredentials;
+  redirect?: RequestRedirect;
 
   /**
    * Socket.io client instance
@@ -374,7 +372,6 @@ export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
 ) {
   const {
     endpoint,
-    project,
     socket,
     onReady,
     onDisconnect,
@@ -382,6 +379,8 @@ export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
     onSchemaChange,
     onReload,
     onDebug,
+    credentials,
+    redirect,
   } = initOpts;
   let schemaAge: CurrentClientSchema | undefined;
   debug("prostgles", { initOpts });
@@ -462,8 +461,9 @@ export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
         authData: authConfig,
         socket,
         onReload,
-        project,
         endpoint,
+        credentials,
+        redirect,
       }) as AuthHandler<U>;
       const { methodHandlers, methodSchema } = getMethods({ onDebug, methods, socket });
 

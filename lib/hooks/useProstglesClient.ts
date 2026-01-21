@@ -68,7 +68,6 @@ export const useProstglesClient = <
   skip,
   socketOptions: socketPathOrOptions,
   endpoint,
-  project,
   token,
   ...initOpts
 }: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, FuncSchema, U>> => {
@@ -89,14 +88,14 @@ export const useProstglesClient = <
     const socketOptions =
       typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
     const opts: SocketPathOrOptions = {
-      withCredentials: true,
+      withCredentials: initOpts.credentials && initOpts.credentials !== "omit",
       ...socketOptions,
       reconnectionDelay: 1000,
       reconnection: true,
     };
 
-    if (project) {
-      opts.path = `/ws-api-db/${project}`;
+    if (endpoint) {
+      opts.path = `/ws-api-db`;
     }
     if (token) {
       opts.query ??= {};
@@ -108,7 +107,6 @@ export const useProstglesClient = <
       {
         socket,
         endpoint,
-        project,
         ...initOpts,
         onReady: (...args) => {
           const [dbo, methods, methodSchema, tableSchema, auth, isReconnect] = args;

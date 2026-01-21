@@ -156,10 +156,8 @@ export type InitOptions<DBSchema = void, FuncSchema = ClientFunctionHandler, U e
      * Prostgles UI host url
      */
     endpoint?: string;
-    /**
-     * Project path from the API section
-     */
-    project?: string;
+    credentials?: RequestCredentials;
+    redirect?: RequestRedirect;
     /**
      * Socket.io client instance
      */
