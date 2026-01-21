@@ -99,7 +99,7 @@ export const useProstglesClient = <
     }
     if (token) {
       opts.query ??= {};
-      opts.query.sid_token = token;
+      opts.query.token = token;
     }
     const socket = endpoint ? io(endpoint, opts) : io(opts);
     socketRef.current = socket;
