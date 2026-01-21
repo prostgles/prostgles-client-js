@@ -87,18 +87,19 @@ export const useProstglesClient = <
     const io = getIO();
     const socketOptions =
       typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
-    const opts: SocketPathOrOptions = {
+    const socketOptionsWithDefaults: SocketPathOrOptions = {
       withCredentials: initOpts.credentials && initOpts.credentials !== "omit",
       ...socketOptions,
       reconnectionDelay: 1000,
       reconnection: true,
     };
 
-    opts.path ??= `/ws-api`;
+    socketOptionsWithDefaults.path ??= `/ws-api`;
     if (token) {
-      opts.auth = { token };
+      socketOptionsWithDefaults.auth = { token };
     }
-    const socket = endpoint ? io(endpoint, opts) : io(opts);
+    const socket =
+      endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
     socketRef.current = socket;
     await prostgles<DBSchema, FuncSchema, U>(
       {

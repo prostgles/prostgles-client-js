@@ -38,7 +38,7 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
     if (
       newEffect.current &&
       (!activeEffect.current || activeEffect.current.state === "cleaned") &&
-      activeEffect.current?.effect !== newEffect.current.effect
+      activeEffect.current?.id !== newEffect.current.id
     ) {
       const currentEffect = newEffect.current;
       const { effect, id } = currentEffect;
