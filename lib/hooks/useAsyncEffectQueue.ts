@@ -55,7 +55,11 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[], debounce?: 
           return async () => {};
         });
       activeEffect.current = { id, state: "resolved", effect, cleanup };
-      if (!isMounted.current || currentEffect !== newEffect.current) {
+      if (
+        !isMounted.current ||
+        currentEffect !== newEffect.current ||
+        activeEffect.current.id !== newEffect.current.id
+      ) {
         onRender();
       }
     }
