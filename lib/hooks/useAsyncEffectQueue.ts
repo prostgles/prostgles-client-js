@@ -15,18 +15,11 @@ type ActiveEffect =
  * Debounce with execute first
  * Used to ensure subscriptions are always cleaned up
  */
-export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
+export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[], debounce?: number) => {
   const idRef = useRef(0);
   const isMounted = useRef(true);
   const newEffect = useRef<EffectData>();
   const activeEffect = useRef<ActiveEffect>();
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheduleRender = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      onRender();
-    }, 80);
-  };
 
   const onRender = async () => {
     /**
@@ -66,6 +59,18 @@ export const useAsyncEffectQueue = (effect: EffectFunc, deps: any[]) => {
         onRender();
       }
     }
+  };
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRender = () => {
+    if (!debounce) {
+      onRender();
+      return;
+    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onRender();
+    }, debounce);
   };
 
   useEffectDeep(() => {

@@ -80,64 +80,70 @@ export const useProstglesClient = <
   const getIsMounted = useIsMounted();
 
   const socketRef = useRef<Socket>();
-  useAsyncEffectQueue(async () => {
-    if (skip) return undefined;
+  useAsyncEffectQueue(
+    async () => {
+      if (skip) return undefined;
 
-    socketRef.current?.disconnect();
-    const io = getIO();
-    const socketOptions =
-      typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
-    const socketOptionsWithDefaults: SocketPathOrOptions = {
-      withCredentials: initOpts.credentials && initOpts.credentials !== "omit",
-      ...socketOptions,
-      reconnectionDelay: 1000,
-      reconnection: true,
-    };
-
-    socketOptionsWithDefaults.path ??= `/ws-api`;
-    if (token) {
-      socketOptionsWithDefaults.auth = { token };
-    }
-    const socket =
-      endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
-    socketRef.current = socket;
-    await prostgles<DBSchema, FuncSchema, U>(
-      {
-        socket,
-        endpoint,
-        ...initOpts,
-        onReady: (...args) => {
-          const [dbo, methods, methodSchema, tableSchema, auth, isReconnect] = args;
-          const onReadyArgs: OnReadyParams<DBSchema, FuncSchema, U> = {
-            dbo,
-            methods,
-            methodSchema,
-            tableSchema,
-            auth,
-            isReconnect,
-            socket,
-          };
-          if (!getIsMounted()) {
-            initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs });
-            return;
-          }
-          initOpts.onDebug?.({ type: "onReady", data: onReadyArgs });
-          setOnReadyArgs({ ...onReadyArgs, isLoading: false });
-        },
-      },
-      SyncedTable,
-    ).catch((error) => {
-      if (!getIsMounted()) return;
-      setOnReadyArgs({ isLoading: false, error, hasError: true });
-    });
-
-    return () => {
-      socket.disconnect();
-      socket.emit = () => {
-        throw "Socket disconnected";
+      socketRef.current?.disconnect();
+      const io = getIO();
+      const socketOptions =
+        typeof socketPathOrOptions === "string" ?
+          { path: socketPathOrOptions }
+        : socketPathOrOptions;
+      const socketOptionsWithDefaults: SocketPathOrOptions = {
+        withCredentials: initOpts.credentials && initOpts.credentials !== "omit",
+        ...socketOptions,
+        reconnectionDelay: 1000,
+        reconnection: true,
       };
-    };
-  }, [initOpts, socketPathOrOptions, skip]);
+
+      socketOptionsWithDefaults.path ??= `/ws-api`;
+      if (token) {
+        socketOptionsWithDefaults.auth = { token };
+      }
+      const socket =
+        endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
+      socketRef.current = socket;
+      await prostgles<DBSchema, FuncSchema, U>(
+        {
+          socket,
+          endpoint,
+          ...initOpts,
+          onReady: (...args) => {
+            const [dbo, methods, methodSchema, tableSchema, auth, isReconnect] = args;
+            const onReadyArgs: OnReadyParams<DBSchema, FuncSchema, U> = {
+              dbo,
+              methods,
+              methodSchema,
+              tableSchema,
+              auth,
+              isReconnect,
+              socket,
+            };
+            if (!getIsMounted()) {
+              initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs });
+              return;
+            }
+            initOpts.onDebug?.({ type: "onReady", data: onReadyArgs });
+            setOnReadyArgs({ ...onReadyArgs, isLoading: false });
+          },
+        },
+        SyncedTable,
+      ).catch((error) => {
+        if (!getIsMounted()) return;
+        setOnReadyArgs({ isLoading: false, error, hasError: true });
+      });
+
+      return () => {
+        socket.disconnect();
+        socket.emit = () => {
+          throw "Socket disconnected";
+        };
+      };
+    },
+    [initOpts, socketPathOrOptions, skip],
+    80,
+  );
 
   return onReadyArgs;
 };
