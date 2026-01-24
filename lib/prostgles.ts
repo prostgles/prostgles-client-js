@@ -1,35 +1,31 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Stefan L. All rights reserved.
- *  Licensed under the MIT License. See LICENSE in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type {
   AnyObject,
   ClientSchema,
   ClientSyncHandles,
   DBSchema,
   DBSchemaTable,
-  DbJoinMaker,
   EqualityFilter,
   FullFilter,
-  SelectReturnType,
-  ServerFunctionHandler,
   SQLHandler,
   SQLResult,
   SelectParams,
+  SelectReturnType,
+  ServerFunctionHandler,
   SubscribeParams,
   TableHandler,
-  ViewHandler,
   UserLike,
+  ViewHandler,
 } from "prostgles-types";
 
-import { CHANNELS, asName, getJoinHandlers, isEqual } from "prostgles-types";
+import { CHANNELS, asName, isEqual } from "prostgles-types";
 
-import { type AuthHandler, getAuthHandler } from "./getAuthHandler";
-import { getDBO } from "./getDbHandler";
+import type { Socket } from "socket.io-client";
+import { getAuthHandler, type AuthHandler } from "./getAuthHandler";
+import { getDB } from "./getDbHandler";
 import { getMethods, type ClientFunctionHandler } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
 import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
+import { getSyncHandler } from "./getSyncHandler";
 import type {
   Sync,
   SyncDataItem,
@@ -38,8 +34,6 @@ import type {
   SyncOptions,
   SyncedTable,
 } from "./SyncedTable/SyncedTable";
-import { getSyncHandler } from "./getSyncHandler";
-import type { Socket } from "socket.io-client";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 export const isClientSide = typeof window !== "undefined";
@@ -51,7 +45,7 @@ export const debug: any = function (...args: any[]) {
 
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useProstglesClient";
-export { ServerFunctionHandler, SQLResult, asName };
+export { SQLResult, ServerFunctionHandler, asName };
 
 /**
  * Async result type:
@@ -179,23 +173,40 @@ export type TableHandlerClient<
     _sync?: any;
   };
 
-export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ?
-  {
-    [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
-      ViewHandlerClient<Schema[tov_name]["columns"], Schema>
-    : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
-  }
-: Record<string, Partial<TableHandlerClient>>) & {
-  sql?: SQLHandler;
-} & DbJoinMaker;
+export type DBHandlerClient<Schema = void> =
+  Schema extends DBSchema ?
+    {
+      [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
+        ViewHandlerClient<Schema[tov_name]["columns"], Schema>
+      : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
+    }
+  : Record<string, Partial<TableHandlerClient>>;
 
-type OnReadyArgs = {
-  dbo: DBHandlerClient | any;
-  methods: ClientFunctionHandler | undefined;
+export type ClientOnReadyParams<
+  DBSchema = void,
+  FunctionHandler extends ClientFunctionHandler = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+> = {
+  /**
+   * The database handler object.
+   * Only allowed tables and table methods are defined
+   */
+  db: Partial<DBHandlerClient<DBSchema>>;
+  sql: SQLHandler | undefined;
+  /**
+   * Server-side TS function handlers
+   * Only allowed methods are defined
+   */
+  methods: FunctionHandler | undefined;
   methodSchema: ServerFunctionHandler | undefined;
+
+  /**
+   * Table schema with column permission details the client has access to
+   */
   tableSchema: DBSchemaTable[] | undefined;
-  auth: AuthHandler;
+  auth: AuthHandler<U>;
   isReconnect: boolean;
+  socket: Socket;
 };
 
 type SyncDebugEvent = {
@@ -245,21 +256,21 @@ type DebugEvent =
     }
   | {
       type: "onReady";
-      data: OnReadyArgs;
+      data: ClientOnReadyParams;
     }
   | {
       type: "onReady.notMounted";
-      data: OnReadyArgs;
+      data: ClientOnReadyParams;
     }
   | {
       type: "onReady.call";
-      data: OnReadyArgs;
+      data: ClientOnReadyParams;
       state: "connected" | "disconnected" | "reconnected" | undefined;
     };
 
 export type InitOptions<
   DBSchema = void,
-  FuncSchema = ClientFunctionHandler,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
 > = {
   /**
@@ -317,32 +328,9 @@ export type InitOptions<
 
 type OnReadyCallback<
   DBSchema = void,
-  FuncSchema = ClientFunctionHandler,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
-> = (
-  /**
-   * The database handler object.
-   * Only allowed tables and table methods are defined
-   */
-  dbo: DBHandlerClient<DBSchema>,
-
-  /**
-   * Custom server-side TS methods
-   */
-  methods: FuncSchema | undefined,
-  methodSchema: ServerFunctionHandler | undefined,
-
-  /**
-   * Table schema together with column permission details the client has access to
-   */
-  tableSchema: DBSchemaTable[] | undefined,
-
-  /**
-   * Handlers for authentication that are configured on the server through the "auth" options
-   */
-  auth: AuthHandler<U>,
-  isReconnect: boolean,
-) => void | Promise<void>;
+> = (onReadyParams: ClientOnReadyParams<DBSchema, FuncSchema, U>) => void | Promise<void>;
 
 export type AnyFunction = (...args: any[]) => any;
 
@@ -366,7 +354,7 @@ type CurrentClientSchema = {
   clientSchema: Omit<ClientSchema, "joinTables">;
 };
 
-export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
+export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(
   initOpts: InitOptions<DBSchema, FuncSchema, U>,
   syncedTable: typeof SyncedTable | undefined,
 ) {
@@ -467,7 +455,7 @@ export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
       }) as AuthHandler<U>;
       const { methodHandlers, methodSchema } = getMethods({ onDebug, methods, socket });
 
-      const { dbo } = getDBO({
+      const { db } = getDB<DBSchema>({
         schema,
         onDebug,
         syncedTable,
@@ -476,51 +464,36 @@ export function prostgles<DBSchema, FuncSchema, U extends UserLike>(
         socket,
         tableSchema,
       });
-      if (rawSQL) {
-        dbo.sql = sqlHandler.sql;
-      }
+
+      const sql = rawSQL ? getSqlHandler(initOpts).sql : undefined;
 
       subscriptionHandler.reAttachAll();
       syncHandler.reAttachAll();
 
-      joinTables.flat().map((table) => {
-        dbo.innerJoin ??= {};
-        dbo.leftJoin ??= {};
-        dbo.innerJoinOne ??= {};
-        dbo.leftJoinOne ??= {};
-        const joinHandlers = getJoinHandlers(table);
-        //@ts-ignore
-        dbo.leftJoin[table] = joinHandlers.leftJoin;
-        dbo.innerJoin[table] = joinHandlers.innerJoin;
-        dbo.leftJoinOne[table] = joinHandlers.leftJoinOne;
-        dbo.innerJoinOne[table] = joinHandlers.innerJoinOne;
-      });
-
       (async () => {
         try {
           const onReadyArgs = {
-            dbo,
-            methods: methodHandlers,
+            db,
+            sql,
+            methods: methodHandlers as FuncSchema,
             methodSchema,
             tableSchema,
             auth,
+            socket,
             isReconnect,
           };
-          await onDebug?.({ type: "onReady.call", data: onReadyArgs, state });
-          await onReady(
-            dbo as DBHandlerClient<DBSchema>,
-            methodHandlers as FuncSchema,
-            methodSchema,
-            tableSchema,
-            auth,
-            isReconnect,
-          );
+          await onDebug?.({
+            type: "onReady.call",
+            data: onReadyArgs as ClientOnReadyParams,
+            state,
+          });
+          await onReady(onReadyArgs);
         } catch (err) {
           console.error("Prostgles: Error within onReady: \n", err);
           reject(err);
         }
 
-        resolve(dbo);
+        resolve(db);
       })();
     });
   });

@@ -1,15 +1,15 @@
-import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, DbJoinMaker, EqualityFilter, FullFilter, SelectReturnType, ServerFunctionHandler, SQLHandler, SQLResult, SelectParams, SubscribeParams, TableHandler, ViewHandler, UserLike } from "prostgles-types";
+import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, EqualityFilter, FullFilter, SQLHandler, SQLResult, SelectParams, SelectReturnType, ServerFunctionHandler, SubscribeParams, TableHandler, UserLike, ViewHandler } from "prostgles-types";
 import { asName } from "prostgles-types";
+import type { Socket } from "socket.io-client";
 import { type AuthHandler } from "./getAuthHandler";
 import { type ClientFunctionHandler } from "./getMethods";
 import { type Subscription } from "./getSubscriptionHandler";
 import type { Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
-import type { Socket } from "socket.io-client";
 export declare const isClientSide: boolean;
 export declare const debug: any;
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useProstglesClient";
-export { ServerFunctionHandler, SQLResult, asName };
+export { SQLResult, ServerFunctionHandler, asName };
 /**
  * Async result type:
  * - data: the expected data
@@ -90,18 +90,29 @@ export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSche
     syncOne?: SyncOne<T>;
     _sync?: any;
 };
-export type DBHandlerClient<Schema = void> = (Schema extends DBSchema ? {
+export type DBHandlerClient<Schema = void> = Schema extends DBSchema ? {
     [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ? ViewHandlerClient<Schema[tov_name]["columns"], Schema> : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
-} : Record<string, Partial<TableHandlerClient>>) & {
-    sql?: SQLHandler;
-} & DbJoinMaker;
-type OnReadyArgs = {
-    dbo: DBHandlerClient | any;
-    methods: ClientFunctionHandler | undefined;
+} : Record<string, Partial<TableHandlerClient>>;
+export type ClientOnReadyParams<DBSchema = void, FunctionHandler extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = {
+    /**
+     * The database handler object.
+     * Only allowed tables and table methods are defined
+     */
+    db: Partial<DBHandlerClient<DBSchema>>;
+    sql: SQLHandler | undefined;
+    /**
+     * Server-side TS function handlers
+     * Only allowed methods are defined
+     */
+    methods: FunctionHandler | undefined;
     methodSchema: ServerFunctionHandler | undefined;
+    /**
+     * Table schema with column permission details the client has access to
+     */
     tableSchema: DBSchemaTable[] | undefined;
-    auth: AuthHandler;
+    auth: AuthHandler<U>;
     isReconnect: boolean;
+    socket: Socket;
 };
 type SyncDebugEvent = {
     type: "sync";
@@ -142,16 +153,16 @@ type DebugEvent = {
     state: "connected" | "disconnected" | "reconnected" | undefined;
 } | {
     type: "onReady";
-    data: OnReadyArgs;
+    data: ClientOnReadyParams;
 } | {
     type: "onReady.notMounted";
-    data: OnReadyArgs;
+    data: ClientOnReadyParams;
 } | {
     type: "onReady.call";
-    data: OnReadyArgs;
+    data: ClientOnReadyParams;
     state: "connected" | "disconnected" | "reconnected" | undefined;
 };
-export type InitOptions<DBSchema = void, FuncSchema = ClientFunctionHandler, U extends UserLike = UserLike> = {
+export type InitOptions<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = {
     /**
      * Prostgles UI host url
      */
@@ -196,24 +207,7 @@ export type InitOptions<DBSchema = void, FuncSchema = ClientFunctionHandler, U e
      */
     onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
-type OnReadyCallback<DBSchema = void, FuncSchema = ClientFunctionHandler, U extends UserLike = UserLike> = (
-/**
- * The database handler object.
- * Only allowed tables and table methods are defined
- */
-dbo: DBHandlerClient<DBSchema>, 
-/**
- * Custom server-side TS methods
- */
-methods: FuncSchema | undefined, methodSchema: ServerFunctionHandler | undefined, 
-/**
- * Table schema together with column permission details the client has access to
- */
-tableSchema: DBSchemaTable[] | undefined, 
-/**
- * Handlers for authentication that are configured on the server through the "auth" options
- */
-auth: AuthHandler<U>, isReconnect: boolean) => void | Promise<void>;
+type OnReadyCallback<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = (onReadyParams: ClientOnReadyParams<DBSchema, FuncSchema, U>) => void | Promise<void>;
 export type AnyFunction = (...args: any[]) => any;
 export type CoreParams = {
     tableName: string;
@@ -230,5 +224,5 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema, FuncSchema, U extends UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
+export declare function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map

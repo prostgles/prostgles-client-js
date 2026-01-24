@@ -40,7 +40,7 @@ type Args = {
 
 const preffix = CHANNELS._preffix;
 
-export const getDBO = ({
+export const getDB = <DBSchema = void>({
   schema,
   tableSchema,
   onDebug,
@@ -49,7 +49,7 @@ export const getDBO = ({
   subscriptionHandler,
   socket,
 }: Args) => {
-  /* Building DBO object */
+  /* Building DB object */
   const checkSubscriptionArgs = (
     basicFilter: AnyObject | undefined,
     options: AnyObject | undefined,
@@ -67,14 +67,14 @@ export const getDBO = ({
   };
   const subscribeCommands = ["subscribe", "subscribeOne"] as const;
 
-  const dbo: Partial<DBHandlerClient> = {};
+  const db: Partial<DBHandlerClient> = {};
 
   const schemaClone = quickClone(schema);
   getObjectEntries(schemaClone).forEach(([tableName, methods]) => {
     const allowedCommands = getKeys(methods);
-    dbo[tableName] = {};
+    db[tableName] = {};
 
-    const dboTable = dbo[tableName] as TableHandlerClient;
+    const dboTable = db[tableName] as TableHandlerClient;
     allowedCommands
       .sort(
         (a, b) => Number(includes(subscribeCommands, a)) - Number(includes(subscribeCommands, b)),
@@ -94,7 +94,7 @@ export const getDBO = ({
                 name: tableName,
                 onDebug: onDebug as any,
                 filter,
-                db: dbo,
+                db: db,
                 ...params,
               });
             };
@@ -111,7 +111,7 @@ export const getDBO = ({
                   onDebug: onDebug as any,
                   name: tableName,
                   filter: basicFilter,
-                  db: dbo,
+                  db: db,
                   onError,
                 }));
               syncHandler.syncedTables[syncName] = syncedTableHandler;
@@ -178,7 +178,7 @@ export const getDBO = ({
             });
             checkSubscriptionArgs(param1, param2, onChange, onError);
             return subscriptionHandler.addSub(
-              dbo,
+              db,
               { tableName, command, param1, param2 },
               onChange,
               onError,
@@ -214,7 +214,7 @@ export const getDBO = ({
                 onChange(rows[0]);
               };
               return subscriptionHandler.addSub(
-                dbo,
+                db,
                 { tableName, command, param1, param2 },
                 onChangeOne,
                 onError,
@@ -263,5 +263,5 @@ export const getDBO = ({
       });
   });
 
-  return { dbo };
+  return { db: db as Partial<DBHandlerClient<DBSchema>> };
 };

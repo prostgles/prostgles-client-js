@@ -19,12 +19,12 @@ test("types work", async () => {
   const typeTest = () => {
     const client = useProstglesClient<GeneratedSchema>();
     if (client.isLoading || client.hasError) return;
-    const t1 = client.dbo.table1.useFind({}, { orderBy: { col1: 1 } });
+    const t1 = client.db.table1?.useFind({}, { orderBy: { col1: 1 } });
     const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
 
     const client2 = useProstglesClient();
     if (client2.isLoading || "error" in client2) return;
-    client2.dbo.dwada?.find?.();
+    client2.db.dwada?.find?.();
 
     const filter: FullFilter<GeneratedSchema["table1"]["columns"], GeneratedSchema> = {};
 

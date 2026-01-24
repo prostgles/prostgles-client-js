@@ -1,8 +1,4 @@
 "use strict";
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Stefan L. All rights reserved.
- *  Licensed under the MIT License. See LICENSE in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -113,7 +109,7 @@ function prostgles(initOpts, syncedTable) {
                 redirect,
             });
             const { methodHandlers, methodSchema } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
-            const { dbo } = (0, getDbHandler_1.getDBO)({
+            const { db } = (0, getDbHandler_1.getDB)({
                 schema,
                 onDebug,
                 syncedTable,
@@ -122,42 +118,33 @@ function prostgles(initOpts, syncedTable) {
                 socket,
                 tableSchema,
             });
-            if (rawSQL) {
-                dbo.sql = sqlHandler.sql;
-            }
+            const sql = rawSQL ? (0, getSqlHandler_1.getSqlHandler)(initOpts).sql : undefined;
             subscriptionHandler.reAttachAll();
             syncHandler.reAttachAll();
-            joinTables.flat().map((table) => {
-                var _a, _b, _c, _d;
-                (_a = dbo.innerJoin) !== null && _a !== void 0 ? _a : (dbo.innerJoin = {});
-                (_b = dbo.leftJoin) !== null && _b !== void 0 ? _b : (dbo.leftJoin = {});
-                (_c = dbo.innerJoinOne) !== null && _c !== void 0 ? _c : (dbo.innerJoinOne = {});
-                (_d = dbo.leftJoinOne) !== null && _d !== void 0 ? _d : (dbo.leftJoinOne = {});
-                const joinHandlers = (0, prostgles_types_1.getJoinHandlers)(table);
-                //@ts-ignore
-                dbo.leftJoin[table] = joinHandlers.leftJoin;
-                dbo.innerJoin[table] = joinHandlers.innerJoin;
-                dbo.leftJoinOne[table] = joinHandlers.leftJoinOne;
-                dbo.innerJoinOne[table] = joinHandlers.innerJoinOne;
-            });
             (async () => {
                 try {
                     const onReadyArgs = {
-                        dbo,
+                        db,
+                        sql,
                         methods: methodHandlers,
                         methodSchema,
                         tableSchema,
                         auth,
+                        socket,
                         isReconnect,
                     };
-                    await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "onReady.call", data: onReadyArgs, state }));
-                    await onReady(dbo, methodHandlers, methodSchema, tableSchema, auth, isReconnect);
+                    await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({
+                        type: "onReady.call",
+                        data: onReadyArgs,
+                        state,
+                    }));
+                    await onReady(onReadyArgs);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);
                     reject(err);
                 }
-                resolve(dbo);
+                resolve(db);
             })();
         });
     });

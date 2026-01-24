@@ -5,7 +5,7 @@ import type { ClientFunctionHandler } from "./getMethods";
 
 function prostgles<
   DBSchema = void,
-  FuncSchema = ClientFunctionHandler,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
 >(params: InitOptions<DBSchema, FuncSchema, U>) {
   return pgls(params as any, SyncedTable);
@@ -13,7 +13,7 @@ function prostgles<
 
 export {
   type DBHandlerClient,
-  type OnReadyParams,
+  type ClientOnReadyParams as OnReadyParams,
   type ProstglesClientState,
   type TableHandlerClient,
   type ViewHandlerClient,

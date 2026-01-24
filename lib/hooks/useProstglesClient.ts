@@ -1,24 +1,12 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Stefan L. All rights reserved.
- *  Licensed under the MIT License. See LICENSE in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
+import { type DBSchema, type UserLike } from "prostgles-types";
 
-import {
-  omitKeys,
-  type DBSchema,
-  type DBSchemaTable,
-  type ServerFunctionHandler,
-  type UserLike,
-} from "prostgles-types";
-
-import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import type { AuthHandler } from "../getAuthHandler";
-import { SyncedTable } from "../SyncedTable/SyncedTable";
-import { prostgles, type DBHandlerClient, type InitOptions } from "../prostgles";
-import { getReact } from "./reactImports";
-import { useIsMounted } from "./useIsMounted";
-import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
 import type { ClientFunctionHandler } from "lib/getMethods";
+import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
+import { prostgles, type InitOptions, type ClientOnReadyParams } from "../prostgles";
+import { SyncedTable } from "../SyncedTable/SyncedTable";
+import { getReact } from "./reactImports";
+import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
+import { useIsMounted } from "./useIsMounted";
 
 type IO = typeof import("socket.io-client").default;
 export const getIO = (throwError = false) => {
@@ -29,20 +17,6 @@ export const getIO = (throwError = false) => {
   } catch (err) {}
   if (throwError) throw new Error("Must install socket.io-client");
   return {} as IO;
-};
-
-export type OnReadyParams<
-  DBSchema,
-  FunctionSchema extends ClientFunctionHandler = ClientFunctionHandler,
-  U extends UserLike = UserLike,
-> = {
-  dbo: DBHandlerClient<DBSchema>;
-  methods: FunctionSchema | undefined;
-  methodSchema: ServerFunctionHandler | undefined;
-  tableSchema: DBSchemaTable[] | undefined;
-  auth: AuthHandler<U>;
-  isReconnect: boolean;
-  socket: Socket;
 };
 
 type SocketPathOrOptions = Partial<ManagerOptions & SocketOptions>;
@@ -70,10 +44,12 @@ export const useProstglesClient = <
   endpoint,
   token,
   ...initOpts
-}: UseProstglesClientProps = {}): ProstglesClientState<OnReadyParams<DBSchema, FuncSchema, U>> => {
+}: UseProstglesClientProps = {}): ProstglesClientState<
+  ClientOnReadyParams<DBSchema, FuncSchema, U>
+> => {
   const { useRef, useState } = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = useState<
-    ProstglesClientState<OnReadyParams<DBSchema, FuncSchema, U>>
+    ProstglesClientState<ClientOnReadyParams<DBSchema, FuncSchema, U>>
   >({
     isLoading: true,
   });
@@ -109,22 +85,15 @@ export const useProstglesClient = <
           socket,
           endpoint,
           ...initOpts,
-          onReady: (...args) => {
-            const [dbo, methods, methodSchema, tableSchema, auth, isReconnect] = args;
-            const onReadyArgs: OnReadyParams<DBSchema, FuncSchema, U> = {
-              dbo,
-              methods,
-              methodSchema,
-              tableSchema,
-              auth,
-              isReconnect,
-              socket,
-            };
+          onReady: (onReadyArgs) => {
             if (!getIsMounted()) {
-              initOpts.onDebug?.({ type: "onReady.notMounted", data: onReadyArgs });
+              initOpts.onDebug?.({
+                type: "onReady.notMounted",
+                data: onReadyArgs as any,
+              });
               return;
             }
-            initOpts.onDebug?.({ type: "onReady", data: onReadyArgs });
+            initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
             setOnReadyArgs({ ...onReadyArgs, isLoading: false });
           },
         },
