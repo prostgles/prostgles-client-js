@@ -31,5 +31,6 @@ export * from "./hooks/useEffectDeep";
 export * from "./hooks/useEffectAsync";
 export * from "./hooks/useAsyncEffectQueue";
 export { useAuthState, ERR_CODE_MESSAGES } from "./auth/useAuthState";
+export type { SQLHandler } from "prostgles-types";
 export type { ClientFunctionHandler, FunctionHandle } from "./getMethods";
 export default prostgles;
