@@ -30,8 +30,8 @@ export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "s
   skip?: boolean;
 };
 export type ProstglesClientState<PGC> =
-  | { isLoading: true; hasError?: undefined; error?: undefined }
-  | ({ isLoading: false; hasError?: false; error?: undefined } & PGC)
+  | { isLoading: true; hasError: false; error?: undefined }
+  | ({ isLoading: false; hasError: false; error?: undefined } & PGC)
   | { isLoading: false; hasError: true; error: unknown };
 
 export const useProstglesClient = <
@@ -52,6 +52,7 @@ export const useProstglesClient = <
     ProstglesClientState<ClientOnReadyParams<DBSchema, FuncSchema, U>>
   >({
     isLoading: true,
+    hasError: false,
   });
   const getIsMounted = useIsMounted();
 
@@ -94,7 +95,7 @@ export const useProstglesClient = <
               return;
             }
             initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
-            setOnReadyArgs({ ...onReadyArgs, isLoading: false });
+            setOnReadyArgs({ ...onReadyArgs, hasError: false, isLoading: false });
           },
         },
         SyncedTable,
