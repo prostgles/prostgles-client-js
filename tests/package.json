@@ -9,7 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "prostgles-client": "file:.."
+    "prostgles-client": "file:..",
+    "react": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^20.10.0"

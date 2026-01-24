@@ -1,8 +1,8 @@
 import { strict as assert } from "assert";
 import { SyncedTable } from "prostgles-client";
 import { __prglReactInstalled } from "prostgles-client/dist/hooks/reactImports";
-import { useIsMounted } from "prostgles-client/dist/hooks/useIsMounted";
-import { useEffectAsync } from "prostgles-client/dist/hooks/useEffectAsync";
+import { useIsMounted } from "prostgles-client";
+import { useEffectAsync } from "prostgles-client";
 import { test } from "node:test";
 
 test("exports work", () => {
