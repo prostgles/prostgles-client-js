@@ -1,21 +1,22 @@
 import type { AnyObject, FullFilter, TableHandler } from "prostgles-types";
 import { type DBHandlerClient, useProstglesClient } from "prostgles-client/dist/prostgles";
 import { test } from "node:test";
+import type { OnReadyParams } from "../dist/prostgles-full";
+
+type GeneratedSchema = {
+  table1: {
+    columns: {
+      col1: string;
+    };
+    is_view: false;
+    select: true;
+    insert: true;
+    update: true;
+    delete: true;
+  };
+};
 
 test("types work", async () => {
-  type GeneratedSchema = {
-    table1: {
-      columns: {
-        col1: string;
-      };
-      is_view: false;
-      select: true;
-      insert: true;
-      update: true;
-      delete: true;
-    };
-  };
-
   const typeTest = () => {
     const client = useProstglesClient<GeneratedSchema>();
     if (client.isLoading || client.hasError) return;
@@ -83,4 +84,37 @@ test("types work", async () => {
     );
   };
   typeTest;
+});
+
+test("GeneratedFunctionSchema types work ", async () => {
+  async () => {
+    type GeneratedFunctionSchema = {
+      askLLM: (args: { messages?: any; model?: any; tools?: any }) => Promise<unknown>;
+      stopServer: () => Promise<boolean>;
+    };
+    const client = useProstglesClient<GeneratedSchema, GeneratedFunctionSchema>();
+    if (client.isLoading || client.hasError) return;
+    client.methods?.askLLM({
+      messages: [],
+      model: "gpt-4",
+      //@ts-expect-error
+      dddd: 1,
+    });
+
+    const readyParams: OnReadyParams<
+      GeneratedSchema,
+      GeneratedFunctionSchema,
+      { id: string; type: string }
+    > = {} as any;
+
+    readyParams.methods?.askLLM({
+      messages: [],
+      model: "gpt-4",
+      //@ts-expect-error
+      dddd: 1,
+    });
+
+    const res = await readyParams.methods?.stopServer();
+    res satisfies boolean | undefined;
+  };
 });
