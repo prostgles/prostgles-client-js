@@ -116,5 +116,8 @@ test("GeneratedFunctionSchema types work ", async () => {
 
     const res = await readyParams.methods?.stopServer();
     res satisfies boolean | undefined;
+
+    const readyParamsBasic: OnReadyParams = {} as any;
+    const res2 = await readyParamsBasic.methods?.stopServer?.({});
   };
 });

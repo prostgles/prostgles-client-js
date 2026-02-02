@@ -55,7 +55,7 @@ export { SQLResult, ServerFunctionHandler, asName };
  */
 export type AsyncResult<T> =
   | { data?: undefined; isLoading: true; error?: undefined }
-  | { data: T; isLoading: boolean; error?: any };
+  | { data: T; isLoading: boolean; error?: unknown };
 
 export type HookOptions = {
   /**
