@@ -10,11 +10,11 @@ import {
 import { debug, type AnyFunction, type CoreParams, type InitOptions } from "./prostgles";
 import { FunctionQueuer } from "./FunctionQueuer";
 
+type OnChange = (data: AnyObject[], err?: any) => void;
 export type Subscription = CoreParams & {
   lastData: any;
-  onCall: AnyFunction;
-  handlers: AnyFunction[];
-  errorHandlers: (AnyFunction | undefined)[];
+  onCall: (data: { data: AnyObject[]; err?: unknown }) => void;
+  handlers: OnChange[];
   unsubChannel: string;
   reAttach: () => Promise<void>;
 };
@@ -112,7 +112,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     onChange: AnyFunction,
     _onError?: AnyFunction,
   ): Promise<SubscriptionHandler> => {
-    return addSubQueuer.run([dbo, params, onChange, _onError]);
+    return addSubQueuer.run([dbo, params, onChange]);
   };
 
   /**
@@ -122,7 +122,6 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     dbo: any,
     { tableName, command, param1, param2 }: CoreParams,
     onChange: AnyFunction,
-    _onError?: AnyFunction,
   ): Promise<SubscriptionHandler> {
     const makeHandler = (channelName: string, unsubChannel: string) => {
       const unsubscribe = function () {
@@ -163,7 +162,6 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     if (existing) {
       const existingCh = existing[0];
       existing[1].handlers.push(onChange);
-      existing[1].errorHandlers.push(_onError);
       setTimeout(() => {
         if (subscriptions[existingCh]?.lastData) {
           onChange(subscriptions[existingCh]?.lastData);
@@ -179,32 +177,27 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
       param2,
     });
 
-    const onCall = function (data: any) {
+    const onCall = function (subData: { data?: any; err?: any }) {
       /* TO DO: confirm receiving data or server will unsubscribe */
       // if(cb) cb(true);
       const sub = subscriptions[channelName];
+      const { data, err } = subData;
       if (sub) {
-        if (data.data) {
+        if (data !== undefined || err !== undefined) {
           sub.lastData = data.data;
           sub.handlers.forEach((h) => {
-            h(data.data);
-          });
-        } else if (data.err) {
-          sub.errorHandlers.forEach((h) => {
-            h?.(data.err);
+            if (err !== undefined) {
+              console.error(`Error within running subscription \n ${channelName}`, err);
+            }
+            h(data, err);
           });
         } else {
-          console.error("INTERNAL ERROR: Unexpected data format from subscription: ", data);
+          console.error("INTERNAL ERROR: Unexpected data format from subscription: ", subData);
         }
       } else {
         console.warn("Orphaned subscription: ", channelName);
       }
     };
-    const onError =
-      _onError ||
-      function (err: any) {
-        console.error(`Uncaught error within running subscription \n ${channelName}`, err);
-      };
 
     socket.on(channelName, onCall);
     subscriptions[channelName] = {
@@ -216,7 +209,6 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
       onCall,
       unsubChannel: channelNameUnsubscribe,
       handlers: [onChange],
-      errorHandlers: [onError],
       reAttach: async () => {
         await removeServerSub(channelNameUnsubscribe).catch(console.error);
         await addServerSub({ tableName, command, param1, param2 });
@@ -238,7 +230,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
         await s.reAttach();
       } catch (err) {
         console.error("There was an issue reconnecting old subscriptions", err, s);
-        Object.values(s.errorHandlers).forEach((h) => h?.(err));
+        s.onCall({ data: [], err });
       }
     }
     await onDebug?.({ type: "subscriptions", command: "reAttachAll.end", subscriptions });

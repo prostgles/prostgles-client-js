@@ -201,14 +201,14 @@ export const getDB = <DBSchema = void>({
           }
 
           if (command === SUBONE || !subscribeCommands.includes(SUBONE)) {
-            dboTable[SUBONE] = async function (param1, param2, onChange, onError) {
+            dboTable[SUBONE] = async function (param1, param2, onChange) {
               await onDebug?.({
                 type: "table",
                 command: "getSync",
                 tableName,
-                data: { param1, param2, onChange, onError },
+                data: { param1, param2, onChange },
               });
-              checkSubscriptionArgs(param1, param2, onChange, onError);
+              checkSubscriptionArgs(param1, param2, onChange);
 
               const onChangeOne = (rows) => {
                 onChange(rows[0]);
@@ -217,7 +217,6 @@ export const getDB = <DBSchema = void>({
                 db,
                 { tableName, command, param1, param2 },
                 onChangeOne,
-                onError,
               );
             };
           }
