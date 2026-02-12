@@ -1,9 +1,8 @@
 import { strict as assert } from "assert";
-import { SyncedTable } from "prostgles-client";
-import { __prglReactInstalled } from "prostgles-client/dist/hooks/reactImports";
-import { useIsMounted } from "prostgles-client";
-import { useEffectAsync } from "prostgles-client";
 import { test } from "node:test";
+import { SyncedTable, useEffectAsync, useIsMounted, type OnReadyParams } from "prostgles-client";
+import { __prglReactInstalled } from "prostgles-client/dist/hooks/reactImports";
+import type { DBGeneratedSchema, DBSchema, GeneratedFunctionSchema } from "./DBGeneratedSchema";
 
 test("exports work", () => {
   const exportedTypes = Array.from(
@@ -11,4 +10,12 @@ test("exports work", () => {
   );
   assert.equal(exportedTypes.join(), "function");
   assert.equal(typeof __prglReactInstalled(), "boolean");
+});
+
+test("types work", () => {
+  () => {
+    type U = DBSchema["users"];
+
+    type ProstglesContextValue = OnReadyParams<DBGeneratedSchema, GeneratedFunctionSchema, U>;
+  };
 });
