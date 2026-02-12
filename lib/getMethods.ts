@@ -2,8 +2,10 @@ import type { ClientSchema, ServerFunctionHandler, SocketFunctionCall } from "pr
 import { CHANNELS } from "prostgles-types";
 import type { InitOptions } from "./prostgles";
 
-export type FunctionHandle = <Args extends Record<string, unknown>>(args: Args) => Promise<unknown>;
-
+// export type FunctionHandle = <Args extends Record<string, unknown>>(args: Args) => Promise<unknown>;
+export type FunctionHandle<Args extends Record<string, unknown> = Record<string, unknown>> = (
+  args: Args,
+) => Promise<unknown>;
 export type ClientFunctionHandler = Partial<Record<string, FunctionHandle>>;
 
 export const getMethods = ({
