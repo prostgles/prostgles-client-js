@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMultiSyncSubscription = void 0;
+exports.getMultiSyncSubscription = getMultiSyncSubscription;
 function getMultiSyncSubscription({ onChange, handlesOnData }) {
     const handles = {
         $unsync: () => {
@@ -58,4 +58,3 @@ function getMultiSyncSubscription({ onChange, handlesOnData }) {
     };
     return { sub, handles };
 }
-exports.getMultiSyncSubscription = getMultiSyncSubscription;

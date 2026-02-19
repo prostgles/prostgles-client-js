@@ -14,7 +14,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prostgles = exports.asName = exports.debug = exports.isClientSide = void 0;
+exports.asName = exports.debug = exports.isClientSide = void 0;
+exports.prostgles = prostgles;
 const prostgles_types_1 = require("prostgles-types");
 Object.defineProperty(exports, "asName", { enumerable: true, get: function () { return prostgles_types_1.asName; } });
 const getAuthHandler_1 = require("./getAuthHandler");
@@ -149,4 +150,3 @@ function prostgles(initOpts, syncedTable) {
         });
     });
 }
-exports.prostgles = prostgles;
