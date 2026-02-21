@@ -124,11 +124,11 @@ type SyncDebugEvent = {
 type DebugEvent = {
     type: "subscriptions";
     command: "reAttachAll.start";
-    subscriptions: Record<string, Subscription>;
+    subscriptions: Map<string, Subscription>;
 } | {
     type: "subscriptions";
     command: "reAttachAll.end";
-    subscriptions: Record<string, Subscription>;
+    subscriptions: Map<string, Subscription>;
 } | {
     type: "table";
     command: "unsubscribe";

@@ -19,16 +19,12 @@ export type Subscription = CoreParams & {
   reAttach: () => Promise<void>;
 };
 
-type Subscriptions = {
-  [key: string]: Subscription;
-};
-
 const preffix = CHANNELS._preffix;
 
 export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "onDebug">) => {
   const { socket, onDebug } = initOpts;
 
-  const subscriptions: Subscriptions = {};
+  const subscriptions: Map<string, Subscription> = new Map();
 
   const removeServerSub = (unsubChannel: string) => {
     return new Promise((resolve, reject) => {
@@ -51,7 +47,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     debug("_unsubscribe", { channelName, handler });
 
     return new Promise((resolve) => {
-      const sub = subscriptions[channelName];
+      const sub = subscriptions.get(channelName);
       if (sub) {
         sub.handlers = sub.handlers.filter((h) => h !== handler);
         onDebug?.({
@@ -64,7 +60,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
         if (!sub.handlers.length) {
           removeServerSub(unsubChannel);
           socket.removeListener(channelName, sub.onCall);
-          delete subscriptions[channelName];
+          subscriptions.delete(channelName);
 
           /* Not waiting for server confirmation to speed things up */
           resolve(true);
@@ -150,7 +146,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
       return Object.freeze(subHandlers);
     };
 
-    const existing = Object.entries(subscriptions).find(([ch, s]) => {
+    const existing = Array.from(subscriptions.entries()).find(([ch, s]) => {
       return (
         s.tableName === tableName &&
         s.command === command &&
@@ -160,14 +156,15 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     });
 
     if (existing) {
-      const existingCh = existing[0];
-      existing[1].handlers.push(onChange);
+      const [existingChannel, existingSub] = existing;
+      existingSub.handlers.push(onChange);
       setTimeout(() => {
-        if (subscriptions[existingCh]?.lastData) {
-          onChange(subscriptions[existingCh]?.lastData);
+        const sub = subscriptions.get(existingChannel);
+        if (sub?.lastData) {
+          onChange(sub.lastData);
         }
       }, 10);
-      return makeHandler(existingCh, existing[1].unsubChannel);
+      return makeHandler(existingChannel, existingSub.unsubChannel);
     }
 
     const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({
@@ -180,16 +177,16 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     const onCall = function (subData: { data?: any; err?: any }) {
       /* TO DO: confirm receiving data or server will unsubscribe */
       // if(cb) cb(true);
-      const sub = subscriptions[channelName];
-      const { data, err } = subData;
+      const sub = subscriptions.get(channelName);
+      const { data, err } = subData as { data?: AnyObject[]; err?: any };
       if (sub) {
         if (data !== undefined || err !== undefined) {
-          sub.lastData = data.data;
-          sub.handlers.forEach((h) => {
+          sub.lastData = data;
+          sub.handlers.forEach((handler) => {
             if (err !== undefined) {
               console.error(`Error within running subscription \n ${channelName}`, err);
             }
-            h(data, err);
+            handler(data ?? [], err);
           });
         } else {
           console.error("INTERNAL ERROR: Unexpected data format from subscription: ", subData);
@@ -200,7 +197,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     };
 
     socket.on(channelName, onCall);
-    subscriptions[channelName] = {
+    subscriptions.set(channelName, {
       lastData: undefined,
       tableName,
       command,
@@ -214,7 +211,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
         await addServerSub({ tableName, command, param1, param2 });
         socket.emit(channelNameReady, { now: Date.now() });
       },
-    };
+    });
     socket.emit(channelNameReady, { now: Date.now() });
     return makeHandler(channelName, channelNameUnsubscribe);
   }
@@ -225,7 +222,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
    */
   const reAttachAll = async () => {
     await onDebug?.({ type: "subscriptions", command: "reAttachAll.start", subscriptions });
-    for await (const s of Object.values(subscriptions)) {
+    for await (const s of Array.from(subscriptions.values())) {
       try {
         await s.reAttach();
       } catch (err) {
