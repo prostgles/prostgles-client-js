@@ -1,5 +1,6 @@
 import type { HookOptions, TableHandlerClient } from "../prostgles";
-import { useState } from "./reactImports";
+import { reactImports } from "../hooks/reactImports";
+const { useState } = reactImports;
 import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
 import { useIsMounted } from "./useIsMounted";
 

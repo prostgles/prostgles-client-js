@@ -1,6 +1,7 @@
 import type { HookOptions } from "../prostgles";
 import { isEqual, type SubscriptionHandler } from "prostgles-types";
-import { useRef, useState } from "./reactImports";
+import { reactImports } from "../hooks/reactImports";
+const { useRef, useState } = reactImports;
 import type { DataFetchHookResult } from "./useSync";
 import { useIsMounted } from "./useIsMounted";
 import { useAsyncEffectQueue } from "./useAsyncEffectQueue";

@@ -25,6 +25,7 @@ const {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 } = React! ?? {};
 
-export { useEffect, useCallback, useRef, useState, React };
+const reactImports = { useEffect, useCallback, useRef, useState, getReact: () => React };
+export { reactImports };
 
 export const __prglReactInstalled = () => Boolean((React as any) && useRef);

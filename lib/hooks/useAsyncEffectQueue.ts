@@ -1,5 +1,6 @@
 import { useEffectDeep } from "./useEffectDeep";
-import { useRef } from "./reactImports";
+import { reactImports } from "../hooks/reactImports";
+const { useRef } = reactImports;
 
 type EffectData = { id: number; effect: EffectFunc; deps: any[] };
 

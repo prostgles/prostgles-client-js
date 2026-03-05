@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from "./reactImports";
+import { reactImports } from "../hooks/reactImports";
+const { useEffect, useRef, useCallback } = reactImports;
 
 export const useIsMounted = () => {
   const isMountedRef = useRef(true);

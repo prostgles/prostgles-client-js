@@ -1,6 +1,7 @@
 import { isEqual } from "prostgles-types";
-import { React, useEffect, useRef } from "./reactImports";
-
+import { reactImports } from "./reactImports";
+const { getReact, useEffect, useRef } = reactImports;
+const React = getReact();
 type React = typeof import("react");
 export const useDeepCompareMemoize = (value: unknown) => {
   const ref = useRef<unknown>();

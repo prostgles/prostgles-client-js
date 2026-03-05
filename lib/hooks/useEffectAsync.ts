@@ -1,4 +1,5 @@
-import { useRef } from "./reactImports";
+import { reactImports } from "../hooks/reactImports";
+const { useRef } = reactImports;
 import { useEffectDeep } from "./useEffectDeep";
 
 export const useEffectAsync = (effect: () => Promise<void | (() => void)>, inputs: any[]) => {
