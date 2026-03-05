@@ -1,6 +1,7 @@
 import { isEqual } from "prostgles-types";
-import { React, useEffect, useRef, type ReactT } from "./reactImports";
+import { React, useEffect, useRef } from "./reactImports";
 
+type React = typeof import("react");
 export const useDeepCompareMemoize = (value: unknown) => {
   const ref = useRef<unknown>();
 
@@ -13,10 +14,10 @@ export const useDeepCompareMemoize = (value: unknown) => {
 
 export const useMemoDeep = ((callback, deps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return React.useMemo(callback, deps?.map(useDeepCompareMemoize));
-}) as ReactT["useMemo"];
+  return React.useMemo(callback, deps.map(useDeepCompareMemoize));
+}) as React["useMemo"];
 
 export const useEffectDeep = ((callback, deps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(callback, deps?.map(useDeepCompareMemoize));
-}) as ReactT["useEffect"];
+}) as React["useEffect"];

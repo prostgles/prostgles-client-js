@@ -257,7 +257,7 @@ export const ERR_CODE_MESSAGES = {
   "expired-magic-link": "Magic link expired",
   "inactive-account": "Account is inactive",
   "invalid-password": "Invalid or missing password",
-  "invalid-totp-code": "Invalid or missing totp code",
+  "invalid-totp-code": "Invalid totp code",
   "invalid-username": "Invalid or missing username",
   "is-from-magic-link": "Cannot login with password",
   "is-from-OAuth": "Cannot login with password",

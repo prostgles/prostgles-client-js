@@ -1,4 +1,4 @@
-export type ReactT = typeof import("react");
+type ReactT = typeof import("react");
 let React: ReactT;
 
 const alertNoReact = (...args: any[]): any => {
