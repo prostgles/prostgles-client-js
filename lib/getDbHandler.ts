@@ -67,7 +67,6 @@ export const getDB = <DBSchema = void>({
 
   const schemaClone = quickClone(tableSchema) ?? [];
   schemaClone.forEach(({ name: tableName, publishInfo }) => {
-    // const allowedCommands = getKeys(methods);
     const allowedCommands = getAllowedTableMethods({ publishInfo });
     db[tableName] = {};
 
@@ -78,7 +77,11 @@ export const getDB = <DBSchema = void>({
       )
       .forEach((command) => {
         if (command === "sync") {
-          dboTable._syncInfo = { ...publishInfo[command] };
+          const syncConfig = publishInfo.select?.syncConfig;
+          if (!syncConfig) {
+            throw `Table ${tableName} does not have syncConfig in publishInfo.select`;
+          }
+          dboTable._syncInfo = { ...syncConfig };
           if (syncedTable) {
             dboTable.getSync = async (filter, params = {}) => {
               await onDebug?.({
