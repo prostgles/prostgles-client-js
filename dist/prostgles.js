@@ -74,7 +74,7 @@ function prostgles(initOpts, syncedTable) {
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, async (args) => {
             await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "schemaChanged", data: args, state }));
             const { joinTables = [], ...clientSchema } = args;
-            const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
+            const { methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
             const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, prostgles_types_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
@@ -111,7 +111,6 @@ function prostgles(initOpts, syncedTable) {
             });
             const { methodHandlers, methodSchema } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
             const { db } = (0, getDbHandler_1.getDB)({
-                schema,
                 onDebug,
                 syncedTable,
                 syncHandler,

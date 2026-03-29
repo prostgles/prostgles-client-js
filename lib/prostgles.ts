@@ -413,7 +413,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
     socket.on(CHANNELS.SCHEMA, async (args: ClientSchema) => {
       await onDebug?.({ type: "schemaChanged", data: args, state });
       const { joinTables = [], ...clientSchema } = args;
-      const { schema, methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
+      const { methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
 
       /** Only destroy existing syncs if schema changed */
       const schemaDidNotChange =
@@ -456,7 +456,6 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       const { methodHandlers, methodSchema } = getMethods({ onDebug, methods, socket });
 
       const { db } = getDB<DBSchema>({
-        schema,
         onDebug,
         syncedTable,
         syncHandler,

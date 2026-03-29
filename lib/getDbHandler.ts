@@ -2,15 +2,16 @@ import {
   type AnyObject,
   CHANNELS,
   type DBSchemaTable,
-  getKeys,
-  getObjectEntries,
+  getAllowedTableMethods,
   includes,
   isObject,
   omitKeys,
-  type TableSchemaForClient,
 } from "prostgles-types";
 import type { getSubscriptionHandler } from "./getSubscriptionHandler";
 import type { getSyncHandler } from "./getSyncHandler";
+import { useFetch } from "./hooks/useFetch";
+import { useSubscribe } from "./hooks/useSubscribe";
+import { useSync } from "./hooks/useSync";
 import {
   type AnyFunction,
   type DBHandlerClient,
@@ -24,12 +25,8 @@ import {
   type SyncOne,
   type SyncOptions,
 } from "./SyncedTable/SyncedTable";
-import { useSubscribe } from "./hooks/useSubscribe";
-import { useSync } from "./hooks/useSync";
-import { useFetch } from "./hooks/useFetch";
 
 type Args = {
-  schema: TableSchemaForClient;
   tableSchema: DBSchemaTable[] | undefined;
   onDebug: InitOptions["onDebug"];
   socket: InitOptions["socket"];
@@ -41,7 +38,6 @@ type Args = {
 const preffix = CHANNELS._preffix;
 
 export const getDB = <DBSchema = void>({
-  schema,
   tableSchema,
   onDebug,
   syncedTable,
@@ -69,9 +65,10 @@ export const getDB = <DBSchema = void>({
 
   const db: Partial<DBHandlerClient> = {};
 
-  const schemaClone = quickClone(schema);
-  getObjectEntries(schemaClone).forEach(([tableName, methods]) => {
-    const allowedCommands = getKeys(methods);
+  const schemaClone = quickClone(tableSchema) ?? [];
+  schemaClone.forEach(({ name: tableName, publishInfo }) => {
+    // const allowedCommands = getKeys(methods);
+    const allowedCommands = getAllowedTableMethods({ publishInfo });
     db[tableName] = {};
 
     const dboTable = db[tableName] as TableHandlerClient;
@@ -81,7 +78,7 @@ export const getDB = <DBSchema = void>({
       )
       .forEach((command) => {
         if (command === "sync") {
-          dboTable._syncInfo = { ...methods[command] };
+          dboTable._syncInfo = { ...publishInfo[command] };
           if (syncedTable) {
             dboTable.getSync = async (filter, params = {}) => {
               await onDebug?.({
@@ -247,14 +244,14 @@ export const getDB = <DBSchema = void>({
           };
           dboTable[command] = method;
 
-          const methodName =
+          const reactHookName =
             command === "findOne" ? "useFindOne"
             : command === "find" ? "useFind"
             : command === "count" ? "useCount"
             : command === "size" ? "useSize"
             : undefined;
-          if (methodName) {
-            dboTable[methodName] = (param1, param2, hookOptions) =>
+          if (reactHookName) {
+            dboTable[reactHookName] = (param1, param2, hookOptions) =>
               // eslint-disable-next-line react-hooks/rules-of-hooks
               useFetch(method, [param1, param2], hookOptions);
           }
