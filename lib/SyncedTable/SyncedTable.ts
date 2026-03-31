@@ -307,8 +307,10 @@ export class SyncedTable {
     if (!tableHandler) throw `${name} table not found in db`;
     this.db = db;
 
-    const { id_fields, synced_field, throttle = 100, batch_size = 50 } = tableHandler._syncInfo;
-    if (!id_fields || !synced_field) throw "id_fields/synced_field missing";
+    const { _sync, _syncInfo } = tableHandler;
+    if (!_sync || !_syncInfo) throw `${name} table does not support sync`;
+    const { id_fields, synced_field, throttle = 100, batch_size = 50 } = _syncInfo;
+    if (!id_fields.length || !synced_field) throw "id_fields/synced_field missing";
     this.id_fields = id_fields;
     this.synced_field = synced_field;
     this.batch_size = batch_size;
@@ -346,7 +348,7 @@ export class SyncedTable {
         // }
         const data = this.getBatch(syncBatchParams);
         await this.onDebug?.({ command: "onPullRequest", data: { syncBatchParams, data } });
-        return data;
+        return { data };
       },
       onUpdates: ClientSyncHandles["onUpdates"] = async (onUpdatesParams) => {
         await this.onDebug?.({ command: "onUpdates", data: { onUpdatesParams } });
@@ -383,9 +385,8 @@ export class SyncedTable {
       throttle,
     };
 
-    tableHandler
-      ._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates })
-      .then((s: DbTableSync) => {
+    _sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then(
+      (s: DbTableSync) => {
         this.dbSync = s;
 
         function confirmExit() {
@@ -440,7 +441,8 @@ export class SyncedTable {
         });
 
         onReady();
-      });
+      },
+    );
 
     if (tableHandler.getColumns) {
       tableHandler.getColumns().then((cols) => {

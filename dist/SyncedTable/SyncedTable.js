@@ -401,8 +401,11 @@ class SyncedTable {
         if (!tableHandler)
             throw `${name} table not found in db`;
         this.db = db;
-        const { id_fields, synced_field, throttle = 100, batch_size = 50 } = tableHandler._syncInfo;
-        if (!id_fields || !synced_field)
+        const { _sync, _syncInfo } = tableHandler;
+        if (!_sync || !_syncInfo)
+            throw `${name} table does not support sync`;
+        const { id_fields, synced_field, throttle = 100, batch_size = 50 } = _syncInfo;
+        if (!id_fields.length || !synced_field)
             throw "id_fields/synced_field missing";
         this.id_fields = id_fields;
         this.synced_field = synced_field;
@@ -436,7 +439,7 @@ class SyncedTable {
             // }
             const data = this.getBatch(syncBatchParams);
             await ((_a = this.onDebug) === null || _a === void 0 ? void 0 : _a.call(this, { command: "onPullRequest", data: { syncBatchParams, data } }));
-            return data;
+            return { data };
         }, onUpdates = async (onUpdatesParams) => {
             var _a, _b;
             await ((_a = this.onDebug) === null || _a === void 0 ? void 0 : _a.call(this, { command: "onUpdates", data: { onUpdatesParams } }));
@@ -473,9 +476,7 @@ class SyncedTable {
             synced_field,
             throttle,
         };
-        tableHandler
-            ._sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates })
-            .then((s) => {
+        _sync(filter, { select }, { onSyncRequest, onPullRequest, onUpdates }).then((s) => {
             this.dbSync = s;
             function confirmExit() {
                 return "Data may be lost. Are you sure?";

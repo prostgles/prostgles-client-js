@@ -35,7 +35,7 @@ export type ProstglesClientState<PGC> =
   | { isLoading: false; hasError: true; error: unknown };
 
 export const useProstglesClient = <
-  DBSchema,
+  DBSchema = void,
   FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
 >({

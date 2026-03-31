@@ -153,8 +153,8 @@ export const getSyncHandler = ({ socket }: Pick<InitOptions, "socket">) => {
               });
           } else if (data.onPullRequest) {
             Promise.resolve(onPullRequest(data.onPullRequest))
-              .then((arr) => {
-                cb({ data: arr });
+              .then((result) => {
+                cb(result);
               })
               .catch((err) => {
                 cb({ err });

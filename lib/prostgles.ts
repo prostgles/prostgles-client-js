@@ -12,6 +12,7 @@ import type {
   SelectReturnType,
   ServerFunctionHandler,
   SubscribeParams,
+  SyncTableInfo,
   TableHandler,
   UserLike,
   ViewHandler,
@@ -27,6 +28,7 @@ import { getSqlHandler } from "./getSqlHandler";
 import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
 import { getSyncHandler } from "./getSyncHandler";
 import type {
+  DbTableSync,
   Sync,
   SyncDataItem,
   SyncOne,
@@ -102,8 +104,12 @@ export type ViewHandlerClient<
   /**
    * Used internally to setup sync
    */
-  _sync?: (params: CoreParams, triggers: ClientSyncHandles) => Promise<void>;
-  _syncInfo?: AnyObject;
+  _sync?: (
+    filter: EqualityFilter<AnyObject> | undefined,
+    selectParams: { select: AnyObject | "*" },
+    triggers: ClientSyncHandles,
+  ) => Promise<DbTableSync>;
+  _syncInfo?: SyncTableInfo;
   getSync?: AnyObject;
 
   /**
@@ -164,21 +170,12 @@ export type ViewHandlerClient<
 export type TableHandlerClient<
   T extends AnyObject = AnyObject,
   S extends DBSchema | void = void,
-> = ViewHandlerClient<T, S> &
-  TableHandler<T, S> & {
-    _syncInfo?: any;
-    getSync?: any;
-    sync?: Sync<T>;
-    syncOne?: SyncOne<T>;
-    _sync?: any;
-  };
+> = ViewHandlerClient<T, S> & TableHandler<T, S>;
 
 export type DBHandlerClient<Schema = void> =
   Schema extends DBSchema ?
     {
-      [tov_name in keyof Schema]: Schema[tov_name]["is_view"] extends true ?
-        ViewHandlerClient<Schema[tov_name]["columns"], Schema>
-      : TableHandlerClient<Schema[tov_name]["columns"], Schema>;
+      [tov_name in keyof Schema]: TableHandlerClient<Schema[tov_name]["columns"], Schema>;
     }
   : Record<string, Partial<TableHandlerClient>>;
 
