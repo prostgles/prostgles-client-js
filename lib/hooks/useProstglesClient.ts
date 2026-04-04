@@ -35,7 +35,7 @@ export type ProstglesClientState<PGC> =
   | { isLoading: false; hasError: true; error: unknown };
 
 export const useProstglesClient = <
-  DBSchema = void,
+  S = void,
   FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
 >({
@@ -44,12 +44,10 @@ export const useProstglesClient = <
   endpoint,
   token,
   ...initOpts
-}: UseProstglesClientProps = {}): ProstglesClientState<
-  ClientOnReadyParams<DBSchema, FuncSchema, U>
-> => {
+}: UseProstglesClientProps = {}): ProstglesClientState<ClientOnReadyParams<S, FuncSchema, U>> => {
   const { useRef, useState } = getReact(true);
   const [onReadyArgs, setOnReadyArgs] = useState<
-    ProstglesClientState<ClientOnReadyParams<DBSchema, FuncSchema, U>>
+    ProstglesClientState<ClientOnReadyParams<S, FuncSchema, U>>
   >({
     isLoading: true,
     hasError: false,
@@ -81,7 +79,7 @@ export const useProstglesClient = <
       const socket =
         endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
       socketRef.current = socket;
-      await prostgles<DBSchema, FuncSchema, U>(
+      await prostgles<S, FuncSchema, U>(
         {
           socket,
           endpoint,

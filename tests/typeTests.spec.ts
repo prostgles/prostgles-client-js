@@ -27,6 +27,7 @@ test("types work", async () => {
     if (client2.isLoading || "error" in client2) return;
     client2.db.dwada?.find?.();
 
+    client2.methods;
     const filter: FullFilter<GeneratedSchema["table1"]["columns"], GeneratedSchema> = {};
 
     const filterCheck = <F extends FullFilter<void, void> | undefined>(f: F) => {};
