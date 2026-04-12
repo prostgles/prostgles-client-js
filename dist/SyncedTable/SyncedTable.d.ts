@@ -1,4 +1,4 @@
-import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter } from "prostgles-types";
+import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter, NormalizedRow } from "prostgles-types";
 import { WAL } from "prostgles-types";
 import type { DBHandlerClient } from "../prostgles";
 export declare const debug: any;
@@ -21,14 +21,14 @@ type OnErrorHandler = (error: any) => void;
 /**
  * Creates a local synchronized table
  */
-type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
+type OnChange<T extends Record<string, unknown>> = (data: SyncDataItem<NormalizedRow<T>>[], delta?: Partial<T>[]) => any;
 type SyncHandler<T> = {
     $unsync: () => void;
     $upsert: (newData: T[]) => void | Promise<void>;
     getItems: () => T[];
 };
 export type Sync<T extends AnyObject> = (basicFilter: EqualityFilter<T>, options: SyncOptions, onChange: OnChange<T>, onError?: OnErrorHandler) => Promise<SyncHandler<T>>;
-type OnchangeOne<T> = (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => void | Promise<void>;
+type OnchangeOne<T extends Record<string, unknown>> = (data: SyncDataItem<NormalizedRow<T>>, delta?: Partial<NormalizedRow<T>>) => void | Promise<void>;
 /**
  * Creates a local synchronized record
  */
@@ -62,8 +62,8 @@ type DeepPartial<T> = T extends Array<any> ? T : T extends object ? {
  * CRUD handles added if initialised with handlesOnData = true
  */
 export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false> = {
-    $get: () => T | undefined;
-    $find: (idObj: Partial<T>) => T | undefined;
+    $get: () => NormalizedRow<T> | undefined;
+    $find: (idObj: Partial<NormalizedRow<T>>) => NormalizedRow<T> | undefined;
     $unsync: () => any;
     $delete: () => void;
     $update: <OPTS extends $UpdateOpts>(newData: OPTS extends {
@@ -72,10 +72,10 @@ export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends bool
     $cloneSync: CloneSync<T, Full>;
     $cloneMultiSync: CloneMultiSync<T>;
 };
-export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T & (Full extends true ? SingleSyncHandles<T, Full> : Partial<SingleSyncHandles<T, Full>>);
+export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = NormalizedRow<T> & (Full extends true ? SingleSyncHandles<NormalizedRow<T>, Full> : Partial<SingleSyncHandles<NormalizedRow<T>, Full>>);
 export type MultiSyncHandles<T extends AnyObject> = {
     $unsync: () => void;
-    $upsert: (newData: T[]) => any;
+    $upsert: (newData: NormalizedRow<T>[]) => any;
     getItems: () => AnyObject[];
 };
 export type SubscriptionSingle<T extends AnyObject = AnyObject, Full extends boolean = false> = {

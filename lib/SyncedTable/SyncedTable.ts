@@ -7,6 +7,7 @@ import type {
   ClientSyncInfo,
   TableHandler,
   EqualityFilter,
+  NormalizedRow,
 } from "prostgles-types";
 import { getTextPatch, isEmpty, WAL, getKeys, isObject, isEqual, isDefined } from "prostgles-types";
 import type { DBHandlerClient } from "../prostgles";
@@ -43,7 +44,10 @@ type OnErrorHandler = (error: any) => void;
 /**
  * Creates a local synchronized table
  */
-type OnChange<T> = (data: SyncDataItem<Required<T>>[], delta?: Partial<T>[]) => any;
+type OnChange<T extends Record<string, unknown>> = (
+  data: SyncDataItem<NormalizedRow<T>>[],
+  delta?: Partial<T>[],
+) => any;
 
 type SyncHandler<T> = {
   $unsync: () => void;
@@ -51,21 +55,17 @@ type SyncHandler<T> = {
   getItems: () => T[];
 };
 
-export type Sync<
-  T extends AnyObject,
-  // OnChangeFunc extends OnChange<T> = (
-  //   data: SyncDataItem<Required<T>>[],
-  //   delta?: Partial<T>[],
-  // ) => void | Promise<void>,
-  // Upsert extends (newData: T[]) => any = (newData: T[]) => any,
-> = (
+export type Sync<T extends AnyObject> = (
   basicFilter: EqualityFilter<T>,
   options: SyncOptions,
   onChange: OnChange<T>,
   onError?: OnErrorHandler,
 ) => Promise<SyncHandler<T>>;
 
-type OnchangeOne<T> = (data: SyncDataItem<Required<T>>, delta?: Partial<T>) => void | Promise<void>;
+type OnchangeOne<T extends Record<string, unknown>> = (
+  data: SyncDataItem<NormalizedRow<T>>,
+  delta?: Partial<NormalizedRow<T>>,
+) => void | Promise<void>;
 
 /**
  * Creates a local synchronized record
@@ -121,8 +121,8 @@ type DeepPartial<T> =
  * CRUD handles added if initialised with handlesOnData = true
  */
 export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false> = {
-  $get: () => T | undefined;
-  $find: (idObj: Partial<T>) => T | undefined;
+  $get: () => NormalizedRow<T> | undefined;
+  $find: (idObj: Partial<NormalizedRow<T>>) => NormalizedRow<T> | undefined;
   $unsync: () => any;
   $delete: () => void;
   $update: <OPTS extends $UpdateOpts>(
@@ -133,12 +133,16 @@ export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends bool
   $cloneMultiSync: CloneMultiSync<T>;
 };
 
-export type SyncDataItem<T extends AnyObject = AnyObject, Full extends boolean = false> = T &
-  (Full extends true ? SingleSyncHandles<T, Full> : Partial<SingleSyncHandles<T, Full>>);
+export type SyncDataItem<
+  T extends AnyObject = AnyObject,
+  Full extends boolean = false,
+> = NormalizedRow<T> &
+  (Full extends true ? SingleSyncHandles<NormalizedRow<T>, Full>
+  : Partial<SingleSyncHandles<NormalizedRow<T>, Full>>);
 
 export type MultiSyncHandles<T extends AnyObject> = {
   $unsync: () => void;
-  $upsert: (newData: T[]) => any;
+  $upsert: (newData: NormalizedRow<T>[]) => any;
   getItems: () => AnyObject[];
 };
 
@@ -569,8 +573,8 @@ export class SyncedTable {
     if (!idObj || !onChange) throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
 
     const handles: SingleSyncHandles<T, Full> = {
-      $get: () => this.getItem<T>(idObj),
-      $find: (idObject) => this.getItem<T>(idObject),
+      $get: () => this.getItem<NormalizedRow<T>>(idObj),
+      $find: (idObject) => this.getItem<NormalizedRow<T>>(idObject),
       $unsync: () => {
         return this.unsubscribe(onChange as SingleChangeListener | MultiChangeListener);
       },
