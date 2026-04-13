@@ -16,7 +16,6 @@ export {
   type ClientOnReadyParams as OnReadyParams,
   type ProstglesClientState,
   type TableHandlerClient,
-  type ViewHandlerClient,
   type InitOptions,
   asName,
 } from "./prostgles";

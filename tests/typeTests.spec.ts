@@ -1,7 +1,8 @@
-import type { AnyObject, FullFilter, TableHandler } from "prostgles-types";
-import { type DBHandlerClient, useProstglesClient } from "prostgles-client/dist/prostgles";
+import type { DBGeneratedSchema } from "DBGeneratedSchema";
 import { test } from "node:test";
-import type { OnReadyParams } from "../dist/prostgles-full";
+import { type DBHandlerClient, useProstglesClient } from "prostgles-client/dist/prostgles";
+import type { AnyObject, DBHandler, FullFilter, TableHandler } from "prostgles-types";
+import type { OnReadyParams, TableHandlerClient } from "../dist/prostgles-full";
 
 type GeneratedSchema = {
   table1: {
@@ -21,7 +22,7 @@ test("types work", async () => {
     const client = useProstglesClient<GeneratedSchema>();
     if (client.isLoading || client.hasError) return;
     const t1 = client.db.table1?.useFind({}, { orderBy: { col1: 1 } });
-    const dbo: DBHandlerClient<GeneratedSchema> = 1 as any;
+    const db = {} as DBHandlerClient<GeneratedSchema>;
 
     const client2 = useProstglesClient();
     if (client2.isLoading || "error" in client2) return;
@@ -33,7 +34,7 @@ test("types work", async () => {
     const filterCheck = <F extends FullFilter<void, void> | undefined>(f: F) => {};
     filterCheck(filter);
 
-    const sub: TableHandler["size"] = dbo.table1.size;
+    const sub: TableHandler["size"] = db.table1.size;
 
     const f = <A extends TableHandler>(a: A) => {};
 
@@ -83,6 +84,28 @@ test("types work", async () => {
         },
       },
     );
+
+    const dbTyped = {} as DBHandler<DBGeneratedSchema>;
+    dbTyped.futures.findOne?.();
+    let dbGeneric = {} as DBHandler;
+    dbGeneric = dbTyped;
+
+    const tblH = {} as TableHandlerClient<
+      DBGeneratedSchema["symbols"]["columns"],
+      DBGeneratedSchema
+    >;
+
+    tblH.insert({
+      pair: "BTC/USD",
+    });
+
+    let tblH2 = {} as TableHandlerClient;
+    tblH2 = tblH;
+
+    const dbClientTyped = {} as DBHandlerClient<DBGeneratedSchema>;
+    dbClientTyped.futures.findOne?.();
+    let dbClientGeneric = {} as DBHandlerClient;
+    dbClientGeneric = dbClientTyped;
   };
   typeTest;
 });

@@ -3,7 +3,7 @@ import { type InitOptions } from "./prostgles";
 import { SyncedTable } from "./SyncedTable/SyncedTable";
 import type { ClientFunctionHandler } from "./getMethods";
 declare function prostgles<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike>(params: InitOptions<DBSchema, FuncSchema, U>): Promise<unknown>;
-export { type DBHandlerClient, type ClientOnReadyParams as OnReadyParams, type ProstglesClientState, type TableHandlerClient, type ViewHandlerClient, type InitOptions, asName, } from "./prostgles";
+export { type DBHandlerClient, type ClientOnReadyParams as OnReadyParams, type ProstglesClientState, type TableHandlerClient, type InitOptions, asName, } from "./prostgles";
 export { SyncedTable };
 export * from "./hooks/useSync";
 export * from "./hooks/useSubscribe";

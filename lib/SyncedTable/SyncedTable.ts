@@ -55,12 +55,12 @@ type SyncHandler<T> = {
   getItems: () => T[];
 };
 
-export type Sync<T extends AnyObject> = (
-  basicFilter: EqualityFilter<T>,
+export type Sync<T extends AnyObject> = <TD extends T>(
+  basicFilter: EqualityFilter<TD>,
   options: SyncOptions,
-  onChange: OnChange<T>,
+  onChange: OnChange<TD>,
   onError?: OnErrorHandler,
-) => Promise<SyncHandler<T>>;
+) => Promise<SyncHandler<TD>>;
 
 type OnchangeOne<T extends Record<string, unknown>> = (
   data: SyncDataItem<NormalizedRow<T>>,
@@ -70,12 +70,12 @@ type OnchangeOne<T extends Record<string, unknown>> = (
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T extends AnyObject = AnyObject> = (
-  basicFilter: Partial<T>,
+export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T>(
+  basicFilter: Partial<TD>,
   options: SyncOneOptions,
-  onChange: OnchangeOne<T>,
+  onChange: OnchangeOne<TD>,
   onError?: OnErrorHandler,
-) => Promise<SingleSyncHandles<T>>;
+) => Promise<SingleSyncHandles<TD>>;
 
 export type SyncBatchRequest = {
   from_synced?: string | number;

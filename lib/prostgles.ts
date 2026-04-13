@@ -15,7 +15,6 @@ import type {
   SyncTableInfo,
   TableHandler,
   UserLike,
-  ViewHandler,
 } from "prostgles-types";
 
 import { CHANNELS, asName, isEqual } from "prostgles-types";
@@ -70,21 +69,21 @@ export type HookOptions = {
   deps?: any[];
 };
 
-export type ViewHandlerClient<
+export type TableHandlerClientMethods<
   T extends AnyObject = AnyObject,
   S extends DBSchema | void = void,
-> = ViewHandler<T, S> & {
+> = {
   /**
    * Retrieves rows matching the filter and keeps them in sync
    * - use { handlesOnData: true } to get optimistic updates method: $update
    * - any changes to the row using the $update method will be reflected instantly
    *    to all sync subscribers that were initiated with the same syncOptions
    */
-  useSync?: (
-    basicFilter: EqualityFilter<T>,
+  useSync?: <TD extends T>(
+    basicFilter: EqualityFilter<TD>,
     syncOptions: SyncOptions,
     hookOptions?: HookOptions,
-  ) => AsyncResult<SyncDataItem<Required<T>>[] | undefined>;
+  ) => AsyncResult<SyncDataItem<Required<TD>>[] | undefined>;
 
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
@@ -95,11 +94,11 @@ export type ViewHandlerClient<
    * - any changes to the row using the $update method will be reflected instantly
    *    to all sync subscribers that were initiated with the same syncOptions
    */
-  useSyncOne?: (
-    basicFilter: EqualityFilter<T>,
+  useSyncOne?: <TD extends T>(
+    basicFilter: EqualityFilter<TD>,
     syncOptions: SyncOneOptions,
     hookOptions?: HookOptions,
-  ) => AsyncResult<SyncDataItem<Required<T>> | undefined>;
+  ) => AsyncResult<SyncDataItem<Required<TD>> | undefined>;
 
   /**
    * Used internally to setup sync
@@ -167,17 +166,23 @@ export type ViewHandlerClient<
   ) => AsyncResult<string | undefined>;
 };
 
+// export type TableHandlerClient<
+//   T extends AnyObject = AnyObject,
+//   S extends DBSchema | void = void,
+// > = ViewHandlerClient<T, S> & TableHandler<T, S>;
+
 export type TableHandlerClient<
   T extends AnyObject = AnyObject,
   S extends DBSchema | void = void,
-> = ViewHandlerClient<T, S> & TableHandler<T, S>;
+> = TableHandler<T, S> & TableHandlerClientMethods<T, S>;
 
 export type DBHandlerClient<Schema = void> =
   Schema extends DBSchema ?
     {
-      [tov_name in keyof Schema]: TableHandlerClient<Schema[tov_name]["columns"], Schema>;
+      [tov_name in keyof Schema]: TableHandler<Schema[tov_name]["columns"], Schema> &
+        TableHandlerClientMethods<Schema[tov_name]["columns"], Schema>;
     }
-  : Record<string, Partial<TableHandlerClient>>;
+  : Record<string, Partial<TableHandler & TableHandlerClientMethods>>;
 
 export type ClientOnReadyParams<
   DBSchema = void,

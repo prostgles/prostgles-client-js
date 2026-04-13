@@ -117,7 +117,7 @@ export const getDB = <DBSchema = void>({
               syncHandler.syncedTables[syncName] = syncedTableHandler;
               return syncedTableHandler;
             };
-            const sync: Sync<AnyObject> = async (
+            const sync = (async (
               basicFilter,
               options = { handlesOnData: true, select: "*" },
               onChange,
@@ -132,8 +132,8 @@ export const getDB = <DBSchema = void>({
               checkSubscriptionArgs(basicFilter, options, onChange, onError);
               const s = await upsertSyncTable(basicFilter, options, onError);
               return await s.sync(onChange, options.handlesOnData);
-            };
-            const syncOne: SyncOne<AnyObject> = async (
+            }) as Sync<AnyObject>;
+            const syncOne = (async (
               basicFilter,
               options = { handlesOnData: true },
               onChange,
@@ -148,7 +148,7 @@ export const getDB = <DBSchema = void>({
               checkSubscriptionArgs(basicFilter, options, onChange, onError);
               const s = await upsertSyncTable(basicFilter, options, onError);
               return await s.syncOne(basicFilter, onChange, options.handlesOnData);
-            };
+            }) as SyncOne<AnyObject>;
             dboTable.sync = sync;
             dboTable.syncOne = syncOne;
             dboTable.useSync = (basicFilter, options, hookOptions) =>

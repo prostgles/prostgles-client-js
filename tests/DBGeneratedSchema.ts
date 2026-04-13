@@ -10,6 +10,11 @@ export type DBGeneratedSchema = {
     };
   };
   futures: {
+    is_view: false;
+    select: true;
+    // insert: true;
+    // update: true;
+    // delete: true;
     columns: {
       price?: null | number;
       symbol?: null | string;
@@ -17,6 +22,10 @@ export type DBGeneratedSchema = {
     };
   };
   symbols: {
+    select: true;
+    insert: true;
+    update: true;
+    delete: true;
     columns: {
       pair: string;
     };
