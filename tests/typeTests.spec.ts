@@ -18,7 +18,7 @@ type GeneratedSchema = {
 };
 
 test("types work", async () => {
-  const typeTest = () => {
+  const typeTest = async () => {
     const client = useProstglesClient<GeneratedSchema>();
     if (client.isLoading || client.hasError) return;
     const t1 = client.db.table1?.useFind({}, { orderBy: { col1: 1 } });
@@ -55,23 +55,33 @@ test("types work", async () => {
       },
     );
 
-    dbH.d?.find?.(
+    const row = await dbH.d?.find?.(
       {},
       {
         select: { id: 1, name: 1, items3: { name: "$upper" } },
       },
     );
+    row?.[0]?.id;
+    row?.[0]?.items3;
+    row?.[0]?.name;
+    //@ts-expect-error
+    row?.[0]?.invalid;
 
-    dbH.d?.find!(
-      {},
-      {
-        select: {
-          connection_id: 1,
-          access_control_user_types: { access_control_id: 1 },
-          access_control_methods: { access_control_id: 1 },
-        },
-      },
-    );
+    const syncedItemNoHandles = dbH.d?.useSyncOne?.({}, {
+      select: { id: 1 },
+      handlesOnData: false,
+    } as const);
+    //@ts-expect-error
+    syncedItemNoHandles?.data?.$cloneMultiSync(() => {});
+    //@ts-expect-error
+    syncedItemNoHandles?.data?.name;
+
+    const syncedItemWithHandles = dbH.d?.useSyncOne?.({}, {
+      select: { id: 1, name: 1 },
+      handlesOnData: true,
+    } as const);
+    syncedItemWithHandles?.data?.$cloneMultiSync(() => {});
+    syncedItemWithHandles?.data?.name;
 
     dbH.d?.find!(
       {},

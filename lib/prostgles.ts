@@ -79,11 +79,11 @@ export type TableHandlerClientMethods<
    * - any changes to the row using the $update method will be reflected instantly
    *    to all sync subscribers that were initiated with the same syncOptions
    */
-  useSync?: <TD extends T>(
+  useSync?: <TD extends T, Opts extends SyncOptions>(
     basicFilter: EqualityFilter<TD>,
-    syncOptions: SyncOptions,
+    syncOptions: Opts,
     hookOptions?: HookOptions,
-  ) => AsyncResult<SyncDataItem<Required<TD>>[] | undefined>;
+  ) => AsyncResult<SyncDataItem<Required<TD>, Opts>[] | undefined>;
 
   sync?: Sync<T>;
   syncOne?: SyncOne<T>;
@@ -94,11 +94,11 @@ export type TableHandlerClientMethods<
    * - any changes to the row using the $update method will be reflected instantly
    *    to all sync subscribers that were initiated with the same syncOptions
    */
-  useSyncOne?: <TD extends T>(
+  useSyncOne?: <TD extends T, Opts extends SyncOneOptions>(
     basicFilter: EqualityFilter<TD>,
-    syncOptions: SyncOneOptions,
+    syncOptions: Opts,
     hookOptions?: HookOptions,
-  ) => AsyncResult<SyncDataItem<Required<TD>> | undefined>;
+  ) => AsyncResult<SyncDataItem<Required<TD>, Opts> | undefined>;
 
   /**
    * Used internally to setup sync

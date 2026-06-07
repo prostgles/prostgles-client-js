@@ -131,7 +131,7 @@ export const getDB = <DBSchema = void>({
               });
               checkSubscriptionArgs(basicFilter, options, onChange, onError);
               const s = await upsertSyncTable(basicFilter, options, onError);
-              return await s.sync(onChange, options.handlesOnData);
+              return await s.sync(onChange as any, options.handlesOnData);
             }) as Sync<AnyObject>;
             const syncOne = (async (
               basicFilter,
@@ -147,7 +147,7 @@ export const getDB = <DBSchema = void>({
               });
               checkSubscriptionArgs(basicFilter, options, onChange, onError);
               const s = await upsertSyncTable(basicFilter, options, onError);
-              return await s.syncOne(basicFilter, onChange, options.handlesOnData);
+              return await s.syncOne(basicFilter, onChange as any, options.handlesOnData);
             }) as SyncOne<AnyObject>;
             dboTable.sync = sync;
             dboTable.syncOne = syncOne;

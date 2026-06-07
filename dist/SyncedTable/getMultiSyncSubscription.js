@@ -42,7 +42,7 @@ function getMultiSyncSubscription({ onChange, handlesOnData }) {
                         $get: () => getItem(this.getItem(idObj), idObj),
                         $find: (idObject) => getItem(this.getItem(idObject), idObject),
                         $update: (newData, opts) => {
-                            return this.upsert([{ idObj, delta: newData, opts }]).then((r) => true);
+                            return this.upsert([{ idObj, delta: newData, opts }]);
                         },
                         $delete: async () => {
                             return this.delete(idObj);

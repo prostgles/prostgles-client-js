@@ -595,7 +595,7 @@ class SyncedTable {
                     console.warn("No sync listeners");
                     (0, exports.debug)("nosync", this._singleSubscriptions, this._multiSubscriptions);
                 }
-                this.upsert([{ idObj, delta: newData, opts }]);
+                return this.upsert([{ idObj, delta: newData, opts }]);
             },
             $cloneSync: (onChange) => this.syncOne(idObj, onChange),
             // TODO: add clone sync hook

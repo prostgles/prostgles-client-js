@@ -44,8 +44,8 @@ type OnErrorHandler = (error: any) => void;
 /**
  * Creates a local synchronized table
  */
-type OnChange<T extends Record<string, unknown>> = (
-  data: SyncDataItem<NormalizedRow<T>>[],
+type OnChange<T extends Record<string, unknown>, Opts extends SyncOptions> = (
+  data: SyncDataItem<NormalizedRow<T>, Opts>[],
   delta?: Partial<T>[],
 ) => any;
 
@@ -55,25 +55,25 @@ type SyncHandler<T> = {
   getItems: () => T[];
 };
 
-export type Sync<T extends AnyObject> = <TD extends T>(
+export type Sync<T extends AnyObject> = <TD extends T, Opts extends SyncOptions>(
   basicFilter: EqualityFilter<TD>,
   options: SyncOptions,
-  onChange: OnChange<TD>,
+  onChange: OnChange<TD, Opts>,
   onError?: OnErrorHandler,
 ) => Promise<SyncHandler<TD>>;
 
-type OnchangeOne<T extends Record<string, unknown>> = (
-  data: SyncDataItem<NormalizedRow<T>>,
+type OnchangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = (
+  data: SyncDataItem<NormalizedRow<T>, Opts>,
   delta?: Partial<NormalizedRow<T>>,
 ) => void | Promise<void>;
 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T>(
+export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOptions>(
   basicFilter: Partial<TD>,
   options: SyncOneOptions,
-  onChange: OnchangeOne<TD>,
+  onChange: OnchangeOne<TD, Opts>,
   onError?: OnErrorHandler,
 ) => Promise<SingleSyncHandles<TD>>;
 
@@ -96,7 +96,7 @@ export type ItemUpdated = ItemUpdate & {
   from_server: boolean;
 };
 
-export type CloneSync<T extends AnyObject, Full extends boolean> = (
+export type CloneSync<T extends AnyObject, Full extends boolean | undefined> = (
   onChange: SingleChangeListener<T, Full>,
   onError?: (error: any) => void,
 ) => SingleSyncHandles<T, Full>;
@@ -120,25 +120,35 @@ type DeepPartial<T> =
 /**
  * CRUD handles added if initialised with handlesOnData = true
  */
-export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends boolean = false> = {
+export type SingleSyncHandles<
+  T extends AnyObject = AnyObject,
+  Full extends boolean | undefined = false,
+> = {
   $get: () => NormalizedRow<T> | undefined;
   $find: (idObj: Partial<NormalizedRow<T>>) => NormalizedRow<T> | undefined;
-  $unsync: () => any;
+  $unsync: () => void;
   $delete: () => void;
   $update: <OPTS extends $UpdateOpts>(
     newData: OPTS extends { deepMerge: true } ? DeepPartial<T> : Partial<T>,
     opts?: OPTS,
-  ) => any;
+  ) => Promise<void>;
   $cloneSync: CloneSync<T, Full>;
   $cloneMultiSync: CloneMultiSync<T>;
 };
 
+type PickFieldFilterFields<T extends AnyObject, F extends SyncOptions["select"]> =
+  F extends "*" ? T
+  : F extends "" ? Record<string, never>
+  : F extends Record<string, 1> ? Pick<T, keyof F & string>
+  : F extends Record<string, 0> ? Omit<T, keyof F>
+  : void;
+
 export type SyncDataItem<
-  T extends AnyObject = AnyObject,
-  Full extends boolean = false,
-> = NormalizedRow<T> &
-  (Full extends true ? SingleSyncHandles<NormalizedRow<T>, Full>
-  : Partial<SingleSyncHandles<NormalizedRow<T>, Full>>);
+  T extends AnyObject,
+  Opts extends Pick<SyncOptions, "handlesOnData" | "select">,
+> = PickFieldFilterFields<NormalizedRow<T>, Opts["select"]> &
+  (Opts["handlesOnData"] extends true ? SingleSyncHandles<NormalizedRow<T>, Opts["handlesOnData"]>
+  : Partial<SingleSyncHandles<NormalizedRow<T>, Opts["handlesOnData"]>>);
 
 export type MultiSyncHandles<T extends AnyObject> = {
   $unsync: () => void;
@@ -168,13 +178,13 @@ const STORAGE_TYPES = {
 } as const;
 
 export type MultiChangeListener<T extends AnyObject = AnyObject> = (
-  items: SyncDataItem<T>[],
+  items: NormalizedRow<T>[],
   delta: DeepPartial<T>[],
 ) => any;
-export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean = false> = (
-  item: SyncDataItem<T, Full>,
-  delta?: DeepPartial<T>,
-) => any;
+export type SingleChangeListener<
+  T extends AnyObject = AnyObject,
+  Full extends boolean | undefined = false,
+> = (item: SyncDataItem<T, { handlesOnData: Full }>, delta?: DeepPartial<T>) => any;
 type StorageType = keyof typeof STORAGE_TYPES;
 export type SyncedTableOptions = {
   /**
@@ -587,7 +597,7 @@ export class SyncedTable {
           console.warn("No sync listeners");
           debug("nosync", this._singleSubscriptions, this._multiSubscriptions);
         }
-        this.upsert([{ idObj, delta: newData, opts }]);
+        return this.upsert([{ idObj, delta: newData, opts }]);
       },
       $cloneSync: (onChange) => this.syncOne<T, Full>(idObj, onChange),
       // TODO: add clone sync hook
@@ -621,7 +631,7 @@ export class SyncedTable {
       handlesOnData,
       handles,
       notify: (data, delta) => {
-        const newData: SyncDataItem<T, Full> = { ...data } as any;
+        const newData = { ...data } as unknown as SyncDataItem<T, { handlesOnData: Full }>;
 
         if (handlesOnData) {
           newData.$get = handles.$get;
@@ -857,7 +867,7 @@ export class SyncedTable {
    * @param items <{ idObj: object, delta: object }[]> Data items that changed
    * @param from_server : <boolean> If false then updates will be sent to server
    */
-  upsert = async (items: ItemUpdate[], from_server = false): Promise<any> => {
+  upsert = async (items: ItemUpdate[], from_server = false): Promise<void> => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if ((!items || !items.length) && !from_server) throw "No data provided for upsert";
 

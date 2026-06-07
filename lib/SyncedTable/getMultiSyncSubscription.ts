@@ -53,8 +53,8 @@ export function getMultiSyncSubscription(this: SyncedTable, { onChange, handlesO
             ...this.makeSingleSyncHandles(idObj, onChange),
             $get: () => getItem(this.getItem(idObj), idObj),
             $find: (idObject: Partial<AnyObject>) => getItem(this.getItem(idObject), idObject),
-            $update: (newData: AnyObject, opts: $UpdateOpts): Promise<boolean> => {
-              return this.upsert([{ idObj, delta: newData, opts }]).then((r) => true);
+            $update: (newData: AnyObject, opts: $UpdateOpts): Promise<void> => {
+              return this.upsert([{ idObj, delta: newData, opts }]);
             },
             $delete: async (): Promise<boolean> => {
               return this.delete(idObj);
