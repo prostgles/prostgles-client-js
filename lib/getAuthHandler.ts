@@ -86,7 +86,7 @@ export const getAuthHandler = ({
       if (res?.shouldReload) {
         if (onReload) onReload();
         else if (isClientSide) {
-          console.log("prostgles page reload due to authguard", res);
+          console.log("prostgles page reload due to auth guard", res);
           setTimeout(() => {
             window.location.reload();
           }, 200);
@@ -94,15 +94,15 @@ export const getAuthHandler = ({
       }
     };
     socket.emit(
-      CHANNELS.AUTHGUARD,
+      CHANNELS.AUTH_GUARD,
       JSON.stringify(window.location as AuthGuardLocation),
       (_err: any, res: AuthGuardLocationResponse) => {
         doReload(res);
       },
     );
 
-    socket.removeAllListeners(CHANNELS.AUTHGUARD);
-    socket.on(CHANNELS.AUTHGUARD, (res: AuthGuardLocationResponse) => {
+    socket.removeAllListeners(CHANNELS.AUTH_GUARD);
+    socket.on(CHANNELS.AUTH_GUARD, (res: AuthGuardLocationResponse) => {
       doReload(res);
     });
   }

@@ -108,7 +108,7 @@ export const getDB = <DBSchema = void>({
             ) => {
               const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(omitKeys(options, ["handlesOnData"]))}`;
               const syncedTableHandler =
-                syncHandler.syncedTables[syncName] ??
+                syncHandler.syncedTables.get(syncName) ??
                 syncedTable.create({
                   ...options,
                   onDebug,
@@ -117,7 +117,7 @@ export const getDB = <DBSchema = void>({
                   db: db,
                   onError,
                 });
-              syncHandler.syncedTables[syncName] = syncedTableHandler;
+              syncHandler.syncedTables.set(syncName, syncedTableHandler);
               return syncedTableHandler;
             };
 

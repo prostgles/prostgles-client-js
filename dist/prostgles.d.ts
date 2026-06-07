@@ -117,7 +117,7 @@ export type SyncDebugEvent = {
     command: keyof ClientSyncHandles | "notifySubscribers";
     data: AnyObject;
     info?: string;
-    syncedTable: SyncedTable;
+    syncedTable: SyncedTable | Promise<SyncedTable>;
 };
 type DebugEvent = {
     type: "subscriptions";
