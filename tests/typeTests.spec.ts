@@ -75,6 +75,7 @@ test("types work", async () => {
     syncedItemNoHandles?.data?.$cloneMultiSync(() => {});
     //@ts-expect-error
     syncedItemNoHandles?.data?.name;
+    syncedItemNoHandles?.data?.id;
 
     const syncedItemWithHandles = dbH.d?.useSyncOne?.({}, {
       select: { id: 1, name: 1 },
@@ -82,6 +83,19 @@ test("types work", async () => {
     } as const);
     syncedItemWithHandles?.data?.$cloneMultiSync(() => {});
     syncedItemWithHandles?.data?.name;
+
+    dbH.d?.sync?.(
+      {},
+      {
+        select: { name: 1 },
+        handlesOnData: true,
+      } as const,
+      (items) => {
+        items[0].name;
+        //@ts-expect-error
+        items[0].id;
+      },
+    );
 
     dbH.d?.find!(
       {},

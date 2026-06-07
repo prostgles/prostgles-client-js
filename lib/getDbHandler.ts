@@ -20,9 +20,12 @@ import {
 } from "./prostgles";
 import {
   quickClone,
+  type OnChange,
+  type OnchangeOne,
   type Sync,
   type SyncedTable,
   type SyncOne,
+  type SyncOneOptions,
   type SyncOptions,
 } from "./SyncedTable/SyncedTable";
 
@@ -117,26 +120,11 @@ export const getDB = <DBSchema = void>({
               syncHandler.syncedTables[syncName] = syncedTableHandler;
               return syncedTableHandler;
             };
-            const sync = (async (
-              basicFilter,
-              options = { handlesOnData: true, select: "*" },
-              onChange,
-              onError,
-            ) => {
-              await onDebug?.({
-                type: "table",
-                command: "sync",
-                tableName,
-                data: { basicFilter, options },
-              });
-              checkSubscriptionArgs(basicFilter, options, onChange, onError);
-              const s = await upsertSyncTable(basicFilter, options, onError);
-              return await s.sync(onChange as any, options.handlesOnData);
-            }) as Sync<AnyObject>;
+
             const syncOne = (async (
               basicFilter,
-              options = { handlesOnData: true } as SyncOptions,
-              onChange,
+              options: SyncOneOptions = { handlesOnData: true },
+              onChange: OnchangeOne<AnyObject, SyncOneOptions>,
               onError,
             ) => {
               await onDebug?.({
@@ -149,6 +137,24 @@ export const getDB = <DBSchema = void>({
               const s = await upsertSyncTable(basicFilter, options, onError);
               return await s.syncOne(basicFilter, onChange as any, options.handlesOnData);
             }) as SyncOne<AnyObject>;
+
+            const sync = (async (
+              basicFilter,
+              options: SyncOptions = { handlesOnData: true },
+              onChange: OnChange<AnyObject, SyncOptions>,
+              onError,
+            ) => {
+              await onDebug?.({
+                type: "table",
+                command: "sync",
+                tableName,
+                data: { basicFilter, options },
+              });
+              checkSubscriptionArgs(basicFilter, options, onChange, onError);
+              const s = await upsertSyncTable(basicFilter, options, onError);
+              return await s.sync(onChange as any, options.handlesOnData);
+            }) as Sync<AnyObject>;
+
             dboTable.sync = sync;
             dboTable.syncOne = syncOne;
             dboTable.useSync = (basicFilter, options, hookOptions) =>

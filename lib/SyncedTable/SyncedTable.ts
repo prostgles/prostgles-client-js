@@ -39,30 +39,30 @@ type SyncDebugEvent = {
   info?: string;
 };
 
-type OnErrorHandler = (error: any) => void;
+export type OnErrorHandler = (error: any) => void;
 
 /**
  * Creates a local synchronized table
  */
-type OnChange<T extends Record<string, unknown>, Opts extends SyncOptions> = (
-  data: SyncDataItem<NormalizedRow<T>, Opts>[],
+export type OnChange<T extends Record<string, unknown>, Opts extends SyncOptions> = (
+  data: SyncDataItem<T, Opts>[],
   delta?: Partial<T>[],
 ) => any;
 
-type SyncHandler<T> = {
+export type SyncHandler<T> = {
   $unsync: () => void;
   $upsert: (newData: T[]) => void | Promise<void>;
   getItems: () => T[];
 };
 
-export type Sync<T extends AnyObject> = <TD extends T, Opts extends SyncOptions>(
+export type Sync<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOptions>(
   basicFilter: EqualityFilter<TD>,
   options: SyncOptions,
   onChange: OnChange<TD, Opts>,
   onError?: OnErrorHandler,
 ) => Promise<SyncHandler<TD>>;
 
-type OnchangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = (
+export type OnchangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = (
   data: SyncDataItem<NormalizedRow<T>, Opts>,
   delta?: Partial<NormalizedRow<T>>,
 ) => void | Promise<void>;

@@ -4,7 +4,7 @@ import type { Socket } from "socket.io-client";
 import { type AuthHandler } from "./getAuthHandler";
 import { type ClientFunctionHandler } from "./getMethods";
 import { type Subscription } from "./getSubscriptionHandler";
-import type { DbTableSync, Sync, SyncDataItem, SyncOne, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
+import type { DbTableSync, OnChange, OnErrorHandler, OnchangeOne, SingleSyncHandles, SyncDataItem, SyncHandler, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
 export declare const isClientSide: boolean;
 export declare const debug: any;
 export * from "./hooks/useEffectDeep";
@@ -43,8 +43,8 @@ export type TableHandlerClientMethods<T extends AnyObject = AnyObject, S extends
      *    to all sync subscribers that were initiated with the same syncOptions
      */
     useSync?: <TD extends T, Opts extends SyncOptions>(basicFilter: EqualityFilter<TD>, syncOptions: Opts, hookOptions?: HookOptions) => AsyncResult<SyncDataItem<Required<TD>, Opts>[] | undefined>;
-    sync?: Sync<T>;
-    syncOne?: SyncOne<T>;
+    sync?: <TD extends T, Opts extends SyncOptions>(basicFilter: EqualityFilter<TD>, options: Opts, onChange: OnChange<TD, Opts>, onError?: OnErrorHandler) => Promise<SyncHandler<TD>>;
+    syncOne?: <TD extends T, Opts extends SyncOneOptions>(basicFilter: EqualityFilter<TD>, options: Opts, onChange: OnchangeOne<TD, Opts>, onError?: OnErrorHandler) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
     /**
      * Retrieves the first row matching the filter and keeps it in sync
      * - use { handlesOnData: true } to get optimistic updates method: $update

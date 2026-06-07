@@ -27,7 +27,7 @@ export const useSync = (
       setResult({ data: undefined, error: newError, isLoading: false });
     };
     try {
-      const syncHandlers = await syncFunc(
+      const syncHandlers = await (syncFunc as Required<TableHandlerClient>["sync"])(
         basicFilter,
         syncOptions,
         (newData) => {

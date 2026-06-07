@@ -28,8 +28,13 @@ import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHand
 import { getSyncHandler } from "./getSyncHandler";
 import type {
   DbTableSync,
+  OnChange,
+  OnErrorHandler,
+  OnchangeOne,
+  SingleSyncHandles,
   Sync,
   SyncDataItem,
+  SyncHandler,
   SyncOne,
   SyncOneOptions,
   SyncOptions,
@@ -85,8 +90,19 @@ export type TableHandlerClientMethods<
     hookOptions?: HookOptions,
   ) => AsyncResult<SyncDataItem<Required<TD>, Opts>[] | undefined>;
 
-  sync?: Sync<T>;
-  syncOne?: SyncOne<T>;
+  sync?: <TD extends T, Opts extends SyncOptions>(
+    basicFilter: EqualityFilter<TD>,
+    options: Opts,
+    onChange: OnChange<TD, Opts>,
+    onError?: OnErrorHandler,
+  ) => Promise<SyncHandler<TD>>;
+
+  syncOne?: <TD extends T, Opts extends SyncOneOptions>(
+    basicFilter: EqualityFilter<TD>,
+    options: Opts,
+    onChange: OnchangeOne<TD, Opts>,
+    onError?: OnErrorHandler,
+  ) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
 
   /**
    * Retrieves the first row matching the filter and keeps it in sync
