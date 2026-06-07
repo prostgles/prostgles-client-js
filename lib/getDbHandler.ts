@@ -135,7 +135,7 @@ export const getDB = <DBSchema = void>({
             }) as Sync<AnyObject>;
             const syncOne = (async (
               basicFilter,
-              options = { handlesOnData: true },
+              options = { handlesOnData: true } as SyncOptions,
               onChange,
               onError,
             ) => {

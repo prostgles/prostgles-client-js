@@ -32,7 +32,7 @@ type OnchangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOptions>(basicFilter: Partial<TD>, options: SyncOneOptions, onChange: OnchangeOne<TD, Opts>, onError?: OnErrorHandler) => Promise<SingleSyncHandles<TD>>;
+export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOptions>(basicFilter: Partial<TD>, options: Opts, onChange: OnchangeOne<TD, Opts>, onError?: OnErrorHandler) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
 export type SyncBatchRequest = {
     from_synced?: string | number;
     to_synced?: string | number;

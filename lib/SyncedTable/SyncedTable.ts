@@ -72,10 +72,10 @@ type OnchangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = 
  */
 export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOptions>(
   basicFilter: Partial<TD>,
-  options: SyncOneOptions,
+  options: Opts,
   onChange: OnchangeOne<TD, Opts>,
   onError?: OnErrorHandler,
-) => Promise<SingleSyncHandles<TD>>;
+) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
 
 export type SyncBatchRequest = {
   from_synced?: string | number;
