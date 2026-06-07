@@ -110,12 +110,14 @@ export type ClientOnReadyParams<DBSchema = void, FunctionHandler extends ClientF
     isReconnect: boolean;
     socket: Socket;
 };
-type SyncDebugEvent = {
+export type SyncDebugEvent = {
     type: "sync";
     tableName: string;
     channelName: string;
-    command: keyof ClientSyncHandles;
+    command: keyof ClientSyncHandles | "notifySubscribers";
     data: AnyObject;
+    info?: string;
+    syncedTable: SyncedTable;
 };
 type DebugEvent = {
     type: "subscriptions";

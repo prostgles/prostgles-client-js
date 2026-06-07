@@ -385,7 +385,7 @@ class SyncedTable {
         this.select = select;
         this.onChange = onChange;
         if (onDebug) {
-            this.onDebug = (evt) => onDebug({ ...evt, type: "sync", tableName: name }, this);
+            this.onDebug = (evt) => onDebug({ ...evt, type: "sync", tableName: name, channelName: "", syncedTable: this }, this);
         }
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!STORAGE_TYPES[storageType])

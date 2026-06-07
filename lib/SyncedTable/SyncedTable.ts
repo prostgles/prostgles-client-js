@@ -10,7 +10,7 @@ import type {
   NormalizedRow,
 } from "prostgles-types";
 import { getTextPatch, isEmpty, WAL, getKeys, isObject, isEqual, isDefined } from "prostgles-types";
-import type { DBHandlerClient } from "../prostgles";
+import type { DBHandlerClient, SyncDebugEvent } from "../prostgles";
 import { getMultiSyncSubscription } from "./getMultiSyncSubscription";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
@@ -31,13 +31,13 @@ export type SyncOneOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>>
   handlesOnData?: boolean;
 };
 
-type SyncDebugEvent = {
-  type: "sync";
-  tableName: string;
-  command: keyof ClientSyncHandles | "notifySubscribers";
-  data: AnyObject;
-  info?: string;
-};
+// type SyncDebugEvent = {
+//   type: "sync";
+//   tableName: string;
+//   command: keyof ClientSyncHandles | "notifySubscribers";
+//   data: AnyObject;
+//   info?: string;
+// };
 
 export type OnErrorHandler = (error: any) => void;
 
@@ -223,7 +223,7 @@ export type SyncedTableOptions = {
   patchText?: boolean;
   patchJSON?: boolean;
   onReady: () => void;
-  onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
+  onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void> | void;
 };
 
 export type DbTableSync = {
@@ -278,7 +278,9 @@ export class SyncedTable {
   patchJSON: boolean;
   isSynced = false;
   onError: SyncedTableOptions["onError"];
-  onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName">) => Promise<void>;
+  onDebug?: (
+    evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName" | "syncedTable">,
+  ) => Promise<void> | void;
 
   constructor({
     name,
@@ -300,7 +302,11 @@ export class SyncedTable {
     this.onChange = onChange;
 
     if (onDebug) {
-      this.onDebug = (evt) => onDebug({ ...evt, type: "sync", tableName: name }, this);
+      this.onDebug = (evt) =>
+        onDebug(
+          { ...evt, type: "sync", tableName: name, channelName: "", syncedTable: this },
+          this,
+        );
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

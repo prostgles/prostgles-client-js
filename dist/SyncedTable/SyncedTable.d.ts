@@ -1,6 +1,6 @@
-import type { FieldFilter, WALItem, AnyObject, ClientSyncHandles, SyncBatchParams, TableHandler, EqualityFilter, NormalizedRow } from "prostgles-types";
+import type { FieldFilter, WALItem, AnyObject, SyncBatchParams, TableHandler, EqualityFilter, NormalizedRow } from "prostgles-types";
 import { WAL } from "prostgles-types";
-import type { DBHandlerClient } from "../prostgles";
+import type { DBHandlerClient, SyncDebugEvent } from "../prostgles";
 export declare const debug: any;
 type OmittedSyncProps = "onDebug" | "name" | "filter" | "db" | "onError";
 export type SyncOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & {
@@ -9,13 +9,6 @@ export type SyncOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & 
 };
 export type SyncOneOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & {
     handlesOnData?: boolean;
-};
-type SyncDebugEvent = {
-    type: "sync";
-    tableName: string;
-    command: keyof ClientSyncHandles | "notifySubscribers";
-    data: AnyObject;
-    info?: string;
 };
 export type OnErrorHandler = (error: any) => void;
 /**
@@ -135,7 +128,7 @@ export type SyncedTableOptions = {
     patchText?: boolean;
     patchJSON?: boolean;
     onReady: () => void;
-    onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void>;
+    onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void> | void;
 };
 export type DbTableSync = {
     unsync: () => void;
@@ -174,7 +167,7 @@ export declare class SyncedTable {
     patchJSON: boolean;
     isSynced: boolean;
     onError: SyncedTableOptions["onError"];
-    onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName">) => Promise<void>;
+    onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName" | "syncedTable">) => Promise<void> | void;
     constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError, }: SyncedTableOptions);
     /**
      * Will update text/json fields through patching method

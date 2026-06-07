@@ -95,7 +95,7 @@ export const getDB = <DBSchema = void>({
               });
               return syncedTable.create({
                 name: tableName,
-                onDebug: onDebug as any,
+                onDebug,
                 filter,
                 db: db,
                 ...params,
