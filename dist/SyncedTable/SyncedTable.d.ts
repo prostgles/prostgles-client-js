@@ -72,7 +72,7 @@ export type SingleSyncHandles<T extends AnyObject = AnyObject, Full extends bool
     $cloneSync: CloneSync<T, Full>;
     $cloneMultiSync: CloneMultiSync<T>;
 };
-type PickFieldFilterFields<T extends AnyObject, F extends SyncOptions["select"]> = F extends "*" ? T : F extends "" ? Record<string, never> : F extends Record<string, 1> ? Pick<T, keyof F & string> : F extends Record<string, 0> ? Omit<T, keyof F> : void;
+type PickFieldFilterFields<T extends AnyObject, F extends SyncOptions["select"]> = F extends "" ? Record<string, never> : F extends Record<string, 1> ? Pick<T, keyof F & string> : F extends Record<string, 0> ? Omit<T, keyof F> : T;
 export type SyncDataItem<T extends AnyObject, Opts extends Pick<SyncOptions, "handlesOnData" | "select">> = PickFieldFilterFields<NormalizedRow<T>, Opts["select"]> & (Opts["handlesOnData"] extends true ? SingleSyncHandles<NormalizedRow<T>, Opts["handlesOnData"]> : Partial<SingleSyncHandles<NormalizedRow<T>, Opts["handlesOnData"]>>);
 export type MultiSyncHandles<T extends AnyObject> = {
     $unsync: () => void;

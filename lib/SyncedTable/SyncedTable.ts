@@ -137,11 +137,10 @@ export type SingleSyncHandles<
 };
 
 type PickFieldFilterFields<T extends AnyObject, F extends SyncOptions["select"]> =
-  F extends "*" ? T
-  : F extends "" ? Record<string, never>
+  F extends "" ? Record<string, never>
   : F extends Record<string, 1> ? Pick<T, keyof F & string>
   : F extends Record<string, 0> ? Omit<T, keyof F>
-  : void;
+  : T;
 
 export type SyncDataItem<
   T extends AnyObject,
