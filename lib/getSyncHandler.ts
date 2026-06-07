@@ -16,14 +16,14 @@ type Syncs = {
 const preffix = CHANNELS._preffix;
 
 export const getSyncHandler = ({ socket }: Pick<InitOptions, "socket">) => {
-  let syncedTables: Record<string, SyncedTable> = {};
+  let syncedTables: Record<string, Promise<SyncedTable>> = {};
   let syncs: Syncs = {};
 
   const destroySyncs = async () => {
     debug("destroySyncs", { syncedTables });
     syncs = {};
     Object.values(syncedTables).forEach((s) => {
-      s.destroy();
+      s.then((s) => s.destroy());
     });
     syncedTables = {};
   };

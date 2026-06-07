@@ -574,7 +574,7 @@ export class SyncedTable {
     if (!this.skipFirstTrigger) {
       setTimeout(() => {
         const items = this.getItems<T>();
-        sub.notify(items, items as any);
+        sub.notify(items, items);
       }, 0);
     }
     return Object.freeze({ ...handles });
