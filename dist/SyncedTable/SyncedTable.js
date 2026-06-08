@@ -1,103 +1,33 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.quickClone = exports.mergeDeep = exports.SyncedTable = exports.debug = void 0;
+exports.quickClone = exports.mergeDeep = exports.SyncedTable = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const getMultiSyncSubscription_1 = require("./getMultiSyncSubscription");
-const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 const hasWnd = typeof window !== "undefined";
-const debug = function (...args) {
-    if (hasWnd && window[DEBUG_KEY]) {
-        window[DEBUG_KEY](...args);
-    }
-};
-exports.debug = debug;
-const STORAGE_TYPES = {
-    map: "map",
-    localStorage: "localStorage",
-    // object: "object",
-};
 class SyncedTable {
     /**
      * add debug mode to fix sudden no data and sync listeners bug
      */
     set multiSubscriptions(mSubs) {
-        (0, exports.debug)(mSubs, this._multiSubscriptions);
         this._multiSubscriptions = mSubs.slice(0);
     }
     get multiSubscriptions() {
         return this._multiSubscriptions;
     }
     set singleSubscriptions(sSubs) {
-        (0, exports.debug)(sSubs, this._singleSubscriptions);
         this._singleSubscriptions = sSubs.slice(0);
     }
     get singleSubscriptions() {
         return this._singleSubscriptions;
     }
-    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger = false, select = "*", storageType = "map", patchText = false, patchJSON = false, onError, }) {
+    constructor({ name, filter = {}, onReady, onDebug, db, select = "*", onError, }) {
         this.throttle = 100;
         this.batch_size = 50;
-        this.skipFirstTrigger = false;
         this.columns = [];
         this._multiSubscriptions = [];
         this._singleSubscriptions = [];
         this.itemsMap = new Map();
         this.isSynced = false;
-        /**
-         * Will update text/json fields through patching method
-         * This will send less data to server
-         * @param walData
-         */
-        this.updatePatches = async (walData) => {
-            var _a, _b;
-            let remaining = walData.map((d) => d.current);
-            const patched = [], patchedItems = [];
-            if (this.columns.length &&
-                ((_a = this.tableHandler) === null || _a === void 0 ? void 0 : _a.updateBatch) &&
-                (this.patchText || this.patchJSON)) {
-                // const jCols = this.columns.filter(c => c.data_type === "json")
-                const txtCols = this.columns.filter((c) => c.data_type === "text");
-                if (this.patchText && txtCols.length) {
-                    remaining = [];
-                    const id_keys = [this.synced_field, ...this.id_fields];
-                    await Promise.all(walData.slice(0).map(async (d, i) => {
-                        const { current, initial } = { ...d };
-                        let patchedDelta;
-                        if (initial) {
-                            txtCols.map((c) => {
-                                if (!id_keys.includes(c.name) && c.name in current) {
-                                    patchedDelta !== null && patchedDelta !== void 0 ? patchedDelta : (patchedDelta = { ...current });
-                                    patchedDelta[c.name] = (0, prostgles_types_1.getTextPatch)(initial[c.name], current[c.name]);
-                                }
-                            });
-                            if (patchedDelta && this.wal) {
-                                patchedItems.push(patchedDelta);
-                                patched.push([this.wal.getIdObj(patchedDelta), this.wal.getDeltaObj(patchedDelta)]);
-                            }
-                        }
-                        // console.log("json-stable-stringify ???")
-                        if (!patchedDelta) {
-                            remaining.push(current);
-                        }
-                    }));
-                }
-            }
-            /**
-             * There is a decent chance the patch update will fail.
-             * As such, to prevent sync batch update failures, the patched updates are updated separately.
-             * If patch update fails then sync batch normally without patch.
-             */
-            if (patched.length) {
-                try {
-                    await ((_b = this.tableHandler) === null || _b === void 0 ? void 0 : _b.updateBatch(patched));
-                }
-                catch (e) {
-                    console.log("failed to patch update", e);
-                    remaining = remaining.concat(patchedItems);
-                }
-            }
-            return remaining.filter((d) => d);
-        };
         /**
          * Notifies multi subs with ALL data + deltas. Attaches handles on data if required
          * @param newData -> updates. Must include id_fields + updates
@@ -132,22 +62,13 @@ class SyncedTable {
                     ids.push(idObj);
                 }
             });
-            if (this.onChange || this.multiSubscriptions.length) {
+            if (this.multiSubscriptions.length) {
                 const allItems = [], allDeltas = [];
                 this.getItems().map((d) => {
                     allItems.push({ ...d });
                     const dIdx = items.findIndex((_d) => this.matchesIdObj(d, _d));
                     allDeltas.push(deltas[dIdx]);
                 });
-                /* Notify main subscription */
-                if (this.onChange) {
-                    try {
-                        this.onChange(allItems, allDeltas);
-                    }
-                    catch (e) {
-                        console.error("SyncedTable failed to notify onChange: ", e);
-                    }
-                }
                 /* Multisubs must not forget about the original filter */
                 this.multiSubscriptions.map(async (s) => {
                     try {
@@ -162,7 +83,6 @@ class SyncedTable {
         this.unsubscribe = (onChange) => {
             this.singleSubscriptions = this.singleSubscriptions.filter((s) => s._onChange !== onChange);
             this.multiSubscriptions = this.multiSubscriptions.filter((s) => s._onChange !== onChange);
-            (0, exports.debug)("unsubscribe", this);
             return "ok";
         };
         this.unsync = () => {
@@ -174,7 +94,6 @@ class SyncedTable {
             this.multiSubscriptions = [];
             this.singleSubscriptions = [];
             this.itemsMap.clear();
-            this.onChange = undefined;
         };
         this.delete = async (item, from_server = false) => {
             var _a;
@@ -318,53 +237,27 @@ class SyncedTable {
          */
         this.setItems = (_items) => {
             const items = (0, exports.quickClone)(_items);
-            if (this.storageType === STORAGE_TYPES.localStorage) {
-                if (!hasWnd)
-                    throw "Cannot access window object. Choose another storage method (array OR object)";
-                window.localStorage.setItem(this.name, JSON.stringify(items));
-            }
-            else if (this.storageType === STORAGE_TYPES.map) {
-                this.itemsMap = new Map(items.map((item) => {
-                    const id = this.getIdStr(item);
-                    return [id, { ...item }];
-                }));
-            }
+            this.itemsMap = new Map(items.map((item) => {
+                const id = this.getIdStr(item);
+                return [id, { ...item }];
+            }));
         };
         /**
          * Returns the current data ordered by synced_field ASC and matching the main filter;
          */
         this.getItems = () => {
             let items = [];
-            if (this.storageType === STORAGE_TYPES.localStorage) {
-                if (!hasWnd)
-                    throw "Cannot access window object. Choose another storage method (array OR object)";
-                const cachedStr = window.localStorage.getItem(this.name);
-                if (cachedStr) {
-                    try {
-                        items = JSON.parse(cachedStr);
-                    }
-                    catch (e) {
-                        console.error(e);
-                    }
-                }
-            }
-            else if (this.storageType === STORAGE_TYPES.map) {
-                items = Array.from(this.itemsMap.values()).map((d) => ({ ...d }));
-            }
-            if (this.id_fields.length && this.synced_field) {
-                const s_fields = [this.synced_field, ...this.id_fields.sort()];
-                items = items
-                    .filter((d) => {
-                    return !this.filter || !(0, prostgles_types_1.getKeys)(this.filter).find((key) => d[key] !== this.filter[key]);
-                })
-                    .sort((a, b) => s_fields
-                    .map((key) => (a[key] < b[key] ? -1
-                    : a[key] > b[key] ? 1
-                        : 0))
-                    .find((v) => v));
-            }
-            else
-                throw "id_fields AND/OR synced_field missing";
+            items = Array.from(this.itemsMap.values()).map((d) => ({ ...d }));
+            const syncFields = [this.synced_field, ...this.id_fields.sort()];
+            items = items
+                .filter((d) => {
+                return !this.filter || !(0, prostgles_types_1.getKeys)(this.filter).find((key) => d[key] !== this.filter[key]);
+            })
+                .sort((a, b) => syncFields
+                .map((key) => (a[key] < b[key] ? -1
+                : a[key] > b[key] ? 1
+                    : 0))
+                .find((v) => v));
             return (0, exports.quickClone)(items);
         };
         /**
@@ -376,27 +269,24 @@ class SyncedTable {
                 .map((c) => ({ ...c }))
                 .filter((c) => (!Number.isFinite(from_synced) || +c[this.synced_field] >= +from_synced) &&
                 (!Number.isFinite(to_synced) || +c[this.synced_field] <= +to_synced));
-            if (offset || limit)
+            if (offset || limit) {
                 res = res.splice(offset !== null && offset !== void 0 ? offset : 0, limit || res.length);
+            }
             return res;
         };
         this.name = name;
         this.filter = filter;
         this.select = select;
-        this.onChange = onChange;
         if (onDebug) {
-            this.onDebug = (evt) => onDebug({ ...evt, type: "sync", tableName: name, channelName: "", syncedTable: this }, this);
+            this.onDebug = (evt) => onDebug({
+                ...evt,
+                type: "sync",
+                tableName: name,
+                channelName: (0, prostgles_types_1.getSyncChannelName)({ filter, select, tableName: name }),
+                syncedTable: this,
+            }, this);
+            this.onDebug({ command: "create", data: { name, filter, select } });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!STORAGE_TYPES[storageType])
-            throw "Invalid storage type. Expecting one of: " + Object.keys(STORAGE_TYPES).join(", ");
-        if (!hasWnd && storageType === STORAGE_TYPES.localStorage) {
-            console.warn("Could not set storageType to localStorage: window object missing\nStorage changed to map");
-            storageType = "map";
-        }
-        this.storageType = storageType;
-        this.patchText = patchText;
-        this.patchJSON = patchJSON;
         const tableHandler = db[name];
         if (!tableHandler)
             throw `${name} table not found in db`;
@@ -411,7 +301,6 @@ class SyncedTable {
         this.synced_field = synced_field;
         this.batch_size = batch_size;
         this.throttle = throttle;
-        this.skipFirstTrigger = skipFirstTrigger;
         this.multiSubscriptions = [];
         this.singleSubscriptions = [];
         this.onError =
@@ -492,18 +381,7 @@ class SyncedTable {
                         window.onbeforeunload = confirmExit;
                 },
                 onSend: async (data, walData) => {
-                    // if(this.patchText){
-                    //     const textCols = this.columns.filter(c => c.data_type.toLowerCase().startsWith("text"));
-                    //     data = await Promise.all(data.map(d => {
-                    //         const dataTextCols = Object.keys(d).filter(k => textCols.find(tc => tc.name === k));
-                    //         if(dataTextCols.length){
-                    //             /* Create text patches and update separately */
-                    //             dada
-                    //         }
-                    //         return d;
-                    //     }))
-                    // }
-                    const _data = await this.updatePatches(walData);
+                    const _data = walData.map((d) => d.current);
                     if (!_data.length)
                         return [];
                     return this.dbSync.syncData(data);
@@ -535,10 +413,6 @@ class SyncedTable {
                 this.columns = cols;
             });
         }
-        if (this.onChange && !this.skipFirstTrigger) {
-            setTimeout(this.onChange, 0);
-        }
-        (0, exports.debug)(this);
     }
     static create(opts) {
         return new Promise((resolve, reject) => {
@@ -549,6 +423,10 @@ class SyncedTable {
                         setTimeout(() => {
                             resolve(res);
                         }, 0);
+                    },
+                    onError: (err) => {
+                        console.error("Sync internal error: ", err);
+                        reject(err);
                     },
                 });
             }
@@ -568,18 +446,13 @@ class SyncedTable {
             handlesOnData,
         });
         this.multiSubscriptions.push(sub);
-        if (!this.skipFirstTrigger) {
-            setTimeout(() => {
-                const items = this.getItems();
-                sub.notify(items, items);
-            }, 0);
-        }
+        setTimeout(() => {
+            const items = this.getItems();
+            sub.notify(items, items);
+        }, 0);
         return Object.freeze({ ...handles });
     }
     makeSingleSyncHandles(idObj, onChange) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!idObj || !onChange)
-            throw `syncOne(idObj, onChange) -> MISSING idObj or onChange`;
         const handles = {
             $get: () => this.getItem(idObj),
             $find: (idObject) => this.getItem(idObject),
@@ -593,7 +466,6 @@ class SyncedTable {
                 /* DROPPED SYNC BUG */
                 if (!this.singleSubscriptions.length && !this.multiSubscriptions.length) {
                     console.warn("No sync listeners");
-                    (0, exports.debug)("nosync", this._singleSubscriptions, this._multiSubscriptions);
                 }
                 return this.upsert([{ idObj, delta: newData, opts }]);
             },
@@ -730,14 +602,7 @@ class SyncedTable {
     }
     /* Returns an item by idObj from the local store */
     getItem(idObj) {
-        let d;
-        if (this.storageType === STORAGE_TYPES.localStorage) {
-            const items = this.getItems();
-            d = items.find((d) => this.matchesIdObj(d, idObj));
-        }
-        else {
-            d = this.itemsMap.get(this.getIdStr(idObj));
-        }
+        const d = this.itemsMap.get(this.getIdStr(idObj));
         return (0, exports.quickClone)(d);
     }
     /**
@@ -750,37 +615,13 @@ class SyncedTable {
     setItem(_item, isFullData = false, deleteItem = false) {
         var _a;
         const item = (0, exports.quickClone)(_item);
-        if (this.storageType === STORAGE_TYPES.localStorage) {
-            let items = this.getItems();
-            if (deleteItem) {
-                items = items.filter((d) => !this.matchesIdObj(d, item));
-            }
-            else {
-                let exists = false;
-                items = items.map((d) => {
-                    if (this.matchesIdObj(d, item)) {
-                        exists = true;
-                        return isFullData ? { ...item } : { ...d, ...item };
-                    }
-                    return d;
-                });
-                if (!exists) {
-                    items.push(item);
-                }
-            }
-            if (hasWnd) {
-                window.localStorage.setItem(this.name, JSON.stringify(items));
-            }
+        const id = this.getIdStr(item);
+        if (deleteItem) {
+            this.itemsMap.delete(id);
         }
         else {
-            const id = this.getIdStr(item);
-            if (deleteItem) {
-                this.itemsMap.delete(id);
-            }
-            else {
-                const existing = (_a = this.itemsMap.get(id)) !== null && _a !== void 0 ? _a : {};
-                this.itemsMap.set(id, isFullData ? { ...item } : { ...existing, ...item });
-            }
+            const existing = (_a = this.itemsMap.get(id)) !== null && _a !== void 0 ? _a : {};
+            this.itemsMap.set(id, isFullData ? { ...item } : { ...existing, ...item });
         }
     }
 }
@@ -821,12 +662,3 @@ const quickClone = (obj) => {
     return obj;
 };
 exports.quickClone = quickClone;
-/**
- * Type tests
- */
-const typeTest = async () => {
-    const s = 1;
-    const sh = s({ a: 1 }, {}, (d) => { });
-    const syncTyped = 1;
-    // const sUntyped: Sync<AnyObject, any> = syncTyped;
-};

@@ -114,10 +114,10 @@ export type SyncDebugEvent = {
     type: "sync";
     tableName: string;
     channelName: string;
-    command: keyof ClientSyncHandles | "notifySubscribers";
+    command: keyof ClientSyncHandles | "notifySubscribers" | "create";
     data: AnyObject;
     info?: string;
-    syncedTable: SyncedTable | Promise<SyncedTable>;
+    syncedTable: SyncedTable;
 };
 type DebugEvent = {
     type: "subscriptions";
@@ -212,6 +212,12 @@ export type CoreParams = {
     command: string;
     param1?: AnyObject;
     param2?: AnyObject;
+};
+export type SyncParams = {
+    tableName: string;
+    command: string;
+    filter: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[0];
+    select: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
 };
 export type onUpdatesParams = {
     data: object[];

@@ -165,14 +165,14 @@ export const getDB = <DBSchema = void>({
               useSync(syncOne, basicFilter, options, hookOptions);
           }
 
-          dboTable._sync = async function (param1, param2, syncHandles) {
+          dboTable._sync = async function (filter, select, syncHandles) {
             await onDebug?.({
               type: "table",
               command: "_sync",
               tableName,
-              data: { param1, param2, syncHandles },
+              data: { filter, select, syncHandles },
             });
-            return syncHandler.addSync({ tableName, command, param1, param2 }, syncHandles);
+            return syncHandler.addSync({ tableName, command, filter, select }, syncHandles);
           };
         } else if (subscribeCommands.includes(command as any)) {
           const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {

@@ -1,7 +1,6 @@
-import type { FieldFilter, WALItem, AnyObject, SyncBatchParams, TableHandler, EqualityFilter, NormalizedRow } from "prostgles-types";
+import type { AnyObject, EqualityFilter, FieldFilter, NormalizedRow, SyncBatchParams, TableHandler } from "prostgles-types";
 import { WAL } from "prostgles-types";
 import type { DBHandlerClient, SyncDebugEvent } from "../prostgles";
-export declare const debug: any;
 type OmittedSyncProps = "onDebug" | "name" | "filter" | "db" | "onError";
 export type SyncOptions = Partial<Omit<SyncedTableOptions, OmittedSyncProps>> & {
     select?: FieldFilter;
@@ -86,15 +85,10 @@ export type SubscriptionMulti<T extends AnyObject = AnyObject> = {
     handlesOnData?: boolean;
     handles?: MultiSyncHandles<T>;
 };
-declare const STORAGE_TYPES: {
-    readonly map: "map";
-    readonly localStorage: "localStorage";
-};
 export type MultiChangeListener<T extends AnyObject = AnyObject> = (items: NormalizedRow<T>[], delta: DeepPartial<T>[]) => any;
 export type SingleChangeListener<T extends AnyObject = AnyObject, Full extends boolean | undefined = false> = (item: SyncDataItem<T, {
     handlesOnData: Full;
 }>, delta?: DeepPartial<T>) => any;
-type StorageType = keyof typeof STORAGE_TYPES;
 export type SyncedTableOptions = {
     /**
      * Table name
@@ -111,22 +105,7 @@ export type SyncedTableOptions = {
     onChange?: MultiChangeListener;
     onError?: OnErrorHandler;
     db: DBHandlerClient | Partial<DBHandlerClient>;
-    /**
-     * If true then the first onChange trigger is skipped
-     */
-    skipFirstTrigger?: boolean;
     select?: "*" | AnyObject;
-    /**
-     * Default is "object".
-     * "localStorage" will persist the data
-     */
-    storageType?: StorageType;
-    /**
-     * If true then only the delta of the text field is sent to server.
-     * Full text is sent if an error occurs
-     */
-    patchText?: boolean;
-    patchJSON?: boolean;
     onReady: () => void;
     onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void> | void;
 };
@@ -138,13 +117,11 @@ export declare class SyncedTable {
     db: DBHandlerClient | Partial<DBHandlerClient>;
     name: string;
     select?: "*" | AnyObject;
-    filter?: AnyObject;
-    onChange?: MultiChangeListener;
+    filter?: EqualityFilter<AnyObject>;
     id_fields: string[];
     synced_field: string;
     throttle: number;
     batch_size: number;
-    skipFirstTrigger: boolean;
     columns: {
         name: string;
         data_type: string;
@@ -161,20 +138,11 @@ export declare class SyncedTable {
     set singleSubscriptions(sSubs: SubscriptionSingle[]);
     get singleSubscriptions(): SubscriptionSingle[];
     dbSync?: DbTableSync;
-    storageType?: StorageType;
     itemsMap: Map<string, AnyObject>;
-    patchText: boolean;
-    patchJSON: boolean;
     isSynced: boolean;
     onError: SyncedTableOptions["onError"];
     onDebug?: (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName" | "syncedTable">) => Promise<void> | void;
-    constructor({ name, filter, onChange, onReady, onDebug, db, skipFirstTrigger, select, storageType, patchText, patchJSON, onError, }: SyncedTableOptions);
-    /**
-     * Will update text/json fields through patching method
-     * This will send less data to server
-     * @param walData
-     */
-    updatePatches: (walData: WALItem[]) => Promise<any[]>;
+    constructor({ name, filter, onReady, onDebug, db, select, onError, }: SyncedTableOptions);
     static create(opts: Omit<SyncedTableOptions, "onReady">): Promise<SyncedTable>;
     /**
      * Returns a sync handler to all records within the SyncedTable instance
