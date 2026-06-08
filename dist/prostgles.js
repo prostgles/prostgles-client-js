@@ -44,7 +44,6 @@ function prostgles(initOpts, syncedTable) {
     }
     const subscriptionHandler = (0, getSubscriptionHandler_1.getSubscriptionHandler)(initOpts);
     const syncHandler = (0, getSyncHandler_1.getSyncHandler)(initOpts);
-    const sqlHandler = (0, getSqlHandler_1.getSqlHandler)(initOpts);
     let state;
     return new Promise((resolve, reject) => {
         socket.removeAllListeners("connect_error");

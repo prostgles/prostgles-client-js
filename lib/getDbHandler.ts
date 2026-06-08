@@ -21,7 +21,7 @@ import {
 import {
   quickClone,
   type OnChange,
-  type OnchangeOne,
+  type OnChangeOne,
   type Sync,
   type SyncedTable,
   type SyncOne,
@@ -69,7 +69,7 @@ export const getDB = <DBSchema = void>({
   const db: Partial<DBHandlerClient> = {};
 
   const schemaClone = quickClone(tableSchema) ?? [];
-  schemaClone.forEach(({ name: tableName, publishInfo }) => {
+  schemaClone.forEach(({ name: tableName, publishInfo, columns }) => {
     const allowedCommands = getAllowedTableMethods({ publishInfo });
     db[tableName] = {};
 
@@ -86,21 +86,6 @@ export const getDB = <DBSchema = void>({
           }
           dboTable._syncInfo = { ...syncConfig };
           if (syncedTable) {
-            dboTable.getSync = async (filter, params = {}) => {
-              await onDebug?.({
-                type: "table",
-                command: "getSync",
-                tableName,
-                data: { filter, params },
-              });
-              return syncedTable.create({
-                name: tableName,
-                onDebug,
-                filter,
-                db: db,
-                ...params,
-              });
-            };
             const upsertSyncTable = async (
               basicFilter = {},
               options: SyncOptions = {},
@@ -110,12 +95,14 @@ export const getDB = <DBSchema = void>({
               const syncedTableHandler =
                 syncHandler.syncedTables.get(syncName) ??
                 syncedTable.create({
+                  select: undefined,
                   ...options,
                   onDebug,
                   name: tableName,
                   filter: basicFilter,
                   db: db,
                   onError,
+                  columns,
                 });
               syncHandler.syncedTables.set(syncName, syncedTableHandler);
               return syncedTableHandler;
@@ -124,7 +111,7 @@ export const getDB = <DBSchema = void>({
             const syncOne = (async (
               basicFilter,
               options: SyncOneOptions = { handlesOnData: true },
-              onChange: OnchangeOne<AnyObject, SyncOneOptions>,
+              onChange: OnChangeOne<AnyObject, SyncOneOptions>,
               onError,
             ) => {
               await onDebug?.({
@@ -134,8 +121,8 @@ export const getDB = <DBSchema = void>({
                 data: { basicFilter, options },
               });
               checkSubscriptionArgs(basicFilter, options, onChange, onError);
-              const s = await upsertSyncTable(basicFilter, options, onError);
-              return await s.syncOne(basicFilter, onChange as any, options.handlesOnData);
+              const syncedTable = await upsertSyncTable(basicFilter, options, onError);
+              return await syncedTable.syncOne(basicFilter, onChange as any, options.handlesOnData);
             }) as SyncOne<AnyObject>;
 
             const sync = (async (
@@ -191,7 +178,7 @@ export const getDB = <DBSchema = void>({
             );
           };
           dboTable[command] = subFunc;
-          const SUBONE = "subscribeOne";
+          const SUBSCRIBE_ONE = "subscribeOne";
 
           /**
            * React hooks
@@ -203,14 +190,14 @@ export const getDB = <DBSchema = void>({
           if (handlerName) {
             dboTable[handlerName] = (filter, options, hookOptions) =>
               // eslint-disable-next-line react-hooks/rules-of-hooks
-              useSubscribe(subFunc, command === SUBONE, filter, options, hookOptions) as any;
+              useSubscribe(subFunc, command === SUBSCRIBE_ONE, filter, options, hookOptions) as any;
           }
 
-          if (command === SUBONE || !subscribeCommands.includes(SUBONE)) {
-            dboTable[SUBONE] = async function (param1, param2, onChange) {
+          if (command === SUBSCRIBE_ONE || !subscribeCommands.includes(SUBSCRIBE_ONE)) {
+            dboTable[SUBSCRIBE_ONE] = async function (param1, param2, onChange) {
               await onDebug?.({
                 type: "table",
-                command: "getSync",
+                command: SUBSCRIBE_ONE,
                 tableName,
                 data: { param1, param2, onChange },
               });

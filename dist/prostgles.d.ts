@@ -1,10 +1,11 @@
-import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, EqualityFilter, FullFilter, SQLHandler, SQLResult, SelectParams, SelectReturnType, ServerFunctionHandler, SubscribeParams, SyncTableInfo, TableHandler, UserLike } from "prostgles-types";
+import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, EqualityFilter, FieldFilter, FullFilter, SQLHandler, SQLResult, SelectParams, SelectReturnType, ServerFunctionHandler, SubscribeParams, TableHandler, UserLike } from "prostgles-types";
 import { asName } from "prostgles-types";
 import type { Socket } from "socket.io-client";
 import { type AuthHandler } from "./getAuthHandler";
 import { type ClientFunctionHandler } from "./getMethods";
 import { type Subscription } from "./getSubscriptionHandler";
-import type { DbTableSync, OnChange, OnErrorHandler, OnchangeOne, SingleSyncHandles, SyncDataItem, SyncHandler, SyncOneOptions, SyncOptions, SyncedTable } from "./SyncedTable/SyncedTable";
+import type { DbTableSync, OnChange, OnErrorHandler, OnChangeOne, SingleSyncHandles, SyncDataItem, SyncHandler, SyncOneOptions, SyncOptions, SyncedTable, SyncedTableOptions } from "./SyncedTable/SyncedTable";
+import type { SyncTableInfo } from "prostgles-types/dist/WAL";
 export declare const isClientSide: boolean;
 export declare const debug: any;
 export * from "./hooks/useEffectDeep";
@@ -44,7 +45,7 @@ export type TableHandlerClientMethods<T extends AnyObject = AnyObject, S extends
      */
     useSync?: <TD extends T, Opts extends SyncOptions>(basicFilter: EqualityFilter<TD>, syncOptions: Opts, hookOptions?: HookOptions) => AsyncResult<SyncDataItem<Required<TD>, Opts>[] | undefined>;
     sync?: <TD extends T, Opts extends SyncOptions>(basicFilter: EqualityFilter<TD>, options: Opts, onChange: OnChange<TD, Opts>, onError?: OnErrorHandler) => Promise<SyncHandler<TD>>;
-    syncOne?: <TD extends T, Opts extends SyncOneOptions>(basicFilter: EqualityFilter<TD>, options: Opts, onChange: OnchangeOne<TD, Opts>, onError?: OnErrorHandler) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
+    syncOne?: <TD extends T, Opts extends SyncOneOptions>(basicFilter: EqualityFilter<TD>, options: Opts, onChange: OnChangeOne<TD, Opts>, onError?: OnErrorHandler) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
     /**
      * Retrieves the first row matching the filter and keeps it in sync
      * - use { handlesOnData: true } to get optimistic updates method: $update
@@ -56,10 +57,9 @@ export type TableHandlerClientMethods<T extends AnyObject = AnyObject, S extends
      * Used internally to setup sync
      */
     _sync?: (filter: EqualityFilter<AnyObject> | undefined, selectParams: {
-        select: AnyObject | "*";
+        select: FieldFilter;
     }, triggers: ClientSyncHandles) => Promise<DbTableSync>;
     _syncInfo?: SyncTableInfo;
-    getSync?: AnyObject;
     /**
      * Retrieves a list of matching records from the view/table and subscribes to changes
      */
@@ -117,7 +117,7 @@ export type SyncDebugEvent = {
     command: keyof ClientSyncHandles | "notifySubscribers" | "create";
     data: AnyObject;
     info?: string;
-    syncedTable: SyncedTable;
+    options: Omit<SyncedTableOptions, "onReady">;
 };
 type DebugEvent = {
     type: "subscriptions";
@@ -215,8 +215,8 @@ export type CoreParams = {
 };
 export type SyncParams = {
     tableName: string;
-    command: string;
-    filter: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[0];
+    command: "sync";
+    filter: EqualityFilter<AnyObject> | undefined;
     select: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
 };
 export type onUpdatesParams = {

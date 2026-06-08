@@ -1,6 +1,11 @@
-import { CHANNEL_PREFIX, isEqual, type ClientSyncHandles } from "prostgles-types";
+import {
+  CHANNEL_PREFIX,
+  isEqual,
+  type ClientSyncHandles,
+  type ReplicationState,
+} from "prostgles-types";
 import { FunctionQueuer } from "./FunctionQueuer";
-import type { AnyFunction, CoreParams, InitOptions, SyncInfo, SyncParams } from "./prostgles";
+import type { AnyFunction, InitOptions, SyncInfo, SyncParams } from "./prostgles";
 import { debug } from "./prostgles";
 import type { DbTableSync, SyncedTable } from "./SyncedTable/SyncedTable";
 
@@ -47,17 +52,25 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     });
   }
   function addServerSync(
-    { tableName, command, filter, select }: SyncParams,
+    { tableName, command, filter = {}, select }: SyncParams,
     onSyncRequest: ClientSyncHandles["onSyncRequest"],
   ): Promise<SyncInfo> {
     return new Promise((resolve, reject) => {
       socket.emit(
         CHANNEL_PREFIX,
-        { tableName, command, param1: filter, param2: select } satisfies CoreParams,
-        (err: any, syncInfo: SyncInfo) => {
+        {
+          tableName,
+          command,
+          param1: filter,
+          param2: select,
+        } satisfies ReplicationState["channels"]["CHANNEL_PREFIX"]["client.emit"]["data"],
+        (
+          err: any,
+          syncInfo: ReplicationState["channels"]["CHANNEL_PREFIX"]["client.emit"]["server.response"]["data"],
+        ) => {
           onDebug?.({
             type: "table",
-            command: "getSync",
+            command: "sync",
             tableName,
             data: { filter, select },
           });
@@ -114,12 +127,7 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     }
 
     const matchingSync = Array.from(syncs.entries()).find(([ch, s]) => {
-      return (
-        s.tableName === tableName &&
-        s.command === command &&
-        isEqual(s.filter, filter) &&
-        isEqual(s.select, select)
-      );
+      return s.tableName === tableName && isEqual(s.filter, filter) && isEqual(s.select, select);
     });
 
     if (matchingSync) {
@@ -143,19 +151,19 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
         if (!matchingSync) return;
 
         matchingSync.clientSyncHandles.map(({ onUpdates, onSyncRequest, onPullRequest }) => {
-          syncedTables.get(channelName)?.then((syncedTable) => {
-            onDebug?.({
-              type: "sync",
-              command:
-                data.data ? "onUpdates"
-                : data.onSyncRequest ? "onSyncRequest"
-                : "onPullRequest",
-              tableName,
-              channelName,
-              data,
-              syncedTable,
-            });
-          });
+          // syncedTables.get(channelName)?.then((syncedTable) => {
+          //   onDebug?.({
+          //     type: "sync",
+          //     command:
+          //       data.data ? "onUpdates"
+          //       : data.onSyncRequest ? "onSyncRequest"
+          //       : "onPullRequest",
+          //     tableName,
+          //     channelName,
+          //     data,
+          //     options: { n filter, select },
+          //   });
+          // });
           if (data.data) {
             Promise.resolve(onUpdates(data))
               .then(() => {

@@ -7,7 +7,7 @@ import type {
   NormalizedRow,
   SyncBatchParams,
   TableHandler,
-  WALItem,
+  ValidatedColumnInfo,
 } from "prostgles-types";
 import {
   getKeys,
@@ -16,10 +16,10 @@ import {
   isEmpty,
   isEqual,
   isObject,
-  WAL,
 } from "prostgles-types";
 import type { DBHandlerClient, SyncDebugEvent } from "../prostgles";
 import { getMultiSyncSubscription } from "./getMultiSyncSubscription";
+import { WAL, type WALItem } from "prostgles-types/dist/WAL";
 
 const hasWnd = typeof window !== "undefined";
 
@@ -40,7 +40,7 @@ export type OnErrorHandler = (error: any) => void;
  */
 export type OnChange<T extends Record<string, unknown>, Opts extends SyncOptions> = (
   data: SyncDataItem<T, Opts>[],
-  delta?: Partial<T>[],
+  delta?: Partial<NormalizedRow<T>>[],
 ) => any;
 
 export type SyncHandler<T> = {
@@ -56,18 +56,18 @@ export type Sync<T extends AnyObject = AnyObject> = <TD extends T, Opts extends 
   onError?: OnErrorHandler,
 ) => Promise<SyncHandler<TD>>;
 
-export type OnchangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = (
-  data: SyncDataItem<NormalizedRow<T>, Opts>,
+export type OnChangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = (
+  data: SyncDataItem<T, Opts>,
   delta?: Partial<NormalizedRow<T>>,
 ) => void | Promise<void>;
 
 /**
  * Creates a local synchronized record
  */
-export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOptions>(
+export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts extends SyncOneOptions>(
   basicFilter: Partial<TD>,
   options: Opts,
-  onChange: OnchangeOne<TD, Opts>,
+  onChange: OnChangeOne<TD, Opts>,
   onError?: OnErrorHandler,
 ) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
 
@@ -151,7 +151,7 @@ export type MultiSyncHandles<T extends AnyObject> = {
 
 export type SubscriptionSingle<T extends AnyObject = AnyObject, Full extends boolean = false> = {
   _onChange: SingleChangeListener<T, Full>;
-  notify: (data: T, delta?: DeepPartial<T>) => T;
+  notify: (data: T, delta?: DeepPartial<NormalizedRow<T>>) => void | Promise<void>;
   idObj: Partial<T>;
   handlesOnData?: boolean;
   handles?: SingleSyncHandles<T, Full>;
@@ -171,7 +171,10 @@ export type MultiChangeListener<T extends AnyObject = AnyObject> = (
 export type SingleChangeListener<
   T extends AnyObject = AnyObject,
   Full extends boolean | undefined = false,
-> = (item: SyncDataItem<T, { handlesOnData: Full }>, delta?: DeepPartial<T>) => any;
+> = (
+  item: SyncDataItem<T, { handlesOnData: Full }>,
+  delta?: DeepPartial<NormalizedRow<T>>,
+) => void | Promise<void>;
 
 export type SyncedTableOptions = {
   /**
@@ -182,7 +185,7 @@ export type SyncedTableOptions = {
   /**
    * Basic filter
    */
-  filter?: EqualityFilter<AnyObject>;
+  filter: undefined | EqualityFilter<AnyObject>;
 
   /**
    * Data change listener.
@@ -192,10 +195,10 @@ export type SyncedTableOptions = {
   onError?: OnErrorHandler;
   db: DBHandlerClient | Partial<DBHandlerClient>;
 
-  select?: "*" | AnyObject;
-
+  select: FieldFilter | undefined;
+  columns: ValidatedColumnInfo[];
   onReady: () => void;
-  onDebug?: (event: SyncDebugEvent, tbl: SyncedTable) => Promise<void> | void;
+  onDebug?: (event: SyncDebugEvent) => Promise<void> | void;
 };
 
 export type DbTableSync = {
@@ -206,7 +209,7 @@ export type DbTableSync = {
 export class SyncedTable {
   db: DBHandlerClient | Partial<DBHandlerClient>;
   name: string;
-  select?: "*" | AnyObject;
+  select?: FieldFilter;
   filter?: EqualityFilter<AnyObject>;
   id_fields: string[];
   synced_field: string;
@@ -244,45 +247,41 @@ export class SyncedTable {
   isSynced = false;
   onError: SyncedTableOptions["onError"];
   onDebug?: (
-    evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName" | "syncedTable">,
+    evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName" | "options">,
   ) => Promise<void> | void;
 
-  constructor({
-    name,
-    filter = {},
-    onReady,
-    onDebug,
-    db,
-    select = "*",
-    onError,
-  }: SyncedTableOptions) {
+  constructor(options: SyncedTableOptions) {
+    const { name, filter = {}, onReady, onDebug, db, select = "*", onError } = options;
     this.name = name;
     this.filter = filter;
     this.select = select;
 
     if (onDebug) {
       this.onDebug = (evt) =>
-        onDebug(
-          {
-            ...evt,
-            type: "sync",
-            tableName: name,
-            channelName: getSyncChannelName({ filter, select, tableName: name }),
-            syncedTable: this,
-          },
-          this,
-        );
+        onDebug({
+          ...evt,
+          type: "sync",
+          tableName: name,
+          channelName: getSyncChannelName({ filter, select, tableName: name }),
+          options,
+        });
       this.onDebug({ command: "create", data: { name, filter, select } });
     }
 
     const tableHandler = db[name];
-    if (!tableHandler) throw `${name} table not found in db`;
+    if (!tableHandler) {
+      throw `${name} table not found in db`;
+    }
     this.db = db;
 
     const { _sync, _syncInfo } = tableHandler;
-    if (!_sync || !_syncInfo) throw `${name} table does not support sync`;
+    if (!_sync || !_syncInfo) {
+      throw `${name} table does not support sync`;
+    }
     const { id_fields, synced_field, throttle = 100, batch_size = 50 } = _syncInfo;
-    if (!id_fields.length || !synced_field) throw "id_fields/synced_field missing";
+    if (!id_fields.length || !synced_field) {
+      throw "id_fields/synced_field missing";
+    }
     this.id_fields = id_fields;
     this.synced_field = synced_field;
     this.batch_size = batch_size;
@@ -375,7 +374,7 @@ export class SyncedTable {
           onSend: async (data, walData) => {
             const _data = walData.map((d) => d.current);
             if (!_data.length) return [];
-            return this.dbSync!.syncData(data);
+            return s.syncData(data);
           }, //, deletedData);,
           onSendEnd: () => {
             if (hasWnd) window.onbeforeunload = null;
@@ -386,7 +385,7 @@ export class SyncedTable {
           ...opts,
           batch_size: Infinity,
           throttle: 5,
-          onSend: async (items, fullItems) => {
+          onSend: async (_, fullItems) => {
             this._notifySubscribers(
               fullItems.map((d) => ({
                 delta: this.getDelta(d.initial ?? {}, d.current),
@@ -401,11 +400,9 @@ export class SyncedTable {
       },
     );
 
-    if (tableHandler.getColumns) {
-      tableHandler.getColumns().then((cols) => {
-        this.columns = cols;
-      });
-    }
+    tableHandler.getColumns?.().then((cols) => {
+      this.columns = cols;
+    });
   }
 
   static create(opts: Omit<SyncedTableOptions, "onReady">): Promise<SyncedTable> {

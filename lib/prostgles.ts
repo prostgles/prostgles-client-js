@@ -5,6 +5,7 @@ import type {
   DBSchema,
   DBSchemaTable,
   EqualityFilter,
+  FieldFilter,
   FullFilter,
   SQLHandler,
   SQLResult,
@@ -12,7 +13,6 @@ import type {
   SelectReturnType,
   ServerFunctionHandler,
   SubscribeParams,
-  SyncTableInfo,
   TableHandler,
   UserLike,
 } from "prostgles-types";
@@ -30,7 +30,7 @@ import type {
   DbTableSync,
   OnChange,
   OnErrorHandler,
-  OnchangeOne,
+  OnChangeOne,
   SingleSyncHandles,
   Sync,
   SyncDataItem,
@@ -39,7 +39,9 @@ import type {
   SyncOneOptions,
   SyncOptions,
   SyncedTable,
+  SyncedTableOptions,
 } from "./SyncedTable/SyncedTable";
+import type { SyncTableInfo } from "prostgles-types/dist/WAL";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 export const isClientSide = typeof window !== "undefined";
@@ -100,7 +102,7 @@ export type TableHandlerClientMethods<
   syncOne?: <TD extends T, Opts extends SyncOneOptions>(
     basicFilter: EqualityFilter<TD>,
     options: Opts,
-    onChange: OnchangeOne<TD, Opts>,
+    onChange: OnChangeOne<TD, Opts>,
     onError?: OnErrorHandler,
   ) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
 
@@ -121,11 +123,10 @@ export type TableHandlerClientMethods<
    */
   _sync?: (
     filter: EqualityFilter<AnyObject> | undefined,
-    selectParams: { select: AnyObject | "*" },
+    selectParams: { select: FieldFilter },
     triggers: ClientSyncHandles,
   ) => Promise<DbTableSync>;
   _syncInfo?: SyncTableInfo;
-  getSync?: AnyObject;
 
   /**
    * Retrieves a list of matching records from the view/table and subscribes to changes
@@ -234,7 +235,7 @@ export type SyncDebugEvent = {
   command: keyof ClientSyncHandles | "notifySubscribers" | "create";
   data: AnyObject;
   info?: string;
-  syncedTable: SyncedTable;
+  options: Omit<SyncedTableOptions, "onReady">;
 };
 type DebugEvent =
   | {
@@ -362,8 +363,8 @@ export type CoreParams = {
 };
 export type SyncParams = {
   tableName: string;
-  command: string;
-  filter: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[0];
+  command: "sync";
+  filter: EqualityFilter<AnyObject> | undefined;
   select: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
 };
 
@@ -405,7 +406,6 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
 
   const subscriptionHandler = getSubscriptionHandler(initOpts);
   const syncHandler = getSyncHandler(initOpts);
-  const sqlHandler = getSqlHandler(initOpts);
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
 

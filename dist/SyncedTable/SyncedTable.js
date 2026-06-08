@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.quickClone = exports.mergeDeep = exports.SyncedTable = void 0;
 const prostgles_types_1 = require("prostgles-types");
 const getMultiSyncSubscription_1 = require("./getMultiSyncSubscription");
+const WAL_1 = require("prostgles-types/dist/WAL");
 const hasWnd = typeof window !== "undefined";
 class SyncedTable {
     /**
@@ -20,7 +21,8 @@ class SyncedTable {
     get singleSubscriptions() {
         return this._singleSubscriptions;
     }
-    constructor({ name, filter = {}, onReady, onDebug, db, select = "*", onError, }) {
+    constructor(options) {
+        var _a;
         this.throttle = 100;
         this.batch_size = 50;
         this.columns = [];
@@ -274,6 +276,7 @@ class SyncedTable {
             }
             return res;
         };
+        const { name, filter = {}, onReady, onDebug, db, select = "*", onError } = options;
         this.name = name;
         this.filter = filter;
         this.select = select;
@@ -283,20 +286,23 @@ class SyncedTable {
                 type: "sync",
                 tableName: name,
                 channelName: (0, prostgles_types_1.getSyncChannelName)({ filter, select, tableName: name }),
-                syncedTable: this,
-            }, this);
+                options,
+            });
             this.onDebug({ command: "create", data: { name, filter, select } });
         }
         const tableHandler = db[name];
-        if (!tableHandler)
+        if (!tableHandler) {
             throw `${name} table not found in db`;
+        }
         this.db = db;
         const { _sync, _syncInfo } = tableHandler;
-        if (!_sync || !_syncInfo)
+        if (!_sync || !_syncInfo) {
             throw `${name} table does not support sync`;
+        }
         const { id_fields, synced_field, throttle = 100, batch_size = 50 } = _syncInfo;
-        if (!id_fields.length || !synced_field)
+        if (!id_fields.length || !synced_field) {
             throw "id_fields/synced_field missing";
+        }
         this.id_fields = id_fields;
         this.synced_field = synced_field;
         this.batch_size = batch_size;
@@ -373,7 +379,7 @@ class SyncedTable {
             /**
              * Some syncs can be read only. Any changes are local
              */
-            this.wal = new prostgles_types_1.WAL({
+            this.wal = new WAL_1.WAL({
                 ...opts,
                 batch_size,
                 onSendStart: () => {
@@ -384,18 +390,18 @@ class SyncedTable {
                     const _data = walData.map((d) => d.current);
                     if (!_data.length)
                         return [];
-                    return this.dbSync.syncData(data);
+                    return s.syncData(data);
                 }, //, deletedData);,
                 onSendEnd: () => {
                     if (hasWnd)
                         window.onbeforeunload = null;
                 },
             });
-            this.notifyWal = new prostgles_types_1.WAL({
+            this.notifyWal = new WAL_1.WAL({
                 ...opts,
                 batch_size: Infinity,
                 throttle: 5,
-                onSend: async (items, fullItems) => {
+                onSend: async (_, fullItems) => {
                     this._notifySubscribers(fullItems.map((d) => {
                         var _a;
                         return ({
@@ -408,11 +414,9 @@ class SyncedTable {
             });
             onReady();
         });
-        if (tableHandler.getColumns) {
-            tableHandler.getColumns().then((cols) => {
-                this.columns = cols;
-            });
-        }
+        (_a = tableHandler.getColumns) === null || _a === void 0 ? void 0 : _a.call(tableHandler).then((cols) => {
+            this.columns = cols;
+        });
     }
     static create(opts) {
         return new Promise((resolve, reject) => {
