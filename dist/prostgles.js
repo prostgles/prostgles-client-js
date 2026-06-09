@@ -36,7 +36,7 @@ __exportStar(require("./hooks/useEffectDeep"), exports);
 __exportStar(require("./hooks/useProstglesClient"), exports);
 function prostgles(initOpts) {
     const { endpoint, socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug, credentials, redirect, } = initOpts;
-    let schemaAge;
+    let currentClientSchema;
     (0, exports.debug)("prostgles", { initOpts });
     if (onSchemaChange) {
         socket.removeAllListeners(prostgles_types_1.CHANNELS.SCHEMA_CHANGED);
@@ -75,8 +75,9 @@ function prostgles(initOpts) {
             const { joinTables = [], ...clientSchema } = args;
             const { methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
-            const schemaDidNotChange = schemaAge?.clientSchema && (0, prostgles_types_1.isEqual)(schemaAge.clientSchema, clientSchema);
-            if (!schemaDidNotChange) {
+            const schemaChanged = currentClientSchema?.clientSchema &&
+                !(0, prostgles_types_1.isEqual)(currentClientSchema.clientSchema, clientSchema);
+            if (schemaChanged) {
                 console.warn("syncHandler.destroySyncs()");
                 // syncHandler
                 //   .destroySyncs()
@@ -90,10 +91,10 @@ function prostgles(initOpts) {
                 if (err) {
                     return;
                 }
-                schemaAge = { origin: "onReconnect", date: new Date(), clientSchema };
+                currentClientSchema = { origin: "onReconnect", date: new Date(), clientSchema };
             }
             else {
-                schemaAge = { origin: "onReady", date: new Date(), clientSchema };
+                currentClientSchema = { origin: "onReady", date: new Date(), clientSchema };
             }
             if (err) {
                 reject(err);

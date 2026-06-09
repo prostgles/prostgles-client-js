@@ -393,7 +393,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
     credentials,
     redirect,
   } = initOpts;
-  let schemaAge: CurrentClientSchema | undefined;
+  let currentClientSchema: CurrentClientSchema | undefined;
   debug("prostgles", { initOpts });
   if (onSchemaChange) {
     socket.removeAllListeners(CHANNELS.SCHEMA_CHANGED);
@@ -438,9 +438,10 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       const { methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
 
       /** Only destroy existing syncs if schema changed */
-      const schemaDidNotChange =
-        schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema);
-      if (!schemaDidNotChange) {
+      const schemaChanged =
+        currentClientSchema?.clientSchema &&
+        !isEqual(currentClientSchema.clientSchema, clientSchema);
+      if (schemaChanged) {
         console.warn("syncHandler.destroySyncs()");
         // syncHandler
         //   .destroySyncs()
@@ -455,9 +456,9 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
         if (err) {
           return;
         }
-        schemaAge = { origin: "onReconnect", date: new Date(), clientSchema };
+        currentClientSchema = { origin: "onReconnect", date: new Date(), clientSchema };
       } else {
-        schemaAge = { origin: "onReady", date: new Date(), clientSchema };
+        currentClientSchema = { origin: "onReady", date: new Date(), clientSchema };
       }
 
       if (err) {
