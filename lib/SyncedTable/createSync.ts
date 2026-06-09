@@ -31,6 +31,7 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     initializeSync,
     filter,
   } = stateUtils;
+
   const store = createSyncDataStore({ ..._syncInfo, columns, filter });
 
   const onError = (err) => {
