@@ -216,8 +216,8 @@ export type CoreParams = {
 export type SyncParams = {
     tableName: string;
     command: "sync";
-    filter: EqualityFilter<AnyObject> | undefined;
-    select: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
+    param1: EqualityFilter<AnyObject> | undefined;
+    param2: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
 };
 export type onUpdatesParams = {
     data: object[];

@@ -52,7 +52,7 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     });
   }
   function addServerSync(
-    { tableName, command, filter = {}, select }: SyncParams,
+    { tableName, command, param1 = {}, param2 }: SyncParams,
     onSyncRequest: ClientSyncHandles["onSyncRequest"],
   ): Promise<SyncInfo> {
     return new Promise((resolve, reject) => {
@@ -61,8 +61,8 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
         {
           tableName,
           command,
-          param1: filter,
-          param2: select,
+          param1,
+          param2,
         } satisfies ReplicationState["channels"]["CHANNEL_PREFIX"]["client.emit"]["data"],
         (
           err: any,
@@ -72,7 +72,7 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
             type: "table",
             command: "sync",
             tableName,
-            data: { filter, select },
+            data: { param1, param2 },
           });
           if (err) {
             console.error(err);
@@ -95,7 +95,7 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     return addSyncQueuer.run([params, triggers]);
   }
   async function _addSync(
-    { tableName, command, filter, select }: SyncParams,
+    { tableName, command, param1, param2 }: SyncParams,
     clientSyncHandlers: ClientSyncHandles,
   ): Promise<any> {
     const { onSyncRequest } = clientSyncHandlers;
@@ -127,7 +127,11 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     }
 
     const matchingSync = Array.from(syncs.entries()).find(([ch, s]) => {
-      return s.tableName === tableName && isEqual(s.filter, filter) && isEqual(s.select, select);
+      return (
+        s.tableName === tableName &&
+        isEqual(s.param1, param1) &&
+        isEqual(s.param2.select, param2.select)
+      );
     });
 
     if (matchingSync) {
@@ -135,7 +139,7 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
       existingSync.clientSyncHandles.push(clientSyncHandlers);
       return makeHandler(existingChannel);
     } else {
-      const sync_info = await addServerSync({ tableName, command, filter, select }, onSyncRequest);
+      const sync_info = await addServerSync({ tableName, command, param1, param2 }, onSyncRequest);
       const { channelName } = sync_info;
       const onCall = function (data: any | undefined, cb: AnyFunction) {
         /*               
@@ -194,8 +198,8 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
       syncs.set(channelName, {
         tableName,
         command,
-        filter,
-        select,
+        param1,
+        param2,
         clientSyncHandles: [clientSyncHandlers],
         syncInfo: sync_info,
         onCall,

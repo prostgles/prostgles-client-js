@@ -24,6 +24,7 @@ const getMethods_1 = require("./getMethods");
 const getSqlHandler_1 = require("./getSqlHandler");
 const getSubscriptionHandler_1 = require("./getSubscriptionHandler");
 const getSyncHandler_1 = require("./getSyncHandler");
+const getSyncHandlerV2_1 = require("./getSyncHandlerV2");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 exports.isClientSide = typeof window !== "undefined";
 const debug = function (...args) {
@@ -44,6 +45,7 @@ function prostgles(initOpts, syncedTable) {
     }
     const subscriptionHandler = (0, getSubscriptionHandler_1.getSubscriptionHandler)(initOpts);
     const syncHandler = (0, getSyncHandler_1.getSyncHandler)(initOpts);
+    const syncHandlerV2 = (0, getSyncHandlerV2_1.getSyncHandlerV2)(initOpts);
     let state;
     return new Promise((resolve, reject) => {
         socket.removeAllListeners("connect_error");
@@ -113,6 +115,7 @@ function prostgles(initOpts, syncedTable) {
                 onDebug,
                 syncedTable,
                 syncHandler,
+                syncHandlerV2,
                 subscriptionHandler,
                 socket,
                 tableSchema,

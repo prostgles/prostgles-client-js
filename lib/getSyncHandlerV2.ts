@@ -57,7 +57,7 @@ export const getSyncHandlerV2 = ({ socket, onDebug }: Pick<InitOptions, "socket"
     tableName,
     columns,
   }: {
-    db: DBHandler;
+    db: Partial<DBHandlerClient>;
     tableName: string;
     columns: ValidatedColumnInfo[];
   }) => {

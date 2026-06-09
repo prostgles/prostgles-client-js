@@ -42,6 +42,7 @@ import type {
   SyncedTableOptions,
 } from "./SyncedTable/SyncedTable";
 import type { SyncTableInfo } from "prostgles-types/dist/WAL";
+import { getSyncHandlerV2 } from "./getSyncHandlerV2";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 export const isClientSide = typeof window !== "undefined";
@@ -364,8 +365,8 @@ export type CoreParams = {
 export type SyncParams = {
   tableName: string;
   command: "sync";
-  filter: EqualityFilter<AnyObject> | undefined;
-  select: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
+  param1: EqualityFilter<AnyObject> | undefined;
+  param2: Parameters<NonNullable<TableHandlerClientMethods["_sync"]>>[1];
 };
 
 export type onUpdatesParams = { data: object[]; isSynced: boolean };
@@ -406,6 +407,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
 
   const subscriptionHandler = getSubscriptionHandler(initOpts);
   const syncHandler = getSyncHandler(initOpts);
+  const syncHandlerV2 = getSyncHandlerV2(initOpts);
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
 
@@ -485,6 +487,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
         onDebug,
         syncedTable,
         syncHandler,
+        syncHandlerV2,
         subscriptionHandler,
         socket,
         tableSchema,
