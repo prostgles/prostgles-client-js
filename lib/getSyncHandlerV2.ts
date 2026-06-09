@@ -1,7 +1,6 @@
 import {
   getSyncChannelName,
   type AnyObject,
-  type DBHandler,
   type EqualityFilter,
   type FieldFilter,
   type ValidatedColumnInfo,

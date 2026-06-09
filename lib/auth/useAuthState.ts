@@ -1,7 +1,7 @@
 import { getProperty, type AuthResponse } from "prostgles-types";
 import { reactImports } from "../hooks/reactImports";
 const { useEffect, useState } = reactImports;
-import type { AuthHandler, PasswordLogin, PasswordRegister } from "lib/getAuthHandler";
+import type { AuthHandler, PasswordLogin, PasswordRegister } from "../getAuthHandler";
 
 type PasswordLoginDataAndFunc = {
   onCall: PasswordLogin;

@@ -1,4 +1,3 @@
-import type { SyncInfo } from "lib/prostgles";
 import {
   getKeys,
   isDefined,
@@ -9,6 +8,7 @@ import {
   type SyncBatchParams,
 } from "prostgles-types";
 import { quickClone, type SyncedTableOptions } from "./SyncedTable";
+import type { SyncInfo } from "../prostgles";
 
 export const createSyncDataStore = ({
   id_fields,

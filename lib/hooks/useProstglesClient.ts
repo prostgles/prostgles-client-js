@@ -1,6 +1,6 @@
 import { type DBSchema, type UserLike } from "prostgles-types";
 
-import type { ClientFunctionHandler } from "lib/getMethods";
+import type { ClientFunctionHandler } from "../getMethods";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { prostgles, type InitOptions, type ClientOnReadyParams } from "../prostgles";
 import { SyncedTable } from "../SyncedTable/SyncedTable";

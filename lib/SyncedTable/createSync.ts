@@ -42,10 +42,12 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     let clientSyncInfo: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
 
     const batch = store.getBatch(syncBatchParams);
-    if (batch.length) {
+    const firstRow = batch[0];
+    const lastRow = batch[batch.length - 1];
+    if (firstRow && lastRow) {
       clientSyncInfo = {
-        c_fr: store.getRowSyncObj(batch[0]!),
-        c_lr: store.getRowSyncObj(batch[batch.length - 1]!),
+        c_fr: store.getRowSyncObj(firstRow),
+        c_lr: store.getRowSyncObj(lastRow),
         c_count: batch.length,
       };
     }
@@ -97,6 +99,8 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
   };
 
   const dbSync = await _sync({ onSyncRequest, onPullRequest, onUpdates });
+  store.setItem(dbSync.sync_info.data);
+  dbSync.syncData();
 
   /**
    * Some syncs can be read only. Any changes are local

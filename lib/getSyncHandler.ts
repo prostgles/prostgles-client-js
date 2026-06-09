@@ -55,7 +55,7 @@ export const getSyncHandler = ({ socket, onDebug }: Pick<InitOptions, "socket" |
     { tableName, command, param1 = {}, param2 }: SyncParams,
     onSyncRequest: ClientSyncHandles["onSyncRequest"],
   ): Promise<SyncInfo> {
-    return new Promise((resolve, reject) => {
+    return new Promise<SyncInfo>((resolve, reject) => {
       socket.emit(
         CHANNEL_PREFIX,
         {

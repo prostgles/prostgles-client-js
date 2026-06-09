@@ -1,14 +1,8 @@
 {
   "files": ["lib/prostgles-full.ts"],
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "es2019",
-    "lib": [
-      "es6",
-      "dom", 
-      "es2017",
-      "es2019"
-    ],
+    "lib": ["es6", "dom", "es2017", "es2019"],
     "strict": true,
     "module": "commonjs",
     "resolveJsonModule": true,
@@ -27,9 +21,5 @@
     "noUncheckedIndexedAccess": true
   },
   "include": ["lib"],
-  "exclude": [
-    "./dist",
-    "./tests",
-    "node_modules"
-  ]
+  "exclude": ["./dist", "./tests", "node_modules"]
 }

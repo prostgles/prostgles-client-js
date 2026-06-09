@@ -1,4 +1,3 @@
-import { type AnyFunction, type SyncDebugEvent, type SyncInfo } from "lib/prostgles";
 import {
   CHANNEL_PREFIX,
   getSyncChannelName,
@@ -6,6 +5,7 @@ import {
   type ReplicationState,
 } from "prostgles-types";
 import type { Socket } from "socket.io-client";
+import { type AnyFunction, type SyncDebugEvent } from "../prostgles";
 import type { DbTableSync, SyncedTableOptions } from "./SyncedTable";
 
 export const createSyncStateUtils = (
@@ -41,7 +41,9 @@ export const createSyncStateUtils = (
   }
 
   const _sync = async (handles: ClientSyncHandles) => {
-    const sync_info = await new Promise<SyncInfo>((resolve, reject) => {
+    const sync_info = await new Promise<
+      ReplicationState["channels"]["CHANNEL_PREFIX"]["client.emit"]["server.response"]["data"]
+    >((resolve, reject) => {
       socket.emit(
         CHANNEL_PREFIX,
         {
@@ -58,7 +60,7 @@ export const createSyncStateUtils = (
             console.error(err);
             reject(err);
           } else if (syncInfo as unknown) {
-            const { id_fields, synced_field, channelName } = syncInfo;
+            const { channelName } = syncInfo;
 
             socket.emit(
               channelName,
@@ -67,7 +69,7 @@ export const createSyncStateUtils = (
                 console.log(response);
               },
             );
-            resolve({ id_fields, synced_field, channelName });
+            resolve(syncInfo);
           }
         },
       );
