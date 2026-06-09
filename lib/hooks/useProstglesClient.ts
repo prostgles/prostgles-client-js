@@ -3,7 +3,6 @@ import { type DBSchema, type UserLike } from "prostgles-types";
 import type { ClientFunctionHandler } from "../getMethods";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { prostgles, type InitOptions, type ClientOnReadyParams } from "../prostgles";
-import { SyncedTable } from "../SyncedTable/SyncedTable";
 import { getReact } from "./reactImports";
 import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
 import { useIsMounted } from "./useIsMounted";
@@ -79,25 +78,22 @@ export const useProstglesClient = <
       const socket =
         endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
       socketRef.current = socket;
-      await prostgles<S, FuncSchema, U>(
-        {
-          socket,
-          endpoint,
-          ...initOpts,
-          onReady: (onReadyArgs) => {
-            if (!getIsMounted()) {
-              initOpts.onDebug?.({
-                type: "onReady.notMounted",
-                data: onReadyArgs as any,
-              });
-              return;
-            }
-            initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
-            setOnReadyArgs({ ...onReadyArgs, hasError: false, isLoading: false });
-          },
+      await prostgles<S, FuncSchema, U>({
+        socket,
+        endpoint,
+        ...initOpts,
+        onReady: (onReadyArgs) => {
+          if (!getIsMounted()) {
+            initOpts.onDebug?.({
+              type: "onReady.notMounted",
+              data: onReadyArgs as any,
+            });
+            return;
+          }
+          initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
+          setOnReadyArgs({ ...onReadyArgs, hasError: false, isLoading: false });
         },
-        SyncedTable,
-      ).catch((error) => {
+      }).catch((error) => {
         if (!getIsMounted()) return;
         setOnReadyArgs({ isLoading: false, error, hasError: true });
       });

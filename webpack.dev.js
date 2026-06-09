@@ -1,31 +1,30 @@
-
-const path = require('path');
+const path = require("path");
 
 module.exports = {
-  entry: './lib/prostgles-full.ts',
-  devtool: 'inline-source-map',
-  mode: 'development',
+  entry: "./lib/index.ts",
+  devtool: "inline-source-map",
+  mode: "development",
   module: {
     rules: [
       {
         test: /\.tsx?$/,
-        use: 'ts-loader',
+        use: "ts-loader",
         exclude: /node_modules/,
       },
     ],
   },
   resolve: {
-    extensions: [ '.tsx', '.ts', '.js' ],
+    extensions: [".tsx", ".ts", ".js"],
   },
   output: {
-    filename: 'prostgles.dev.js',
-    path: path.resolve(__dirname, 'dist'),
-    libraryTarget: 'umd',
-    globalObject: 'this',
+    filename: "prostgles.dev.js",
+    path: path.resolve(__dirname, "dist"),
+    libraryTarget: "umd",
+    globalObject: "this",
   },
   watch: true,
-  watchOptions:  {
+  watchOptions: {
     aggregateTimeout: 200,
-    poll: 1000
-  }
+    poll: 1000,
+  },
 };

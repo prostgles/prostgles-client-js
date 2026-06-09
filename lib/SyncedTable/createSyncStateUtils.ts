@@ -40,8 +40,8 @@ export const createSyncStateUtils = (
     throw "id_fields/synced_field missing";
   }
 
-  const _sync = async (handles: ClientSyncHandles) => {
-    const sync_info = await new Promise<
+  const initializeSync = async (handles: ClientSyncHandles) => {
+    const syncInfo = await new Promise<
       ReplicationState["channels"]["CHANNEL_PREFIX"]["client.emit"]["server.response"]["data"]
     >((resolve, reject) => {
       socket.emit(
@@ -60,15 +60,14 @@ export const createSyncStateUtils = (
             console.error(err);
             reject(err);
           } else if (syncInfo as unknown) {
-            const { channelName } = syncInfo;
-
-            socket.emit(
-              channelName,
-              { onSyncRequest: handles.onSyncRequest({}) },
-              (response: any) => {
-                console.log(response);
-              },
-            );
+            // const { channelName } = syncInfo;
+            // socket.emit(
+            //   channelName,
+            //   { onSyncRequest: handles.onSyncRequest({}) },
+            //   (response: any) => {
+            //     console.log(response);
+            //   },
+            // );
             resolve(syncInfo);
           }
         },
@@ -76,28 +75,22 @@ export const createSyncStateUtils = (
     });
     const onCall = function (data: any | undefined, cb: AnyFunction) {
       /*               
-            Client will:
-            1. Send last_synced     on(onSyncRequest)
-            2. Send data >= server_synced   on(onPullRequest)
-            3. Send data on CRUD    emit(data.data)
-            4. Upsert data.data     on(data.data)
-        */
+        Client will:
+        1. Send last_synced     on(onSyncRequest)
+        2. Send data >= server_synced   on(onPullRequest)
+        3. Send data on CRUD    emit(data.data)
+        4. Upsert data.data     on(data.data)
+      */
       if (!data) return;
 
       const { onUpdates, onSyncRequest, onPullRequest } = handles;
-      // syncedTables.get(channelName)?.then((syncedTable) => {
-      //   onDebug?.({
-      //     type: "sync",
-      //     command:
-      //       data.data ? "onUpdates"
-      //       : data.onSyncRequest ? "onSyncRequest"
-      //       : "onPullRequest",
-      //     tableName,
-      //     channelName,
-      //     data,
-      //     options: { n filter, select },
-      //   });
-      // });
+      onDebug({
+        command:
+          data.data ? "onUpdates"
+          : data.onSyncRequest ? "onSyncRequest"
+          : "onPullRequest",
+        data,
+      });
       if (data.data) {
         Promise.resolve(onUpdates(data))
           .then(() => {
@@ -154,7 +147,7 @@ export const createSyncStateUtils = (
       });
     };
 
-    return { sync_info, unsync, syncData };
+    return { syncInfo, unsync, syncData };
   };
 
   return {
@@ -166,7 +159,7 @@ export const createSyncStateUtils = (
     batch_size,
     columns,
     _syncInfo,
-    _sync,
+    initializeSync,
     filter,
     select,
     tableHandler,

@@ -1,5 +1,6 @@
 import {
   isEmpty,
+  type AnyObject,
   type ClientSyncHandles,
   type ClientSyncInfo,
   type SyncBatchParams,
@@ -27,16 +28,14 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     batch_size,
     columns,
     _syncInfo,
-    _sync,
+    initializeSync,
     filter,
   } = stateUtils;
   const store = createSyncDataStore({ ..._syncInfo, columns, filter });
 
-  const onError =
-    options.onError ??
-    function (err) {
-      console.error("Sync internal error: ", err);
-    };
+  const onError = (err) => {
+    console.error("Sync internal error: ", err);
+  };
 
   const onSyncRequest: ClientSyncHandles["onSyncRequest"] = (syncBatchParams) => {
     let clientSyncInfo: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
@@ -98,9 +97,7 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     throttle,
   };
 
-  const dbSync = await _sync({ onSyncRequest, onPullRequest, onUpdates });
-  store.setItem(dbSync.sync_info.data);
-  dbSync.syncData();
+  const dbSync = await initializeSync({ onSyncRequest, onPullRequest, onUpdates });
 
   /**
    * Some syncs can be read only. Any changes are local
@@ -236,6 +233,13 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     stateUtils,
     upsert,
   );
+
+  store.setItems(dbSync.syncInfo.data);
+  if (!dbSync.syncInfo.isSynced) {
+    dbSync.syncData();
+  } else {
+    state.isSynced = true;
+  }
 
   return subscriptionManager;
 };

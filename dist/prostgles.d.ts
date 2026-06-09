@@ -1,11 +1,11 @@
 import type { AnyObject, ClientSchema, ClientSyncHandles, DBSchema, DBSchemaTable, EqualityFilter, FieldFilter, FullFilter, SQLHandler, SQLResult, SelectParams, SelectReturnType, ServerFunctionHandler, SubscribeParams, TableHandler, UserLike } from "prostgles-types";
 import { asName } from "prostgles-types";
+import type { SyncTableInfo } from "prostgles-types/dist/WAL";
 import type { Socket } from "socket.io-client";
 import { type AuthHandler } from "./getAuthHandler";
 import { type ClientFunctionHandler } from "./getMethods";
 import { type Subscription } from "./getSubscriptionHandler";
-import type { DbTableSync, OnChange, OnErrorHandler, OnChangeOne, SingleSyncHandles, SyncDataItem, SyncHandler, SyncOneOptions, SyncOptions, SyncedTable, SyncedTableOptions } from "./SyncedTable/SyncedTable";
-import type { SyncTableInfo } from "prostgles-types/dist/WAL";
+import type { DbTableSync, OnChange, OnChangeOne, OnErrorHandler, SingleSyncHandles, SyncDataItem, SyncHandler, SyncOneOptions, SyncOptions, SyncedTableOptions } from "./SyncedTable/SyncedTable";
 export declare const isClientSide: boolean;
 export declare const debug: any;
 export * from "./hooks/useEffectDeep";
@@ -228,5 +228,5 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>, syncedTable: typeof SyncedTable | undefined): Promise<unknown>;
+export declare function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>): Promise<unknown>;
 //# sourceMappingURL=prostgles.d.ts.map

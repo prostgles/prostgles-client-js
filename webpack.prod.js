@@ -3,10 +3,9 @@ const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
 
 module.exports = {
   entry: {
-    index: "./dist/prostgles-full-cdn.js", //  './lib/prostgles-full-cdn.ts
-    "index.no-sync": "./dist/prostgles.js", //    './lib/prostgles.ts'
+    "index.umd": "./dist/index.umd.js",
   },
-  mode: "production", // "development",//
+  mode: "production",
   module: {
     rules: [
       {

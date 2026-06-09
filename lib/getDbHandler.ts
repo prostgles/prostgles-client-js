@@ -5,10 +5,9 @@ import {
   getAllowedTableMethods,
   includes,
   isObject,
-  omitKeys,
 } from "prostgles-types";
 import type { getSubscriptionHandler } from "./getSubscriptionHandler";
-import type { getSyncHandler } from "./getSyncHandler";
+import type { getSyncHandlerV2 } from "./getSyncHandlerV2";
 import { useFetch } from "./hooks/useFetch";
 import { useSubscribe } from "./hooks/useSubscribe";
 import { useSync } from "./hooks/useSync";
@@ -19,34 +18,28 @@ import {
   type TableHandlerClient,
 } from "./prostgles";
 import {
-  quickClone,
   type OnChange,
   type OnChangeOne,
+  quickClone,
   type Sync,
-  type SyncedTable,
   type SyncOne,
   type SyncOneOptions,
   type SyncOptions,
 } from "./SyncedTable/SyncedTable";
-import type { getSyncHandlerV2 } from "./getSyncHandlerV2";
 
 type Args = {
   tableSchema: DBSchemaTable[] | undefined;
   onDebug: InitOptions["onDebug"];
   socket: InitOptions["socket"];
-  syncedTable: typeof SyncedTable | undefined;
-  syncHandler: ReturnType<typeof getSyncHandler>;
   syncHandlerV2: ReturnType<typeof getSyncHandlerV2>;
   subscriptionHandler: ReturnType<typeof getSubscriptionHandler>;
 };
 
-const preffix = CHANNELS._preffix;
+const prefix = CHANNELS._preffix;
 
 export const getDB = <DBSchema = void>({
   tableSchema,
   onDebug,
-  syncedTable,
-  syncHandler,
   syncHandlerV2,
   subscriptionHandler,
   socket,
@@ -88,91 +81,51 @@ export const getDB = <DBSchema = void>({
             throw `Table ${tableName} does not have syncConfig in publishInfo.select`;
           }
           dboTable._syncInfo = { ...syncConfig };
-          if (syncedTable) {
-            const upsertSyncTable = async (
-              basicFilter = {},
-              options: SyncOptions = {},
-              onError,
-            ) => {
-              const syncName = `${tableName}.${JSON.stringify(basicFilter)}.${JSON.stringify(omitKeys(options, ["handlesOnData"]))}`;
-              const syncedTableHandler =
-                syncHandler.syncedTables.get(syncName) ??
-                syncedTable.create({
-                  select: undefined,
-                  ...options,
-                  onDebug,
-                  name: tableName,
-                  filter: basicFilter,
-                  db: db,
-                  onError,
-                  columns,
-                });
-              syncHandler.syncedTables.set(syncName, syncedTableHandler);
-              return syncedTableHandler;
-            };
 
-            const syncOne = (async (
-              basicFilter,
-              options: SyncOneOptions = { handlesOnData: true },
-              onChange: OnChangeOne<AnyObject, SyncOneOptions>,
-              onError,
-            ) => {
-              await onDebug?.({
-                type: "table",
-                command: "syncOne",
-                tableName,
-                data: { basicFilter, options },
-              });
-              checkSubscriptionArgs(basicFilter, options, onChange, onError);
-              // const syncedTable = await upsertSyncTable(basicFilter, options, onError);
-              // return await syncedTable.syncOne(basicFilter, onChange as any, options.handlesOnData);
-              return (
-                await syncHandlerV2.getTableSyncFunctions({ db, tableName, columns })
-              ).addSyncOne(basicFilter, options, onChange, onError);
-            }) as SyncOne<AnyObject>;
-
-            const sync = (async (
-              basicFilter,
-              options: SyncOptions = { handlesOnData: true },
-              onChange: OnChange<AnyObject, SyncOptions>,
-              onError,
-            ) => {
-              await onDebug?.({
-                type: "table",
-                command: "sync",
-                tableName,
-                data: { basicFilter, options },
-              });
-              checkSubscriptionArgs(basicFilter, options, onChange, onError);
-              // const syncedTable = await upsertSyncTable(basicFilter, options, onError);
-              // return await syncedTable.sync(onChange as any, options.handlesOnData);
-              return (
-                await syncHandlerV2.getTableSyncFunctions({ db, tableName, columns })
-              ).addSync(basicFilter, options, onChange, onError);
-            }) as Sync<AnyObject>;
-
-            dboTable.sync = sync;
-            dboTable.syncOne = syncOne;
-            dboTable.useSync = (basicFilter, options, hookOptions) =>
-              // eslint-disable-next-line react-hooks/rules-of-hooks
-              useSync(sync, basicFilter, options, hookOptions);
-            dboTable.useSyncOne = (basicFilter, options, hookOptions) =>
-              // eslint-disable-next-line react-hooks/rules-of-hooks
-              useSync(syncOne, basicFilter, options, hookOptions);
-          }
-
-          dboTable._sync = async function (filter, select, syncHandles) {
+          const syncOne = (async (
+            basicFilter,
+            options: SyncOneOptions = { handlesOnData: true },
+            onChange: OnChangeOne<AnyObject, SyncOneOptions>,
+          ) => {
             await onDebug?.({
               type: "table",
-              command: "_sync",
+              command: "syncOne",
               tableName,
-              data: { filter, select, syncHandles },
+              data: { basicFilter, options },
             });
-            return syncHandler.addSync(
-              { tableName, command, param1: filter, param2: select },
-              syncHandles,
+            checkSubscriptionArgs(basicFilter, options, onChange);
+            return (
+              await syncHandlerV2.getTableSyncFunctions({ db, tableName, columns })
+            ).addSyncOne(basicFilter, options, onChange);
+          }) as SyncOne<AnyObject>;
+
+          const sync = (async (
+            basicFilter,
+            options: SyncOptions = { handlesOnData: true },
+            onChange: OnChange<AnyObject, SyncOptions>,
+          ) => {
+            await onDebug?.({
+              type: "table",
+              command: "sync",
+              tableName,
+              data: { basicFilter, options },
+            });
+            checkSubscriptionArgs(basicFilter, options, onChange);
+            return (await syncHandlerV2.getTableSyncFunctions({ db, tableName, columns })).addSync(
+              basicFilter,
+              options,
+              onChange,
             );
-          };
+          }) as Sync<AnyObject>;
+
+          dboTable.sync = sync;
+          dboTable.syncOne = syncOne;
+          dboTable.useSync = (basicFilter, options, hookOptions) =>
+            // eslint-disable-next-line react-hooks/rules-of-hooks
+            useSync(sync, basicFilter, options, hookOptions);
+          dboTable.useSyncOne = (basicFilter, options, hookOptions) =>
+            // eslint-disable-next-line react-hooks/rules-of-hooks
+            useSync(syncOne, basicFilter, options, hookOptions);
         } else if (subscribeCommands.includes(command as any)) {
           const subFunc = async function (param1 = {}, param2 = {}, onChange, onError) {
             await onDebug?.({
@@ -239,7 +192,7 @@ export const getDB = <DBSchema = void>({
             });
             return new Promise((resolve, reject) => {
               socket.emit(
-                preffix,
+                prefix,
                 { tableName, command, param1, param2, param3 },
 
                 /* Get col definition and re-cast data types?! */

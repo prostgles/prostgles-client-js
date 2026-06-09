@@ -1,6 +1,5 @@
 import type { UserLike } from "prostgles-types";
 import { prostgles as pgls, type InitOptions } from "./prostgles";
-import { SyncedTable } from "./SyncedTable/SyncedTable";
 import type { ClientFunctionHandler } from "./getMethods";
 
 function prostgles<
@@ -8,7 +7,7 @@ function prostgles<
   FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
 >(params: InitOptions<DBSchema, FuncSchema, U>) {
-  return pgls(params as any, SyncedTable);
+  return pgls(params as any);
 }
 
 export {
@@ -19,7 +18,6 @@ export {
   type InitOptions,
   asName,
 } from "./prostgles";
-export { SyncedTable };
 export * from "./hooks/useSync";
 export * from "./hooks/useSubscribe";
 export * from "./hooks/useProstglesClient";

@@ -1,8 +1,8 @@
 {
-  "files": ["lib/prostgles-full.ts"],
+  "files": ["lib/index.ts"],
   "compilerOptions": {
-    "target": "es2019",
-    "lib": ["es6", "dom", "es2017", "es2019"],
+    "target": "ES2022",
+    "lib": ["es6", "dom", "es2017", "es2019", "es2022"],
     "strict": true,
     "module": "commonjs",
     "resolveJsonModule": true,

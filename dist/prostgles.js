@@ -23,7 +23,6 @@ const getDbHandler_1 = require("./getDbHandler");
 const getMethods_1 = require("./getMethods");
 const getSqlHandler_1 = require("./getSqlHandler");
 const getSubscriptionHandler_1 = require("./getSubscriptionHandler");
-const getSyncHandler_1 = require("./getSyncHandler");
 const getSyncHandlerV2_1 = require("./getSyncHandlerV2");
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 exports.isClientSide = typeof window !== "undefined";
@@ -35,7 +34,7 @@ const debug = function (...args) {
 exports.debug = debug;
 __exportStar(require("./hooks/useEffectDeep"), exports);
 __exportStar(require("./hooks/useProstglesClient"), exports);
-function prostgles(initOpts, syncedTable) {
+function prostgles(initOpts) {
     const { endpoint, socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug, credentials, redirect, } = initOpts;
     let schemaAge;
     (0, exports.debug)("prostgles", { initOpts });
@@ -44,7 +43,6 @@ function prostgles(initOpts, syncedTable) {
         socket.on(prostgles_types_1.CHANNELS.SCHEMA_CHANGED, onSchemaChange);
     }
     const subscriptionHandler = (0, getSubscriptionHandler_1.getSubscriptionHandler)(initOpts);
-    const syncHandler = (0, getSyncHandler_1.getSyncHandler)(initOpts);
     const syncHandlerV2 = (0, getSyncHandlerV2_1.getSyncHandlerV2)(initOpts);
     let state;
     return new Promise((resolve, reject) => {
@@ -73,15 +71,16 @@ function prostgles(initOpts, syncedTable) {
         }
         /* Schema = published schema */
         socket.on(prostgles_types_1.CHANNELS.SCHEMA, async (args) => {
-            await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({ type: "schemaChanged", data: args, state }));
+            await onDebug?.({ type: "schemaChanged", data: args, state });
             const { joinTables = [], ...clientSchema } = args;
             const { methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
             /** Only destroy existing syncs if schema changed */
-            const schemaDidNotChange = (schemaAge === null || schemaAge === void 0 ? void 0 : schemaAge.clientSchema) && (0, prostgles_types_1.isEqual)(schemaAge.clientSchema, clientSchema);
+            const schemaDidNotChange = schemaAge?.clientSchema && (0, prostgles_types_1.isEqual)(schemaAge.clientSchema, clientSchema);
             if (!schemaDidNotChange) {
-                syncHandler
-                    .destroySyncs()
-                    .catch((error) => console.error("Error while destroying syncs", error));
+                console.warn("syncHandler.destroySyncs()");
+                // syncHandler
+                //   .destroySyncs()
+                //   .catch((error) => console.error("Error while destroying syncs", error));
             }
             if (err) {
                 console.error("Error on schema change:", err);
@@ -113,8 +112,6 @@ function prostgles(initOpts, syncedTable) {
             const { methodHandlers, methodSchema } = (0, getMethods_1.getMethods)({ onDebug, methods, socket });
             const { db } = (0, getDbHandler_1.getDB)({
                 onDebug,
-                syncedTable,
-                syncHandler,
                 syncHandlerV2,
                 subscriptionHandler,
                 socket,
@@ -122,7 +119,8 @@ function prostgles(initOpts, syncedTable) {
             });
             const sql = rawSQL ? (0, getSqlHandler_1.getSqlHandler)(initOpts).sql : undefined;
             subscriptionHandler.reAttachAll();
-            syncHandler.reAttachAll();
+            console.warn("syncHandler.reAttachAll()");
+            // syncHandler.reAttachAll();
             (async () => {
                 try {
                     const onReadyArgs = {
@@ -135,11 +133,11 @@ function prostgles(initOpts, syncedTable) {
                         socket,
                         isReconnect,
                     };
-                    await (onDebug === null || onDebug === void 0 ? void 0 : onDebug({
+                    await onDebug?.({
                         type: "onReady.call",
                         data: onReadyArgs,
                         state,
-                    }));
+                    });
                     await onReady(onReadyArgs);
                 }
                 catch (err) {

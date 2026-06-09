@@ -19,30 +19,26 @@ import type {
 
 import { CHANNELS, asName, isEqual } from "prostgles-types";
 
+import type { SyncTableInfo } from "prostgles-types/dist/WAL";
 import type { Socket } from "socket.io-client";
 import { getAuthHandler, type AuthHandler } from "./getAuthHandler";
 import { getDB } from "./getDbHandler";
 import { getMethods, type ClientFunctionHandler } from "./getMethods";
 import { getSqlHandler } from "./getSqlHandler";
 import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
-import { getSyncHandler } from "./getSyncHandler";
+import { getSyncHandlerV2 } from "./getSyncHandlerV2";
 import type {
   DbTableSync,
   OnChange,
-  OnErrorHandler,
   OnChangeOne,
+  OnErrorHandler,
   SingleSyncHandles,
-  Sync,
   SyncDataItem,
   SyncHandler,
-  SyncOne,
   SyncOneOptions,
   SyncOptions,
-  SyncedTable,
   SyncedTableOptions,
 } from "./SyncedTable/SyncedTable";
-import type { SyncTableInfo } from "prostgles-types/dist/WAL";
-import { getSyncHandlerV2 } from "./getSyncHandlerV2";
 
 const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
 export const isClientSide = typeof window !== "undefined";
@@ -384,7 +380,6 @@ type CurrentClientSchema = {
 
 export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(
   initOpts: InitOptions<DBSchema, FuncSchema, U>,
-  syncedTable: typeof SyncedTable | undefined,
 ) {
   const {
     endpoint,
@@ -406,7 +401,6 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
   }
 
   const subscriptionHandler = getSubscriptionHandler(initOpts);
-  const syncHandler = getSyncHandler(initOpts);
   const syncHandlerV2 = getSyncHandlerV2(initOpts);
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
@@ -447,9 +441,10 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       const schemaDidNotChange =
         schemaAge?.clientSchema && isEqual(schemaAge.clientSchema, clientSchema);
       if (!schemaDidNotChange) {
-        syncHandler
-          .destroySyncs()
-          .catch((error) => console.error("Error while destroying syncs", error));
+        console.warn("syncHandler.destroySyncs()");
+        // syncHandler
+        //   .destroySyncs()
+        //   .catch((error) => console.error("Error while destroying syncs", error));
       }
 
       if (err) {
@@ -485,8 +480,6 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
 
       const { db } = getDB<DBSchema>({
         onDebug,
-        syncedTable,
-        syncHandler,
         syncHandlerV2,
         subscriptionHandler,
         socket,
@@ -496,7 +489,8 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       const sql = rawSQL ? getSqlHandler(initOpts).sql : undefined;
 
       subscriptionHandler.reAttachAll();
-      syncHandler.reAttachAll();
+      console.warn("syncHandler.reAttachAll()");
+      // syncHandler.reAttachAll();
 
       (async () => {
         try {

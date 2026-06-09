@@ -2,7 +2,7 @@ import type { DBGeneratedSchema } from "DBGeneratedSchema";
 import { test } from "node:test";
 import { type DBHandlerClient, useProstglesClient } from "prostgles-client/dist/prostgles";
 import type { AnyObject, DBHandler, FullFilter, TableHandler } from "prostgles-types";
-import type { OnReadyParams, TableHandlerClient } from "../dist/prostgles-full";
+import type { OnReadyParams, TableHandlerClient } from "../dist";
 
 type GeneratedSchema = {
   table1: {

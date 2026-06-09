@@ -60,13 +60,13 @@ export const getSyncHandlerV2 = ({ socket, onDebug }: Pick<InitOptions, "socket"
     tableName: string;
     columns: ValidatedColumnInfo[];
   }) => {
-    const addSync = (async (filter, opts, onChange, onError) => {
+    const addSync = (async (filter, opts, onChange) => {
       const { sync } = await upsertSync(db, columns, tableName, filter, opts.select);
 
       return sync(onChange as Parameters<Sync<AnyObject>>[2], opts.handlesOnData);
     }) as Sync<AnyObject>;
 
-    const addSyncOne = (async (filter, opts, onChange, onError) => {
+    const addSyncOne = (async (filter, opts, onChange) => {
       const { syncOne } = await upsertSync(db, columns, tableName, filter, opts.select);
 
       return syncOne(filter, onChange as SingleChangeListener, opts.handlesOnData);
