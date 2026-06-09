@@ -236,11 +236,11 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
   );
 
   store.setItems(dbSync.syncInfo.data);
-  if (!dbSync.syncInfo.isSynced) {
-    dbSync.syncData();
-  } else {
-    state.isSynced = true;
-  }
+  // if (!dbSync.syncInfo.isSynced) {
+  dbSync.syncData();
+  // } else {
+  //   state.isSynced = true;
+  // }
 
   return subscriptionManager;
 };
