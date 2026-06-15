@@ -1,11 +1,11 @@
 import {
   isEmpty,
-  type AnyObject,
   type ClientSyncHandles,
   type ClientSyncInfo,
   type SyncBatchParams,
 } from "prostgles-types";
 import { WAL, type WALItem } from "prostgles-types/dist/WAL";
+import type { Socket } from "socket.io-client";
 import { createSyncDataStore } from "./createSyncDataStore";
 import { createSyncStateUtils } from "./createSyncStateUtils";
 import { createSyncSubscriptionManager } from "./createSyncSubscriptionManager";
@@ -15,7 +15,6 @@ import {
   type ItemUpdated,
   type SyncedTableOptions,
 } from "./SyncedTable";
-import type { Socket } from "socket.io-client";
 
 export const createSync = async (socket: Socket, options: Omit<SyncedTableOptions, "onReady">) => {
   const stateUtils = createSyncStateUtils(socket, options);
@@ -39,13 +38,19 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
   };
 
   const onSyncRequest: ClientSyncHandles["onSyncRequest"] = (syncBatchParams) => {
-    let clientSyncInfo: ClientSyncInfo = { c_lr: undefined, c_fr: undefined, c_count: 0 };
+    let clientSyncInfo: ClientSyncInfo = {
+      state: "syncing",
+      c_lr: undefined,
+      c_fr: undefined,
+      c_count: 0,
+    };
 
     const batch = store.getBatch(syncBatchParams);
     const firstRow = batch[0];
     const lastRow = batch[batch.length - 1];
     if (firstRow && lastRow) {
       clientSyncInfo = {
+        state: "syncing",
         c_fr: store.getRowSyncObj(firstRow),
         c_lr: store.getRowSyncObj(lastRow),
         c_count: batch.length,
@@ -61,13 +66,13 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     // }
     const data = store.getBatch(syncBatchParams);
     await onDebug({ command: "onPullRequest", data: { syncBatchParams, data } });
-    return { data };
+    return { data, success: true as const };
   };
   const onUpdates: ClientSyncHandles["onUpdates"] = async (onUpdatesParams) => {
     await onDebug({ command: "onUpdates", data: { onUpdatesParams } });
-    if ("err" in onUpdatesParams && onUpdatesParams.err) {
+    if (onUpdatesParams.state === "error" && onUpdatesParams.err) {
       onError(onUpdatesParams.err);
-    } else if ("isSynced" in onUpdatesParams && onUpdatesParams.isSynced && !state.isSynced) {
+    } else if (onUpdatesParams.state === "synced" && onUpdatesParams.isSynced && !state.isSynced) {
       state.isSynced = onUpdatesParams.isSynced;
       const items = store.getItems().map((d) => ({ ...d }));
       store.setItems([]);
@@ -89,7 +94,7 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
       console.error("Unexpected onUpdates");
     }
 
-    return true;
+    return { success: true } as const;
   };
 
   const opts = {
@@ -236,6 +241,7 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
   );
 
   store.setItems(dbSync.syncInfo.data);
+  /** TODO */
   // if (!dbSync.syncInfo.isSynced) {
   dbSync.syncData();
   // } else {

@@ -1,6 +1,6 @@
 {
   "name": "prostgles-client",
-  "version": "4.0.364",
+  "version": "4.0.365",
   "description": "Reactive client for Postgres",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,7 @@
     "pushpublish": "npm version patch --git-tag-version false && git push && npm publish"
   },
   "dependencies": {
-    "prostgles-types": "^4.0.252",
+    "prostgles-types": "^4.0.262",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
