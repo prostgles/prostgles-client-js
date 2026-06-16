@@ -72,16 +72,18 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     await onDebug({ command: "onUpdates", data: { onUpdatesParams } });
     if (onUpdatesParams.state === "error" && onUpdatesParams.err) {
       onError(onUpdatesParams.err);
-    } else if (onUpdatesParams.state === "synced" && onUpdatesParams.isSynced && !state.isSynced) {
-      state.isSynced = onUpdatesParams.isSynced;
-      const items = store.getItems().map((d) => ({ ...d }));
-      store.setItems([]);
-      const updateItems = items.map((d) => ({
-        idObj: store.getIdObj(d),
-        delta: { ...d },
-      }));
-      await upsert(updateItems, true);
-    } else if ("data" in onUpdatesParams) {
+    } else if (onUpdatesParams.state === "synced") {
+      if (onUpdatesParams.isSynced && !state.isSynced) {
+        state.isSynced = onUpdatesParams.isSynced;
+        const items = store.getItems().map((d) => ({ ...d }));
+        store.setItems([]);
+        const updateItems = items.map((d) => ({
+          idObj: store.getIdObj(d),
+          delta: { ...d },
+        }));
+        await upsert(updateItems, true);
+      }
+    } else if (onUpdatesParams.state === "syncing") {
       /* Delta left empty so we can prepare it here */
       const updateItems = onUpdatesParams.data.map((d) => {
         return {
@@ -91,7 +93,7 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
       });
       await upsert(updateItems, true);
     } else {
-      console.error("Unexpected onUpdates");
+      console.error("Sync onUpdates error:", onUpdatesParams.err);
     }
 
     return { success: true } as const;
