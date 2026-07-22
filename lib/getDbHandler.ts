@@ -192,7 +192,7 @@ export const getDB = <DBSchema = void>({
             return new Promise((resolve, reject) => {
               const abortSignal =
                 includes(ABORTABLE_METHODS, command) ?
-                  (param2 as SelectParams).abortSignal
+                  (param2 as SelectParams | undefined)?.abortSignal
                 : undefined;
               let abortSignalId: string | undefined;
               if (abortSignal && abortSignal instanceof AbortSignal) {
