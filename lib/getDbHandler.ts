@@ -190,10 +190,8 @@ export const getDB = <DBSchema = void>({
               data: { param1, param2, param3 },
             });
             return new Promise((resolve, reject) => {
-              const abortSignal =
-                includes(ABORTABLE_METHODS, command) ?
-                  (param2 as SelectParams | undefined)?.abortSignal
-                : undefined;
+              const { abortSignal, ...restOfParam2 } =
+                includes(ABORTABLE_METHODS, command) ? ((param2 ?? {}) as SelectParams) : {};
               let abortSignalId: string | undefined;
               if (abortSignal && abortSignal instanceof AbortSignal) {
                 abortSignalId = crypto.randomUUID();
@@ -208,7 +206,13 @@ export const getDB = <DBSchema = void>({
               }
               socket.emit(
                 prefix,
-                { tableName, command, param1, param2, param3: { ...param3, abortSignalId } },
+                {
+                  tableName,
+                  command,
+                  param1,
+                  param2: abortSignal ? restOfParam2 : param2,
+                  param3: { ...param3, abortSignalId },
+                },
 
                 /* Get col definition and re-cast data types?! */
                 (err, res) => {
