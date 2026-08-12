@@ -36,7 +36,7 @@ export const useSubscribe = (
         (newData) => {
           if (!getIsMounted()) return;
           setHookResult({
-            data: expectsOne ? newData[0] : newData,
+            data: expectsOne ? newData[0] && { ...newData[0] } : [...newData],
             error: undefined,
             isLoading: false,
           });
