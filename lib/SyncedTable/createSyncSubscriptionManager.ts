@@ -2,17 +2,18 @@ import type { AnyObject, NormalizedRow, SyncConfig } from "prostgles-types";
 import { WAL } from "prostgles-types/dist/WAL";
 import type { createSyncDataStore } from "./createSyncDataStore";
 import type { createSyncStateUtils } from "./createSyncStateUtils";
-import type {
-  $UpdateOpts,
-  ItemUpdate,
-  ItemUpdated,
-  MultiChangeListener,
-  MultiSyncHandles,
-  SingleChangeListener,
-  SingleSyncHandles,
-  SubscriptionMulti,
-  SubscriptionSingle,
-  SyncDataItem,
+import {
+  quickClone,
+  type $UpdateOpts,
+  type ItemUpdate,
+  type ItemUpdated,
+  type MultiChangeListener,
+  type MultiSyncHandles,
+  type SingleChangeListener,
+  type SingleSyncHandles,
+  type SubscriptionMulti,
+  type SubscriptionSingle,
+  type SyncDataItem,
 } from "./SyncedTable";
 
 export const createSyncSubscriptionManager = (
@@ -151,7 +152,7 @@ export const createSyncSubscriptionManager = (
       handlesOnData,
       handles,
       notify: (_allItems, _allDeltas) => {
-        let allItems = [..._allItems];
+        let allItems = quickClone(_allItems);
         const allDeltas = [..._allDeltas];
         if (handlesOnData) {
           allItems = allItems.map((item, i) => {
@@ -214,7 +215,7 @@ export const createSyncSubscriptionManager = (
         if (!singleSubscriptions.length && !multiSubscriptions.length) {
           console.warn("No sync listeners");
         }
-        return upsert([{ idObj, delta: newData, opts }]);
+        return upsert([{ idObj, delta: quickClone(newData), opts }]);
       },
       $cloneSync: (onChange) => syncOne<T, Full>(idObj, onChange),
       // TODO: add clone sync hook

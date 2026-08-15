@@ -65,53 +65,6 @@ export const createSyncStateUtils = (socket: Socket, options: SyncedTableOptions
       ServerSyncRequest: handles.onSyncRequest,
       UpdateRequest: handles.onUpdates,
     });
-    // const onCall = function (data: any | undefined, cb: AnyFunction) {
-    //   /*
-    //     Client will:
-    //     1. Send last_synced     on(onSyncRequest)
-    //     2. Send data >= server_synced   on(onPullRequest)
-    //     3. Send data on CRUD    emit(data.data)
-    //     4. Upsert data.data     on(data.data)
-    //   */
-    //   if (!data) {
-    //     return;
-    //   }
-
-    //   const { onUpdates, onSyncRequest, onPullRequest } = handles;
-    //   onDebug({
-    //     command:
-    //       data.data ? "onUpdates"
-    //       : data.onSyncRequest ? "onSyncRequest"
-    //       : "onPullRequest",
-    //     data,
-    //   });
-    //   if (data.data) {
-    //     Promise.resolve(onUpdates(data))
-    //       .then(() => {
-    //         cb({ ok: true });
-    //       })
-    //       .catch((err) => {
-    //         cb({ err });
-    //       });
-    //   } else if (data.onSyncRequest) {
-    //     Promise.resolve(onSyncRequest(data.onSyncRequest))
-    //       .then((res) => cb({ onSyncRequest: res }))
-    //       .catch((err) => {
-    //         cb({ err });
-    //       });
-    //   } else if (data.onPullRequest) {
-    //     Promise.resolve(onPullRequest(data.onPullRequest))
-    //       .then((result) => {
-    //         cb(result);
-    //       })
-    //       .catch((err) => {
-    //         cb({ err });
-    //       });
-    //   } else {
-    //     console.log("unexpected response");
-    //   }
-    // };
-    // socket.on(channelName, onCall);
 
     const syncData: DbTableSync["syncData"] = async (data) => {
       const { c_count, c_fr, c_lr } = await handles.onSyncRequest({});
@@ -120,13 +73,6 @@ export const createSyncStateUtils = (socket: Socket, options: SyncedTableOptions
           { state: "syncing-data", c_count, c_fr, c_lr, data }
         : { state: "syncing", c_count, c_fr, c_lr },
       );
-      // socket.emit(channelName, {
-      //   onSyncRequest: {
-      //     ...handles.onSyncRequest({}),
-      //     ...{ data },
-      //     ...{ deleted },
-      //   },
-      // });
     };
     const unsync = () => {
       return new Promise((resolve, reject) => {
