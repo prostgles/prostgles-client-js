@@ -78,7 +78,7 @@ function prostgles(initOpts) {
             const schemaChanged = currentClientSchema?.clientSchema &&
                 !(0, prostgles_types_1.isEqual)(currentClientSchema.clientSchema, clientSchema);
             if (schemaChanged) {
-                console.warn("syncHandler.destroySyncs()");
+                console.warn("schemaChanged must syncHandler.destroySyncs()");
             }
             if (err) {
                 console.error("Error on schema change:", err);
@@ -117,8 +117,7 @@ function prostgles(initOpts) {
             });
             const sql = rawSQL ? (0, getSqlHandler_1.getSqlHandler)(initOpts).sql : undefined;
             subscriptionHandler.reAttachAll();
-            // console.warn("syncHandler.reAttachAll()");
-            // syncHandler.reAttachAll();
+            await syncHandlerV2.reAttachAll();
             (async () => {
                 try {
                     const onReadyArgs = {

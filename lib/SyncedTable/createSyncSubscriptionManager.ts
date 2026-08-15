@@ -279,5 +279,6 @@ export const createSyncSubscriptionManager = (
     sync,
     syncOne,
     notifyWal,
+    notifyCurrentData: () => _notifySubscribers(),
   };
 };

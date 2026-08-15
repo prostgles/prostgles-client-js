@@ -34,21 +34,20 @@ export const getSyncHandlerV2 = ({ socket, onDebug }: Pick<InitOptions, "socket"
       select,
       tableName,
     });
-    syncs.set(
-      channelName,
-      syncs.get(channelName) ?? {
-        options: { tableName, filter, select },
-        sync: createSync(socket, {
-          name: tableName,
-          filter,
-          select,
-          onDebug,
-          db,
-          columns,
-        }),
-      },
-    );
-    return syncs.get(channelName)!.sync;
+
+    const syncConfig = syncs.get(channelName) ?? {
+      options: { tableName, filter, select },
+      sync: createSync(socket, {
+        name: tableName,
+        filter,
+        select,
+        onDebug,
+        db,
+        columns,
+      }),
+    };
+    syncs.set(channelName, syncConfig);
+    return syncConfig.sync;
   };
 
   const getTableSyncFunctions = async ({
@@ -75,5 +74,15 @@ export const getSyncHandlerV2 = ({ socket, onDebug }: Pick<InitOptions, "socket"
     return { addSync, addSyncOne };
   };
 
-  return { getTableSyncFunctions };
+  const reAttachAll = async () => {
+    for (const { sync } of syncs.values()) {
+      try {
+        await (await sync).reAttach();
+      } catch (error) {
+        console.error("Failed to reattach sync", error);
+      }
+    }
+  };
+
+  return { getTableSyncFunctions, reAttachAll };
 };

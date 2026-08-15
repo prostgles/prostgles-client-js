@@ -442,7 +442,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
         currentClientSchema?.clientSchema &&
         !isEqual(currentClientSchema.clientSchema, clientSchema);
       if (schemaChanged) {
-        console.warn("syncHandler.destroySyncs()");
+        console.warn("schemaChanged must syncHandler.destroySyncs()");
       }
 
       if (err) {
@@ -487,8 +487,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       const sql = rawSQL ? getSqlHandler(initOpts).sql : undefined;
 
       subscriptionHandler.reAttachAll();
-      // console.warn("syncHandler.reAttachAll()");
-      // syncHandler.reAttachAll();
+      await syncHandlerV2.reAttachAll();
 
       (async () => {
         try {

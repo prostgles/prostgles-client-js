@@ -82,6 +82,9 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
           delta: { ...d },
         }));
         await upsert(updateItems, true);
+        if (!updateItems.length) {
+          subscriptionManager.notifyCurrentData();
+        }
       }
     } else if (onUpdatesParams.state === "syncing") {
       /* Delta left empty so we can prepare it here */
@@ -105,7 +108,8 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     throttle,
   };
 
-  const dbSync = await initializeSync({ onSyncRequest, onPullRequest, onUpdates });
+  const clientSyncHandles = { onSyncRequest, onPullRequest, onUpdates };
+  let dbSync = await initializeSync(clientSyncHandles);
 
   /**
    * Some syncs can be read only. Any changes are local
@@ -242,6 +246,13 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
     upsert,
   );
 
+  const reAttach = async () => {
+    state.isSynced = false;
+    dbSync = await initializeSync(clientSyncHandles);
+    store.setItems(dbSync.syncInfo.data);
+    await dbSync.syncData();
+  };
+
   store.setItems(dbSync.syncInfo.data);
   /** TODO */
   // if (!dbSync.syncInfo.isSynced) {
@@ -250,7 +261,7 @@ export const createSync = async (socket: Socket, options: Omit<SyncedTableOption
   //   state.isSynced = true;
   // }
 
-  return subscriptionManager;
+  return { ...subscriptionManager, reAttach };
 };
 
 const isWindowDefined = typeof window !== "undefined";
