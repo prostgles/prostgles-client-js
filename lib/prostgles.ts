@@ -234,7 +234,7 @@ export type SyncDebugEvent = {
   info?: string;
   options: Omit<SyncedTableOptions, "onReady">;
 };
-type DebugEvent =
+export type DebugEvent =
   | {
       type: "subscriptions";
       command: "reAttachAll.start";
