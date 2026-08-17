@@ -17,7 +17,7 @@ import type {
   UserLike,
 } from "prostgles-types";
 
-import { CHANNELS, asName, isEqual } from "prostgles-types";
+import { CHANNELS, asName, isEqual, omitKeys } from "prostgles-types";
 
 import type { SyncTableInfo } from "prostgles-types/dist/WAL";
 import type { Socket } from "socket.io-client";
@@ -262,6 +262,13 @@ export type DebugEvent =
       data: AnyObject;
     }
   | {
+      type: "subscriptions";
+      command: "onData";
+      tableName: string;
+      data: AnyObject;
+      channelName: string;
+    }
+  | {
       type: "method";
       command: string;
       data: AnyObject;
@@ -274,15 +281,15 @@ export type DebugEvent =
     }
   | {
       type: "onReady";
-      data: ClientOnReadyParams;
+      data: Omit<ClientOnReadyParams, "socket">;
     }
   | {
       type: "onReady.notMounted";
-      data: ClientOnReadyParams;
+      data: Omit<ClientOnReadyParams, "socket">;
     }
   | {
       type: "onReady.call";
-      data: ClientOnReadyParams;
+      data: Omit<ClientOnReadyParams, "socket">;
       state: "connected" | "disconnected" | "reconnected" | undefined;
     };
 
@@ -503,7 +510,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
           };
           await onDebug?.({
             type: "onReady.call",
-            data: onReadyArgs as ClientOnReadyParams,
+            data: omitKeys(onReadyArgs as ClientOnReadyParams, ["socket"]),
             state,
           });
           await onReady(onReadyArgs);

@@ -142,6 +142,12 @@ export type DebugEvent = {
     tableName: string;
     data: AnyObject;
 } | {
+    type: "subscriptions";
+    command: "onData";
+    tableName: string;
+    data: AnyObject;
+    channelName: string;
+} | {
     type: "method";
     command: string;
     data: AnyObject;
@@ -151,13 +157,13 @@ export type DebugEvent = {
     state: "connected" | "disconnected" | "reconnected" | undefined;
 } | {
     type: "onReady";
-    data: ClientOnReadyParams;
+    data: Omit<ClientOnReadyParams, "socket">;
 } | {
     type: "onReady.notMounted";
-    data: ClientOnReadyParams;
+    data: Omit<ClientOnReadyParams, "socket">;
 } | {
     type: "onReady.call";
-    data: ClientOnReadyParams;
+    data: Omit<ClientOnReadyParams, "socket">;
     state: "connected" | "disconnected" | "reconnected" | undefined;
 };
 export type InitOptions<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = {

@@ -132,7 +132,7 @@ function prostgles(initOpts) {
                     };
                     await onDebug?.({
                         type: "onReady.call",
-                        data: onReadyArgs,
+                        data: (0, prostgles_types_1.omitKeys)(onReadyArgs, ["socket"]),
                         state,
                     });
                     await onReady(onReadyArgs);

@@ -1,4 +1,4 @@
-import { type DBSchema, type UserLike } from "prostgles-types";
+import { omitKeys, type DBSchema, type UserLike } from "prostgles-types";
 
 import type { ClientFunctionHandler } from "../getMethods";
 import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
@@ -86,11 +86,14 @@ export const useProstglesClient = <
           if (!getIsMounted()) {
             initOpts.onDebug?.({
               type: "onReady.notMounted",
-              data: onReadyArgs as any,
+              data: omitKeys(onReadyArgs as ClientOnReadyParams, ["socket"]),
             });
             return;
           }
-          initOpts.onDebug?.({ type: "onReady", data: onReadyArgs as any });
+          initOpts.onDebug?.({
+            type: "onReady",
+            data: omitKeys(onReadyArgs as ClientOnReadyParams, ["socket"]),
+          });
           setOnReadyArgs({ ...onReadyArgs, hasError: false, isLoading: false });
         },
       }).catch((error) => {

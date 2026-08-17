@@ -177,6 +177,13 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     const onCall = function (subData: { data?: any; err?: any }) {
       /* TO DO: confirm receiving data or server will unsubscribe */
       // if(cb) cb(true);
+      onDebug?.({
+        type: "subscriptions",
+        command: "onData",
+        tableName,
+        data: subData,
+        channelName,
+      });
       const sub = subscriptions.get(channelName);
       const { data, err } = subData as { data?: AnyObject[]; err?: any };
       if (sub) {
