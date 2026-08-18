@@ -41,6 +41,14 @@ CDN
 
 ## Quick Start
 
+### Node.js
+
+```ts
+import prostgles from "prostgles-client";
+
+const prostglesClient = await prostgles({ endpoint, token });
+```
+
 ### React hooks
 
 Subscribe to data changes with automatic re-renders:

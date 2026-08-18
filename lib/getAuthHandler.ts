@@ -76,7 +76,7 @@ export const getAuthHandler = ({
   ...authOpts
 }: Args): AuthHandler => {
   const urlWithEndpointAndSearch = (route: string) => {
-    const { search } = window.location;
+    const search = typeof window !== "undefined" ? window.location.search : "";
     let url = route + search;
     if (endpoint) url = `${endpoint}${url}`;
     return url;

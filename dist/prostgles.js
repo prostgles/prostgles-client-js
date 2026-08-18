@@ -21,6 +21,7 @@ Object.defineProperty(exports, "asName", { enumerable: true, get: function () { 
 const getAuthHandler_1 = require("./getAuthHandler");
 const getDbHandler_1 = require("./getDbHandler");
 const getMethods_1 = require("./getMethods");
+const getProstglesSocket_1 = require("./getProstglesSocket");
 const getSqlHandler_1 = require("./getSqlHandler");
 const getSubscriptionHandler_1 = require("./getSubscriptionHandler");
 const getSyncHandlerV2_1 = require("./getSyncHandlerV2");
@@ -34,7 +35,14 @@ const debug = function (...args) {
 exports.debug = debug;
 __exportStar(require("./hooks/useEffectDeep"), exports);
 __exportStar(require("./hooks/useProstglesClient"), exports);
-function prostgles(initOpts) {
+function prostgles(initOptsOrConnectionOptions) {
+    const initOpts = "socket" in initOptsOrConnectionOptions ?
+        initOptsOrConnectionOptions
+        : {
+            ...initOptsOrConnectionOptions,
+            socket: (0, getProstglesSocket_1.getProstglesSocket)(initOptsOrConnectionOptions),
+            onReady: () => undefined,
+        };
     const { endpoint, socket, onReady, onDisconnect, onReconnect, onSchemaChange, onReload, onDebug, credentials, redirect, } = initOpts;
     let currentClientSchema;
     (0, exports.debug)("prostgles", { initOpts });
@@ -136,12 +144,12 @@ function prostgles(initOpts) {
                         state,
                     });
                     await onReady(onReadyArgs);
+                    resolve(onReadyArgs);
                 }
                 catch (err) {
                     console.error("Prostgles: Error within onReady: \n", err);
                     reject(err);
                 }
-                resolve(db);
             })();
         });
     });

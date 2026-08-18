@@ -24,6 +24,7 @@ import type { Socket } from "socket.io-client";
 import { getAuthHandler, type AuthHandler } from "./getAuthHandler";
 import { getDB } from "./getDbHandler";
 import { getMethods, type ClientFunctionHandler } from "./getMethods";
+import { getProstglesSocket, type SocketPathOrOptions } from "./getProstglesSocket";
 import { getSqlHandler } from "./getSqlHandler";
 import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
 import { getSyncHandlerV2 } from "./getSyncHandlerV2";
@@ -351,6 +352,16 @@ export type InitOptions<
   onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
 
+export type ProstglesInitOptions<
+  DBSchema = void,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+> = Omit<InitOptions<DBSchema, FuncSchema, U>, "socket" | "onReady"> & {
+  /** Websocket API token */
+  token?: string;
+  socketOptions?: SocketPathOrOptions;
+};
+
 type OnReadyCallback<
   DBSchema = void,
   FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
@@ -385,9 +396,33 @@ type CurrentClientSchema = {
   clientSchema: Omit<ClientSchema, "joinTables">;
 };
 
-export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(
+export function prostgles<
+  DBSchema = void,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+>(
+  initOpts: ProstglesInitOptions<DBSchema, FuncSchema, U>,
+): Promise<ClientOnReadyParams<DBSchema, FuncSchema, U>>;
+export function prostgles<
+  DBSchema = void,
+  FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
+  U extends UserLike = UserLike,
+>(
   initOpts: InitOptions<DBSchema, FuncSchema, U>,
-) {
+): Promise<ClientOnReadyParams<DBSchema, FuncSchema, U>>;
+export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(
+  initOptsOrConnectionOptions:
+    | InitOptions<DBSchema, FuncSchema, U>
+    | ProstglesInitOptions<DBSchema, FuncSchema, U>,
+): Promise<ClientOnReadyParams<DBSchema, FuncSchema, U>> {
+  const initOpts: InitOptions<DBSchema, FuncSchema, U> =
+    "socket" in initOptsOrConnectionOptions ?
+      initOptsOrConnectionOptions
+    : {
+        ...initOptsOrConnectionOptions,
+        socket: getProstglesSocket(initOptsOrConnectionOptions),
+        onReady: () => undefined,
+      };
   const {
     endpoint,
     socket,
@@ -412,7 +447,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
 
-  return new Promise((resolve, reject) => {
+  return new Promise<ClientOnReadyParams<DBSchema, FuncSchema, U>>((resolve, reject) => {
     socket.removeAllListeners("connect_error");
     socket.on("connect_error", (err) => {
       reject(err);
@@ -514,12 +549,11 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
             state,
           });
           await onReady(onReadyArgs);
+          resolve(onReadyArgs);
         } catch (err) {
           console.error("Prostgles: Error within onReady: \n", err);
           reject(err);
         }
-
-        resolve(db);
       })();
     });
   });

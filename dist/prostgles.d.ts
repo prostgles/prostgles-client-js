@@ -4,6 +4,7 @@ import type { SyncTableInfo } from "prostgles-types/dist/WAL";
 import type { Socket } from "socket.io-client";
 import { type AuthHandler } from "./getAuthHandler";
 import { type ClientFunctionHandler } from "./getMethods";
+import { type SocketPathOrOptions } from "./getProstglesSocket";
 import { type Subscription } from "./getSubscriptionHandler";
 import type { DbTableSync, OnChange, OnChangeOne, OnErrorHandler, SingleSyncHandles, SyncDataItem, SyncHandler, SyncOneOptions, SyncOptions, SyncedTableOptions } from "./SyncedTable/SyncedTable";
 export declare const isClientSide: boolean;
@@ -211,6 +212,11 @@ export type InitOptions<DBSchema = void, FuncSchema extends ClientFunctionHandle
      */
     onDebug?: (event: DebugEvent) => void | Promise<void>;
 };
+export type ProstglesInitOptions<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = Omit<InitOptions<DBSchema, FuncSchema, U>, "socket" | "onReady"> & {
+    /** Websocket API token */
+    token?: string;
+    socketOptions?: SocketPathOrOptions;
+};
 type OnReadyCallback<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = (onReadyParams: ClientOnReadyParams<DBSchema, FuncSchema, U>) => void | Promise<void>;
 export type AnyFunction = (...args: any[]) => any;
 export type CoreParams = {
@@ -234,5 +240,6 @@ export type SyncInfo = {
     synced_field: string;
     channelName: string;
 };
-export declare function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U extends UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>): Promise<unknown>;
+export declare function prostgles<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike>(initOpts: ProstglesInitOptions<DBSchema, FuncSchema, U>): Promise<ClientOnReadyParams<DBSchema, FuncSchema, U>>;
+export declare function prostgles<DBSchema = void, FuncSchema extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike>(initOpts: InitOptions<DBSchema, FuncSchema, U>): Promise<ClientOnReadyParams<DBSchema, FuncSchema, U>>;
 //# sourceMappingURL=prostgles.d.ts.map

@@ -1,24 +1,14 @@
 import { omitKeys, type DBSchema, type UserLike } from "prostgles-types";
 
 import type { ClientFunctionHandler } from "../getMethods";
-import type { ManagerOptions, Socket, SocketOptions } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { prostgles, type InitOptions, type ClientOnReadyParams } from "../prostgles";
+import { getProstglesSocket, type SocketPathOrOptions } from "../getProstglesSocket";
 import { getReact } from "./reactImports";
 import { useAsyncEffectQueue } from "./useAsyncEffectQueue";
 import { useIsMounted } from "./useIsMounted";
 
-type IO = typeof import("socket.io-client").default;
-export const getIO = (throwError = false) => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const io = require("socket.io-client") as IO;
-    return io;
-  } catch (err) {}
-  if (throwError) throw new Error("Must install socket.io-client");
-  return {} as IO;
-};
-
-type SocketPathOrOptions = Partial<ManagerOptions & SocketOptions>;
+export { getIO } from "../getProstglesSocket";
 
 export type UseProstglesClientProps = Omit<InitOptions<DBSchema>, "onReady" | "socket"> & {
   /**
@@ -59,24 +49,12 @@ export const useProstglesClient = <
       if (skip) return undefined;
 
       socketRef.current?.disconnect();
-      const io = getIO();
-      const socketOptions =
-        typeof socketPathOrOptions === "string" ?
-          { path: socketPathOrOptions }
-        : socketPathOrOptions;
-      const socketOptionsWithDefaults: SocketPathOrOptions = {
-        withCredentials: initOpts.credentials && initOpts.credentials !== "omit",
-        ...socketOptions,
-        reconnectionDelay: 1000,
-        reconnection: true,
-      };
-
-      socketOptionsWithDefaults.path ??= `/ws-api`;
-      if (token) {
-        socketOptionsWithDefaults.auth = { token };
-      }
-      const socket =
-        endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
+      const socket = getProstglesSocket({
+        endpoint,
+        token,
+        socketOptions: socketPathOrOptions,
+        credentials: initOpts.credentials,
+      });
       socketRef.current = socket;
       await prostgles<S, FuncSchema, U>({
         socket,
@@ -108,7 +86,7 @@ export const useProstglesClient = <
         };
       };
     },
-    [initOpts, socketPathOrOptions, skip],
+    [endpoint, initOpts, socketPathOrOptions, skip, token],
     80,
   );
 

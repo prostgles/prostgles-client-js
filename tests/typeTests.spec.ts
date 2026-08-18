@@ -1,6 +1,11 @@
 import type { DBGeneratedSchema } from "DBGeneratedSchema";
 import { test } from "node:test";
-import { type DBHandlerClient, useProstglesClient } from "prostgles-client/dist/prostgles";
+import prostgles from "prostgles-client";
+import {
+  type DBHandlerClient,
+  prostgles as namedProstgles,
+  useProstglesClient,
+} from "prostgles-client/dist/prostgles";
 import type { AnyObject, DBHandler, FullFilter, TableHandler } from "prostgles-types";
 import type { OnReadyParams, TableHandlerClient } from "../dist";
 
@@ -19,6 +24,12 @@ type GeneratedSchema = {
 
 test("types work", async () => {
   const typeTest = async () => {
+    const options = { endpoint: "http://localhost:3000", token: "test-token" };
+    const prostglesClient = await prostgles<GeneratedSchema>(options);
+    prostglesClient.db.table1?.find?.();
+    const namedProstglesClient = await namedProstgles<GeneratedSchema>(options);
+    namedProstglesClient.db.table1?.find?.();
+
     const client = useProstglesClient<GeneratedSchema>();
     if (client.isLoading || client.hasError) return;
     const t1 = client.db.table1?.useFind({}, { orderBy: { col1: 1 } });
