@@ -88,7 +88,7 @@ export type TableHandlerClientMethods<T extends AnyObject = AnyObject, S extends
 };
 export type TableHandlerClient<T extends AnyObject = AnyObject, S extends DBSchema | void = void> = TableHandler<T, S> & TableHandlerClientMethods<T, S>;
 export type DBHandlerClient<Schema = void> = Schema extends DBSchema ? {
-    [tov_name in keyof Schema]: TableHandler<Schema[tov_name]["columns"], Schema> & TableHandlerClientMethods<Schema[tov_name]["columns"], Schema>;
+    [tov_name in keyof Schema]: TableHandler<Schema[tov_name]["columns"], Schema, "insertColumns" extends keyof Schema[tov_name] ? tov_name : never> & TableHandlerClientMethods<Schema[tov_name]["columns"], Schema>;
 } : Record<string, Partial<TableHandler & TableHandlerClientMethods>>;
 export type ClientOnReadyParams<DBSchema = void, FunctionHandler extends ClientFunctionHandler = ClientFunctionHandler, U extends UserLike = UserLike> = {
     /**
