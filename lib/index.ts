@@ -1,4 +1,4 @@
-import type { UserLike } from "prostgles-types";
+import { defineJoin, type UserLike } from "prostgles-types";
 import { prostgles as pgls, type InitOptions, type ProstglesInitOptions } from "./prostgles";
 import type { ClientFunctionHandler } from "./getMethods";
 
@@ -38,5 +38,6 @@ export * from "./hooks/useEffectAsync";
 export * from "./hooks/useAsyncEffectQueue";
 export { useAuthState, ERR_CODE_MESSAGES } from "./auth/useAuthState";
 export type { SQLHandler } from "prostgles-types";
+export { defineJoin };
 export type { ClientFunctionHandler, FunctionHandle } from "./getMethods";
 export default prostgles;
