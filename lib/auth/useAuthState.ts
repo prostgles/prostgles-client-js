@@ -58,59 +58,62 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
     _setError("");
   }, [username, password, totpToken, totpRecoveryCode, confirmPassword]);
 
+  const showPassword =
+    (state === "registerWithPassword" && auth.signupWithEmailAndPassword) ||
+    (state === "login" && auth.loginType === "email" && usernamesWithPassword.includes(username)) ||
+    (state === "login" && auth.loginType === "email+password");
+
+  const showUsername =
+    (state === "registerWithPassword" && auth.signupWithEmailAndPassword) ||
+    (state === "login" && auth.loginType === "email") ||
+    (state === "login" && auth.loginType === "email+password");
+
+  const showConfirmPassword = state === "registerWithPassword" && auth.signupWithEmailAndPassword;
+
+  const showTotpCode = state === "loginTotp" && auth.login;
+
+  const showTotpRecoveryCode = state === "loginTotpRecovery" && auth.login;
+
+  const showEmailVerificationCode =
+    state === "registerWithPasswordConfirmationCode" && auth.signupWithEmailAndPassword;
+
+  const show = {
+    username: Boolean(showUsername),
+    password: Boolean(showPassword),
+    confirmPassword: Boolean(showConfirmPassword),
+    totpCode: Boolean(showTotpCode),
+    totpRecoveryCode: Boolean(showTotpRecoveryCode),
+    emailVerificationCode: Boolean(showEmailVerificationCode),
+  };
+
+  const commonFormHandlers = {
+    state,
+    username,
+    setUsername,
+    password,
+    setPassword,
+    totpToken,
+    setTotpToken,
+    totpRecoveryCode,
+    setTotpRecoveryCode,
+    show,
+    onCall: auth.login,
+  };
+
   const formHandlers =
-    state === "login" && auth.loginType === "email" ?
-      {
-        state,
-        username,
-        setUsername,
-        ...(usernamesWithPassword.includes(username) && {
-          password,
-          setPassword,
-        }),
-        onCall: auth.login,
-      }
-    : state === "login" && auth.loginType === "email+password" ?
-      {
-        state,
-        username,
-        setUsername,
-        password,
-        setPassword,
-        onCall: auth.login,
-      }
-    : state === "loginTotp" && auth.login ?
-      {
-        state,
-        totpToken,
-        setTotpToken,
-        onCall: auth.login,
-      }
-    : state === "loginTotpRecovery" && auth.login ?
-      {
-        state,
-        totpRecoveryCode,
-        setTotpRecoveryCode,
-        onCall: auth.login,
-      }
+    state === "login" && auth.loginType === "email" ? commonFormHandlers
+    : state === "login" && auth.loginType === "email+password" ? commonFormHandlers
+    : state === "loginTotp" && auth.login ? commonFormHandlers
+    : state === "loginTotpRecovery" && auth.login ? commonFormHandlers
     : state === "registerWithPassword" && auth.signupWithEmailAndPassword ?
       {
-        state,
-        username,
-        setUsername,
-        password,
-        setPassword,
-        confirmPassword,
-        setConfirmPassword,
+        ...commonFormHandlers,
         onCall: auth.signupWithEmailAndPassword,
         result,
       }
     : state === "registerWithPasswordConfirmationCode" && auth.signupWithEmailAndPassword ?
       {
-        state,
-        username,
-        emailVerificationCode,
-        setEmailVerificationCode,
+        ...commonFormHandlers,
         onCall: () => {
           if (!auth.confirmEmail) {
             throw new Error("unexpected");
@@ -157,7 +160,7 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
       if (!username) {
         return setError("Username/email cannot be empty");
       }
-      if (!password && formHandlers.setPassword) {
+      if (!password && show.password) {
         return setError("Password cannot be empty");
       }
       if (formHandlers.state === "loginTotp" && !totpToken) {
@@ -205,7 +208,7 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
       if ("redirect_url" in res && res.redirect_url) {
         window.location.href = res.redirect_url;
       }
-      if (state === "registerWithPassword" || res.code === "magic-link-sent") {
+      if (state === "registerWithPassword") {
         setState("registerWithPasswordConfirmationCode");
       }
 
