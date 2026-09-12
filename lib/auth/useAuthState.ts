@@ -96,6 +96,10 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
     setTotpToken,
     totpRecoveryCode,
     setTotpRecoveryCode,
+    confirmPassword,
+    setConfirmPassword,
+    emailVerificationCode,
+    setEmailVerificationCode,
     show,
     onCall: auth.login,
   };
