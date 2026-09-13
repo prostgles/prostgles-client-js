@@ -1,4 +1,4 @@
-import { getProperty, type AuthResponse } from "prostgles-types";
+import { getKeys, getProperty, type AuthResponse } from "prostgles-types";
 import { reactImports } from "../hooks/reactImports";
 const { useEffect, useState } = reactImports;
 import type { AuthHandler, PasswordLogin, PasswordRegister } from "../getAuthHandler";
@@ -134,13 +134,15 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
   const isOnLogin = loginStates.some((v) => v === state);
   const registerTypeAllowed: FormStates = "registerWithPassword";
 
+  const shownKeys = getKeys(show).filter((key) => show[key as keyof typeof show]);
+  const isOnlyShowingUsername = shownKeys[0] === "username" && shownKeys.length === 1;
   const onAuthCall = async () => {
     const formData = {
       username,
-      password,
+      password: isOnlyShowingUsername ? undefined : password,
       remember_me: false,
-      totp_token: totpToken,
-      totp_recovery_code: totpRecoveryCode,
+      totp_token: isOnlyShowingUsername ? undefined : totpToken,
+      totp_recovery_code: isOnlyShowingUsername ? undefined : totpRecoveryCode,
     };
 
     const errorMap = {
