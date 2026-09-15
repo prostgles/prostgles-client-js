@@ -60,8 +60,8 @@ test("types work", async () => {
         select: {
           h: { $ts_headline_simple: ["name", { plainto_tsquery: "abc81" }] },
           hh: { $ts_headline: ["name", "abc81"] },
-          added: "$date_trunc_2hour",
-          addedY: { $date_trunc_5minute: ["added"] },
+          added: "$date_trunc",
+          addedY: { $date_trunc: ["added"] },
         },
       },
     );
