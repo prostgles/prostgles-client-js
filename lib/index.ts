@@ -36,6 +36,7 @@ export * from "./hooks/useFetch";
 export * from "./hooks/useEffectDeep";
 export * from "./hooks/useEffectAsync";
 export * from "./hooks/useAsyncEffectQueue";
+export * from "prostgles-types/dist/publishUtils";
 export { useAuthState, ERR_CODE_MESSAGES } from "./auth/useAuthState";
 export type { SQLHandler } from "prostgles-types";
 export { defineJoin };
