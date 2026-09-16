@@ -125,10 +125,7 @@ test("types work", async () => {
     let dbGeneric = {} as DBHandler;
     dbGeneric = dbTyped;
 
-    const tblH = {} as TableHandlerClient<
-      DBGeneratedSchema["symbols"]["columns"],
-      DBGeneratedSchema
-    >;
+    const tblH = {} as TableHandlerClient<DBGeneratedSchema, "symbols">;
 
     tblH.insert({
       pair: "BTC/USD",

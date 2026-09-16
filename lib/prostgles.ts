@@ -41,7 +41,7 @@ import type {
   SyncedTableOptions,
 } from "./SyncedTable/SyncedTable";
 
-const DEBUG_KEY = "DEBUG_SYNCEDTABLE";
+const DEBUG_KEY = "DEBUG_SYNCED_TABLE";
 export const isClientSide = typeof window !== "undefined";
 export const debug: any = function (...args: any[]) {
   if (isClientSide && (window as any)[DEBUG_KEY]) {
@@ -181,26 +181,22 @@ export type TableHandlerClientMethods<
   ) => AsyncResult<string | undefined>;
 };
 
-// export type TableHandlerClient<
-//   T extends AnyObject = AnyObject,
-//   S extends DBSchema | void = void,
-// > = ViewHandlerClient<T, S> & TableHandler<T, S>;
-
 export type TableHandlerClient<
-  T extends AnyObject = AnyObject,
-  S extends DBSchema | void = void,
-> = TableHandler<T, S> & TableHandlerClientMethods<T, S>;
+  S extends DBSchema = DBSchema,
+  TName extends keyof S = keyof S,
+> = TableHandler<S, TName> &
+  TableHandlerClientMethods<S[TName]["columns"], DBSchema extends S ? void : S>;
+
+export type TableHandlerClientForColumns<T extends AnyObject = AnyObject> = TableHandlerClient<
+  { _: { columns: T } },
+  "_"
+>;
 
 export type DBHandlerClient<Schema = void> =
   Schema extends DBSchema ?
     {
       [tov_name in keyof Schema]:
-        | (TableHandler<
-            Schema[tov_name]["columns"],
-            Schema,
-            tov_name
-          > &
-            TableHandlerClientMethods<Schema[tov_name]["columns"], Schema>)
+        | TableHandlerClient<Schema, tov_name>
         | (Schema[tov_name] extends { optional: true } ? undefined : never);
     }
   : Record<string, Partial<TableHandler & TableHandlerClientMethods>>;
