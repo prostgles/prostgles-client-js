@@ -21,7 +21,7 @@ Isomorphic TypeScript client for PostgreSQL
 npm/yarn
 
 ```bash
-$ npm install prostgles-client socket.io-client
+npm install prostgles-client socket.io-client
 ```
 
 CDN
@@ -29,11 +29,11 @@ CDN
 ```html
 <head>
   <script
-    src="https://unpkg.com/socket.io-client@3.0.3/dist/socket.io.min.js"
+    src="https://unpkg.com/socket.io-client@4.8.3/dist/socket.io.min.js"
     type="text/javascript"
   ></script>
   <script
-    src="https://unpkg.com/prostgles-client@latest/dist/index.js"
+    src="https://unpkg.com/prostgles-client@latest/dist/index.umd.js"
     type="text/javascript"
   ></script>
 </head>
@@ -46,7 +46,10 @@ CDN
 ```ts
 import prostgles from "prostgles-client";
 
-const prostglesClient = await prostgles({ endpoint, token });
+export const connect = async (endpoint: string, token: string) => {
+  const prostglesClient = await prostgles({ endpoint, token });
+  return prostglesClient;
+};
 ```
 
 ### React hooks
@@ -54,36 +57,39 @@ const prostglesClient = await prostgles({ endpoint, token });
 Subscribe to data changes with automatic re-renders:
 
 ```tsx
-import { useProstglesClient } from "prostgles-client/dist/prostgles";
-import type { DBGeneratedSchema } from "@common/DBGeneratedSchema";
+import { defineJoin, useProstglesClient, type TableHandlerClient } from "prostgles-client";
+import type { DBGeneratedSchema } from "./DBGeneratedSchema";
 
-const App = () => {
+export const App = () => {
   const client = useProstglesClient<DBGeneratedSchema>({ socketOptions: { path: "/ws-api" } });
 
-  if(client.isLoading) return "Loading...";
-  if(client.hasError) return <>Error: {client.error}</>;
+  if (client.isLoading) return "Loading...";
+  if (client.hasError) return <>Error: {String(client.error)}</>;
+  if (!client.db.users) return "Users unavailable";
 
-  return <UserPosts dbo={client.dbo} />
-}
+  return <UserPosts users={client.db.users} />;
+};
 
-const UserPosts = ({ dbo }: { dbo:  }) => {
-
-  const { data: user, isLoading } = dbo.users.useSubscribeOne(
+export const UserPosts = ({ users }: { users: TableHandlerClient<DBGeneratedSchema, "users"> }) => {
+  const { data: user, isLoading, error } = users.useSubscribeOne(
     { id: 1 },
     {
       select: {
         id: 1,
         first_name: 1,
         email: 1,
-        latest_posts: {
+        latest_posts: defineJoin({
           $leftJoin: ["posts"],
+          select: "*",
           orderBy: { created: -1 }
-        }
+        })
       }
     }
   );
 
-  if(isLoading) return "Loading ..."
+  if (isLoading) return "Loading...";
+  if (error) return <>Error: {String(error)}</>;
+  if (!user) return "User not found";
 
   return (
     <div>
@@ -97,25 +103,7 @@ const UserPosts = ({ dbo }: { dbo:  }) => {
       </ul>
     </div>
   );
-}
-```
-
-### Vanilla JavaScript
-
-```js
-prostgles({
-  socket: io(),
-  onReady: async (db) => {
-    const latest_posts = await db.posts.find({}, { orderBy: { created: -1 } });
-
-    // Insert data
-    await dbo.posts.insert({
-      title: "Hello World",
-      content: "My first post",
-      published: true,
-    });
-  },
-});
+};
 ```
 
 ## Type Safety
@@ -158,32 +146,38 @@ The key difference between **sync** and **subscribe** methods:
 - **Sync** (sync, syncOne) - Two-way data flow. Allows local optimistic updates that are automatically synced back to the server, while also receiving server updates.
 
 ```tsx
-// Sync: locally modified data is propagated instantly to the client
-const { data: draftPost, isLoading } = dbo.posts.useSyncOne(
-  { published: false },
-  { handlesOnData: true },
-);
-if (isLoading) return "Loading...";
-if (!draftPost) {
-  return <button onClick={() => dbo.posts.insert({ published: false })}>Create new post</button>;
-}
-return (
-  <form>
-    <input
-      type="text"
-      placeholder="Title"
-      value={draftPost.title}
-      onChange={(e) => draftPost.$update({ title: e.target.value })}
-    />
-    <input
-      type="text"
-      placeholder="Content"
-      value={draftPost.content}
-      onChange={(e) => draftPost.$update({ content: e.target.value })}
-    />
-    <button onClick={() => draftPost.$update({ published: true })}>Publish</button>
-  </form>
-);
+import type { TableHandlerClient } from "prostgles-client";
+import type { DBGeneratedSchema } from "./DBGeneratedSchema";
+
+export const DraftPost = ({ posts }: { posts: TableHandlerClient<DBGeneratedSchema, "posts"> }) => {
+  // Requires sync to be enabled for posts on the server
+  const { data: draftPost, isLoading, error } = posts.useSyncOne!(
+    { published: false },
+    { handlesOnData: true },
+  );
+  if (isLoading) return "Loading...";
+  if (error) return <>Error: {String(error)}</>;
+  if (!draftPost) {
+    return <button onClick={() => posts.insert({ published: false })}>Create new post</button>;
+  }
+  return (
+    <form>
+      <input
+        type="text"
+        placeholder="Title"
+        value={draftPost.title}
+        onChange={(e) => draftPost.$update({ title: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="Content"
+        value={draftPost.content}
+        onChange={(e) => draftPost.$update({ content: e.target.value })}
+      />
+      <button type="button" onClick={() => draftPost.$update({ published: true })}>Publish</button>
+    </form>
+  );
+};
 ```
 
 ## Documentation

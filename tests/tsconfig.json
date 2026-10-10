@@ -1,25 +1,18 @@
 {
-  "include": ["**/*.spec.ts"],
+  "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "es2019",
-    "lib": [
-      "es6",
-      "dom", 
-      "es2017",
-      "es2019"
-    ],
+    "lib": ["es6", "dom", "es2017", "es2019"],
     "strict": true,
     "module": "commonjs",
-    "resolveJsonModule": true, 
-    "rootDir": "./", 
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "rootDir": "./",
     "outDir": "dist",
-    "noImplicitAny": false, 
-    "ignoreDeprecations": "5.0", 
+    "noEmitOnError": true,
     "skipLibCheck": true,
-    "noUncheckedIndexedAccess": false
-  }, 
-  "exclude": [ 
-    "node_modules"
-  ]
+    "noUncheckedIndexedAccess": true
+  },
+  "exclude": ["node_modules", "dist"]
 }

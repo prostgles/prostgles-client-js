@@ -1,4 +1,4 @@
-import type { DBGeneratedSchema } from "DBGeneratedSchema";
+import type { DBGeneratedSchema } from "./DBGeneratedSchema";
 import { test } from "node:test";
 import prostgles from "prostgles-client";
 import {
@@ -32,12 +32,13 @@ test("types work", async () => {
 
     const client = useProstglesClient<GeneratedSchema>();
     if (client.isLoading || client.hasError) return;
-    const t1 = client.db.table1?.useFind({}, { orderBy: { col1: 1 } });
+    const useFindResult = client.db.table1?.useFind({}, { orderBy: { col1: 1 } });
+    useFindResult?.data satisfies undefined | Required<GeneratedSchema["table1"]["columns"]>[];
     const db = {} as DBHandlerClient<GeneratedSchema>;
 
     const client2 = useProstglesClient();
     if (client2.isLoading || "error" in client2) return;
-    client2.db.dwada?.find?.();
+    client2.db.myTable?.find?.();
 
     client2.methods;
     const filter: FullFilter<GeneratedSchema["table1"]["columns"], GeneratedSchema> = {};
@@ -45,16 +46,11 @@ test("types work", async () => {
     const filterCheck = <F extends FullFilter<void, void> | undefined>(f: F) => {};
     filterCheck(filter);
 
-    const sub: TableHandler["size"] = db.table1.size;
+    db.table1.size satisfies TableHandler["size"];
 
-    const f = <A extends TableHandler>(a: A) => {};
+    const dbHandlerUntyped = {} as DBHandlerClient;
 
-    // f(dbo.table1)
-    const ra = <A extends AnyObject>(a: A) => {};
-
-    const dbH: DBHandlerClient = 1 as any;
-
-    dbH.dwadwa?.findOne!(
+    dbHandlerUntyped.myTable?.findOne!(
       { "name.@@.to_tsquery": ["abc81"] },
       {
         select: {
@@ -66,7 +62,7 @@ test("types work", async () => {
       },
     );
 
-    const row = await dbH.d?.find?.(
+    const row = await dbHandlerUntyped.d?.find?.(
       {},
       {
         select: { id: 1, name: 1, items3: { name: "$upper" } },
@@ -78,7 +74,7 @@ test("types work", async () => {
     //@ts-expect-error
     row?.[0]?.invalid;
 
-    const syncedItemNoHandles = dbH.d?.useSyncOne?.({}, {
+    const syncedItemNoHandles = dbHandlerUntyped.d?.useSyncOne?.({}, {
       select: { id: 1 },
       handlesOnData: false,
     } as const);
@@ -88,27 +84,27 @@ test("types work", async () => {
     syncedItemNoHandles?.data?.name;
     syncedItemNoHandles?.data?.id;
 
-    const syncedItemWithHandles = dbH.d?.useSyncOne?.({}, {
+    const syncedItemWithHandles = dbHandlerUntyped.d?.useSyncOne?.({}, {
       select: { id: 1, name: 1 },
       handlesOnData: true,
     } as const);
     syncedItemWithHandles?.data?.$cloneMultiSync(() => {});
     syncedItemWithHandles?.data?.name;
 
-    dbH.d?.sync?.(
+    dbHandlerUntyped.d?.sync?.(
       {},
       {
         select: { name: 1 },
         handlesOnData: true,
       } as const,
       (items) => {
-        items[0].name;
+        void items[0]?.name;
         //@ts-expect-error
-        items[0].id;
+        void items[0]?.id;
       },
     );
 
-    dbH.d?.find!(
+    dbHandlerUntyped.d?.find!(
       {},
       {
         //@ts-expect-error

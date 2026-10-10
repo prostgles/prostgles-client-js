@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "npm i && tsc && node --test dist/*.spec.js"
+    "test": "npm ci && tsc && node --test dist/*.spec.js"
   },
   "author": "",
   "license": "ISC",
