@@ -1,5 +1,5 @@
 import { defineJoin, getActionFunctions, ROW_ACTIONS_COLUMN, type UserLike } from "prostgles-types";
-import { prostgles as pgls, type InitOptions, type ProstglesInitOptions } from "./prostgles";
+import { prostgles as _prostgles, type InitOptions, type ProstglesInitOptions } from "./prostgles";
 import type { ClientFunctionHandler } from "./getMethods";
 
 function prostgles<
@@ -8,14 +8,16 @@ function prostgles<
   U extends UserLike = UserLike,
 >(
   params: ProstglesInitOptions<DBSchema, FuncSchema, U>,
-): ReturnType<typeof pgls<DBSchema, FuncSchema, U>>;
+): ReturnType<typeof _prostgles<DBSchema, FuncSchema, U>>;
 function prostgles<
   DBSchema = void,
   FuncSchema extends ClientFunctionHandler = ClientFunctionHandler,
   U extends UserLike = UserLike,
->(params: InitOptions<DBSchema, FuncSchema, U>): ReturnType<typeof pgls<DBSchema, FuncSchema, U>>;
+>(
+  params: InitOptions<DBSchema, FuncSchema, U>,
+): ReturnType<typeof _prostgles<DBSchema, FuncSchema, U>>;
 function prostgles(params: InitOptions<any, any, any> | ProstglesInitOptions<any, any, any>) {
-  return pgls(params as any);
+  return _prostgles(params);
 }
 
 export {

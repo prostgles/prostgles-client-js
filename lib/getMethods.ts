@@ -14,7 +14,7 @@ export const getMethods = ({
   let methodSchema: ServerFunctionHandler = {};
   const methodHandlers = {} as ClientFunctionHandler;
   const _methods: typeof methods = JSON.parse(JSON.stringify(methods));
-  _methods.map(({ name, description, input, output }) => {
+  _methods.map(({ name, ...metadata }) => {
     const onRun = async function (input?: unknown) {
       await onDebug?.({ type: "method", command: name, data: { params: input } });
       return new Promise((resolve, reject) => {
@@ -25,9 +25,7 @@ export const getMethods = ({
       });
     };
     methodSchema[name] = {
-      description,
-      input,
-      output,
+      ...metadata,
       run: onRun,
     };
     methodHandlers[name] = onRun;
