@@ -1,4 +1,12 @@
-import { defineJoin, getActionFunctions, ROW_ACTIONS_COLUMN, type UserLike } from "prostgles-types";
+import {
+  defineJoin,
+  getActionFunctions,
+  ROW_ACTIONS_COLUMN,
+  type UserLike,
+  type JobControlBinding,
+  type JobControlFunctionMetadata,
+  type JobControlOperation,
+} from "prostgles-types";
 import { prostgles as _prostgles, type InitOptions, type ProstglesInitOptions } from "./prostgles";
 import type { ClientFunctionHandler } from "./getMethods";
 
@@ -45,3 +53,4 @@ export { defineJoin };
 export type { ClientFunctionHandler, FunctionHandle } from "./getMethods";
 export default prostgles;
 export { getActionFunctions, ROW_ACTIONS_COLUMN };
+export type { JobControlBinding, JobControlFunctionMetadata, JobControlOperation };
