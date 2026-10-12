@@ -1,4 +1,4 @@
-import { defineJoin, ROW_ACTIONS_COLUMN, type UserLike } from "prostgles-types";
+import { defineJoin, getActionFunctions, ROW_ACTIONS_COLUMN, type UserLike } from "prostgles-types";
 import { prostgles as pgls, type InitOptions, type ProstglesInitOptions } from "./prostgles";
 import type { ClientFunctionHandler } from "./getMethods";
 
@@ -42,4 +42,4 @@ export type { SQLHandler } from "prostgles-types";
 export { defineJoin };
 export type { ClientFunctionHandler, FunctionHandle } from "./getMethods";
 export default prostgles;
-export { ROW_ACTIONS_COLUMN };
+export { getActionFunctions, ROW_ACTIONS_COLUMN };
