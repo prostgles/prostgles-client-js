@@ -3,7 +3,9 @@ import { CHANNELS } from "prostgles-types";
 import type { InitOptions } from "./prostgles";
 
 // export type FunctionHandle = <Args extends Record<string, unknown>>(args: Args) => Promise<unknown>;
-export type FunctionHandle<Args = any, Res = unknown> = (args: Args) => Promise<Res>;
+export type FunctionHandle<Args = any, Res = unknown> = (
+  ...args: undefined extends Args ? [args?: Args] : [args: Args]
+) => Promise<Res>;
 export type ClientFunctionHandler = Partial<Record<string, FunctionHandle<any, unknown>>>;
 
 export const getMethods = ({

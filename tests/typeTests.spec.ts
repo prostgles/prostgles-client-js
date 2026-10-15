@@ -7,7 +7,7 @@ import {
   useProstglesClient,
 } from "prostgles-client/dist/prostgles";
 import type { AnyObject, DBHandler, FullFilter, TableHandler } from "prostgles-types";
-import type { OnReadyParams, TableHandlerClient } from "../dist";
+import type { FunctionHandle, OnReadyParams, TableHandlerClient } from "../dist";
 
 type GeneratedSchema = {
   table1: {
@@ -171,5 +171,20 @@ test("GeneratedFunctionSchema types work ", async () => {
 
     const readyParamsBasic: OnReadyParams = {} as any;
     const res2 = await readyParamsBasic.methods?.stopServer?.({});
+    await readyParamsBasic.methods?.runAgent?.();
+
+    const runAgent: FunctionHandle<void, { done: boolean }> = async () => ({ done: true });
+    (await runAgent()) satisfies { done: boolean };
+
+    const optionalInput: FunctionHandle<{ name: string } | undefined> = async (args) => args?.name;
+    await optionalInput();
+    await optionalInput({ name: "test" });
+
+    const requiredInput: FunctionHandle<{ name: string }, string> = async ({ name }) => name;
+    (await requiredInput({ name: "test" })) satisfies string;
+    // @ts-expect-error Input is required when its type excludes undefined.
+    await requiredInput();
+    // @ts-expect-error Required input properties must keep their declared types.
+    await requiredInput({ name: 1 });
   };
 });
