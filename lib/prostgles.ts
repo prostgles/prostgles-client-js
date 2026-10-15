@@ -223,6 +223,8 @@ export type ClientOnReadyParams<
    * Table schema with column permission details the client has access to
    */
   tableSchema: DBSchemaTable[] | undefined;
+  /** Undefined when connected to a server that does not publish join definitions. */
+  joins: ClientSchema["joins"] | undefined;
   auth: AuthHandler<U>;
   isReconnect: boolean;
   socket: Socket;
@@ -479,7 +481,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
     socket.on(CHANNELS.SCHEMA, async (args: ClientSchema) => {
       await onDebug?.({ type: "schemaChanged", data: args, state });
       const { joinTables = [], ...clientSchema } = args;
-      const { methods, tableSchema, auth: authConfig, rawSQL, err } = clientSchema;
+      const { methods, tableSchema, joins, auth: authConfig, rawSQL, err } = clientSchema;
 
       /** Only destroy existing syncs if schema changed */
       const schemaChanged =
@@ -541,6 +543,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
             methods: methodHandlers as FuncSchema,
             methodSchema,
             tableSchema,
+            joins,
             auth,
             socket,
             isReconnect,

@@ -1,4 +1,3 @@
-import type { DBGeneratedSchema } from "./DBGeneratedSchema";
 import { test } from "node:test";
 import prostgles from "prostgles-client";
 import {
@@ -6,8 +5,9 @@ import {
   prostgles as namedProstgles,
   useProstglesClient,
 } from "prostgles-client/dist/prostgles";
-import type { AnyObject, DBHandler, FullFilter, TableHandler } from "prostgles-types";
+import type { DBHandler, FullFilter, TableHandler } from "prostgles-types";
 import type { FunctionHandle, OnReadyParams, TableHandlerClient } from "../dist";
+import type { DBGeneratedSchema } from "./DBGeneratedSchema";
 
 type GeneratedSchema = {
   table1: {
