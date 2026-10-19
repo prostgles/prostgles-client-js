@@ -1,6 +1,7 @@
 import type { ClientSchema, ServerFunctionHandler, SocketFunctionCall } from "prostgles-types";
 import { CHANNELS } from "prostgles-types";
 import type { InitOptions } from "./prostgles";
+import { sendSocketRequest } from "./sendSocketRequest";
 
 // export type FunctionHandle = <Args extends Record<string, unknown>>(args: Args) => Promise<unknown>;
 export type FunctionHandle<Args = any, Res = unknown> = (
@@ -19,12 +20,7 @@ export const getMethods = ({
   _methods.map(({ name, ...metadata }) => {
     const onRun = async function (input?: unknown) {
       await onDebug?.({ type: "method", command: name, data: { params: input } });
-      return new Promise((resolve, reject) => {
-        socket.emit(CHANNELS.METHOD, { name, input } satisfies SocketFunctionCall, (err, res) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
-      });
+      return sendSocketRequest(socket, CHANNELS.METHOD, { name, input } satisfies SocketFunctionCall);
     };
     methodSchema[name] = {
       ...metadata,

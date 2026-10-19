@@ -1,5 +1,6 @@
 import { CHANNELS, type SQLHandler, type DBEventHandles, type DBNoticeConfig, type DBNotifConfig, type SocketSQLStreamClient, type SocketSQLStreamServer } from "prostgles-types";
 import type { InitOptions } from "./prostgles";
+import { sendSocketRequest } from "./sendSocketRequest";
  
 export const getSqlHandler = ({ socket }: Pick<InitOptions, "socket">) => {
 
@@ -76,12 +77,9 @@ export const getSqlHandler = ({ socket }: Pick<InitOptions, "socket">) => {
     noticeSubs.listeners.push(listener);
   }
 
-  const sql: SQLHandler = function (query, params, options) {
-    return new Promise((resolve, reject) => {
-      socket.emit(CHANNELS.SQL, { query, params, options }, (err, res) => {
-        if (err) {
-          return reject(err);
-        }
+  const sql: SQLHandler = async function (query, params, options) {
+    const res = await sendSocketRequest<any>(socket, CHANNELS.SQL, { query, params, options });
+    return new Promise((resolve) => {
         if(options?.returnType === "stream"){
           const { channel, unsubChannel } = res as SocketSQLStreamServer;
           const start: SocketSQLStreamClient["start"] = (listener) => new Promise<Awaited<ReturnType<SocketSQLStreamClient["start"]>>>((resolveStart, rejectStart) => {
@@ -166,7 +164,6 @@ export const getSqlHandler = ({ socket }: Pick<InitOptions, "socket">) => {
         } else {
           resolve(res);
         }
-      });
     });
   }
 

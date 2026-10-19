@@ -10,6 +10,7 @@ import {
 } from "prostgles-types";
 import type { getSubscriptionHandler } from "./getSubscriptionHandler";
 import type { getSyncHandlerV2 } from "./getSyncHandlerV2";
+import { sendSocketRequest } from "./sendSocketRequest";
 import { useFetch } from "./hooks/useFetch";
 import { useSubscribe } from "./hooks/useSubscribe";
 import { useSync } from "./hooks/useSync";
@@ -189,37 +190,26 @@ export const getDB = <DBSchema = void>({
               tableName,
               data: { param1, param2, param3 },
             });
-            return new Promise((resolve, reject) => {
-              const { abortSignal, ...restOfParam2 } =
-                includes(ABORTABLE_METHODS, command) ? ((param2 ?? {}) as SelectParams) : {};
-              let abortSignalId: string | undefined;
-              if (abortSignal && abortSignal instanceof AbortSignal) {
-                abortSignalId = crypto.randomUUID();
-                const abortHandler = () => {
-                  socket.emit(prefix, {
-                    tableName,
-                    command: "abort",
-                    param1: { command, abortSignalId },
-                  });
-                };
-                abortSignal.addEventListener("abort", abortHandler, { once: true });
-              }
-              socket.emit(
-                prefix,
-                {
+            const { abortSignal, ...restOfParam2 } =
+              includes(ABORTABLE_METHODS, command) ? ((param2 ?? {}) as SelectParams) : {};
+            let abortSignalId: string | undefined;
+            if (abortSignal && abortSignal instanceof AbortSignal) {
+              abortSignalId = crypto.randomUUID();
+              const abortHandler = () => {
+                socket.emit(prefix, {
                   tableName,
-                  command,
-                  param1,
-                  param2: abortSignal ? restOfParam2 : param2,
-                  param3: { ...param3, abortSignalId },
-                },
-
-                /* Get col definition and re-cast data types?! */
-                (err, res) => {
-                  if (err) reject(err);
-                  else resolve(res);
-                },
-              );
+                  command: "abort",
+                  param1: { command, abortSignalId },
+                });
+              };
+              abortSignal.addEventListener("abort", abortHandler, { once: true });
+            }
+            return sendSocketRequest(socket, prefix, {
+              tableName,
+              command,
+              param1,
+              param2: abortSignal ? restOfParam2 : param2,
+              param3: { ...param3, abortSignalId },
             });
           };
           dboTable[command] = method;
