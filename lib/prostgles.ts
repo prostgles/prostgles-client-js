@@ -27,7 +27,7 @@ import { getMethods, type ClientFunctionHandler } from "./getMethods";
 import { getProstglesSocket, type SocketPathOrOptions } from "./getProstglesSocket";
 import { getSqlHandler } from "./getSqlHandler";
 import { getSubscriptionHandler, type Subscription } from "./getSubscriptionHandler";
-import { getSyncHandlerV2 } from "./getSyncHandlerV2";
+import { getSyncHandler } from "./getSyncHandler";
 import type {
   DbTableSync,
   OnChange,
@@ -447,7 +447,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
   }
 
   const subscriptionHandler = getSubscriptionHandler(initOpts);
-  const syncHandlerV2 = getSyncHandlerV2(initOpts);
+  const syncHandlerV2 = getSyncHandler(initOpts);
 
   let state: undefined | "connected" | "disconnected" | "reconnected";
 
@@ -482,14 +482,6 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       await onDebug?.({ type: "schemaChanged", data: args, state });
       const { joinTables = [], ...clientSchema } = args;
       const { methods, tableSchema, joins, auth: authConfig, rawSQL, err } = clientSchema;
-
-      /** Only destroy existing syncs if schema changed */
-      const schemaChanged =
-        currentClientSchema?.clientSchema &&
-        !isEqual(currentClientSchema.clientSchema, clientSchema);
-      if (schemaChanged) {
-        console.warn("schemaChanged must syncHandler.destroySyncs()");
-      }
 
       if (err) {
         console.error("Error on schema change:", err);
@@ -533,7 +525,7 @@ export function prostgles<DBSchema, FuncSchema extends ClientFunctionHandler, U 
       const sql = rawSQL ? getSqlHandler(initOpts).sql : undefined;
 
       subscriptionHandler.reAttachAll();
-      await syncHandlerV2.reAttachAll();
+      await syncHandlerV2.reAttachAll(db as Partial<DBHandlerClient>, tableSchema);
 
       (async () => {
         try {

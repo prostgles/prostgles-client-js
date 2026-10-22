@@ -40,6 +40,7 @@ export type Sync<T extends AnyObject = AnyObject> = <TD extends T, Opts extends 
   basicFilter: EqualityFilter<TD>,
   options: SyncOptions,
   onChange: OnChange<TD, Opts>,
+  onError?: OnErrorHandler,
 ) => Promise<SyncHandler<TD>>;
 
 export type OnChangeOne<T extends Record<string, unknown>, Opts extends SyncOptions> = (
@@ -54,6 +55,7 @@ export type SyncOne<T extends AnyObject = AnyObject> = <TD extends T, Opts exten
   basicFilter: Partial<TD>,
   options: Opts,
   onChange: OnChangeOne<TD, Opts>,
+  onError?: OnErrorHandler,
 ) => Promise<SingleSyncHandles<TD, Opts["handlesOnData"]>>;
 
 export type SyncBatchRequest = {
@@ -136,6 +138,7 @@ export type MultiSyncHandles<T extends AnyObject> = {
 
 export type SubscriptionSingle<T extends AnyObject = AnyObject, Full extends boolean = false> = {
   _onChange: SingleChangeListener<T, Full>;
+  onError: OnErrorHandler | undefined;
   notify: (data: T, delta?: DeepPartial<NormalizedRow<T>>) => void | Promise<void>;
   idObj: Partial<T>;
   handlesOnData?: boolean;
@@ -143,6 +146,7 @@ export type SubscriptionSingle<T extends AnyObject = AnyObject, Full extends boo
 };
 export type SubscriptionMulti<T extends AnyObject = AnyObject> = {
   _onChange: MultiChangeListener<T>;
+  onError: OnErrorHandler | undefined;
   notify: (data: T[], delta: DeepPartial<T>[]) => T[];
   idObj?: Partial<T>;
   handlesOnData?: boolean;

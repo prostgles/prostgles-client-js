@@ -9,7 +9,7 @@ import { type SyncDebugEvent } from "../prostgles";
 import type { DbTableSync, SyncedTableOptions } from "./SyncedTable";
 
 export const createSyncStateUtils = (socket: Socket, options: SyncedTableOptions) => {
-  const state = { isSynced: false };
+  const state = { isSynced: false, error: undefined as unknown };
   const { db, name, select = "*", filter = {}, columns } = options;
   const channelName = getSyncChannelName({ filter, select, tableName: name });
   const onDebug = (evt: Omit<SyncDebugEvent, "type" | "tableName" | "channelName" | "options">) =>
@@ -28,16 +28,18 @@ export const createSyncStateUtils = (socket: Socket, options: SyncedTableOptions
     throw `${name} table not found in db`;
   }
 
-  const { _syncInfo } = tableHandler;
-  if (!_syncInfo) {
+  const syncInfo = tableHandler._syncInfo;
+  if (!syncInfo) {
     throw `${name} table does not support sync`;
   }
+  const _syncInfo = { ...syncInfo, id_fields: [...syncInfo.id_fields].sort() };
   const { id_fields, synced_field, throttle = 100, batch_size = 50 } = _syncInfo;
   if (!id_fields.length || !synced_field) {
     throw "id_fields/synced_field missing";
   }
 
   const initializeSync = async (handles: ClientSyncHandles) => {
+    let attached = true;
     const syncInfo = await new Promise<ReplicationProtocol.CreateSchemaResponse>(
       (resolve, reject) => {
         socket.emit(
@@ -68,6 +70,7 @@ export const createSyncStateUtils = (socket: Socket, options: SyncedTableOptions
 
     const syncData: DbTableSync["syncData"] = async (data) => {
       const { c_count, c_fr, c_lr } = await handles.onSyncRequest({});
+      if (!attached) return;
       handlers.ClientSyncRequest(
         data && c_fr && c_lr ?
           { state: "syncing-data", c_count, c_fr, c_lr, data }
@@ -75,13 +78,10 @@ export const createSyncStateUtils = (socket: Socket, options: SyncedTableOptions
       );
     };
     const unsync = () => {
-      return new Promise((resolve, reject) => {
-        socket.emit(channelName + "unsync", {}, (err: any, res: any) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
-        socket.removeAllListeners(channelName);
-      });
+      attached = false;
+      socket.removeAllListeners(channelName);
+      /* The server may already have removed the sync during a schema change. */
+      socket.timeout(5000).emit(channelName + "unsync", {}, () => undefined);
     };
 
     return { syncInfo, unsync, syncData, handlers };

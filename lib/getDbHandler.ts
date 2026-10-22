@@ -9,7 +9,7 @@ import {
   type SelectParams,
 } from "prostgles-types";
 import type { getSubscriptionHandler } from "./getSubscriptionHandler";
-import type { getSyncHandlerV2 } from "./getSyncHandlerV2";
+import type { getSyncHandler } from "./getSyncHandler";
 import { sendSocketRequest } from "./sendSocketRequest";
 import { useFetch } from "./hooks/useFetch";
 import { useSubscribe } from "./hooks/useSubscribe";
@@ -23,6 +23,7 @@ import {
 import {
   type OnChange,
   type OnChangeOne,
+  type OnErrorHandler,
   quickClone,
   type Sync,
   type SyncOne,
@@ -34,7 +35,7 @@ type Args = {
   tableSchema: DBSchemaTable[] | undefined;
   onDebug: InitOptions["onDebug"];
   socket: InitOptions["socket"];
-  syncHandlerV2: ReturnType<typeof getSyncHandlerV2>;
+  syncHandlerV2: ReturnType<typeof getSyncHandler>;
   subscriptionHandler: ReturnType<typeof getSubscriptionHandler>;
 };
 
@@ -89,6 +90,7 @@ export const getDB = <DBSchema = void>({
             basicFilter,
             options: SyncOneOptions = { handlesOnData: true },
             onChange: OnChangeOne<AnyObject, SyncOneOptions>,
+            onError?: OnErrorHandler,
           ) => {
             await onDebug?.({
               type: "table",
@@ -99,13 +101,14 @@ export const getDB = <DBSchema = void>({
             checkSubscriptionArgs(basicFilter, options, onChange);
             return (
               await syncHandlerV2.getTableSyncFunctions({ db, tableName, columns })
-            ).addSyncOne(basicFilter, options, onChange);
+            ).addSyncOne(basicFilter, options, onChange, onError);
           }) as SyncOne<AnyObject>;
 
           const sync = (async (
             basicFilter,
             options: SyncOptions = { handlesOnData: true },
             onChange: OnChange<AnyObject, SyncOptions>,
+            onError?: OnErrorHandler,
           ) => {
             await onDebug?.({
               type: "table",
@@ -118,6 +121,7 @@ export const getDB = <DBSchema = void>({
               basicFilter,
               options,
               onChange,
+              onError,
             );
           }) as Sync<AnyObject>;
 

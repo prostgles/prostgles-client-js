@@ -105,9 +105,14 @@ export const createSyncDataStore = ({
   };
 
   const getItem = <T = AnyObject>(idObj: Partial<T>): T | undefined => {
-    const d = itemsMap.get(getIdStr(idObj)) as T | undefined;
+    const matchedItem = (
+      id_fields.every((field) => field in idObj) ?
+        itemsMap.get(getIdStr(idObj))
+      : Array.from(itemsMap.values()).find((item) =>
+          Object.entries(idObj).every(([field, value]) => item[field] === value),
+        )) as T | undefined;
 
-    return quickClone(d);
+    return quickClone(matchedItem);
   };
 
   /**

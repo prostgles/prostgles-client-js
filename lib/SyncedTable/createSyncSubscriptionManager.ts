@@ -9,6 +9,7 @@ import {
   type ItemUpdated,
   type MultiChangeListener,
   type MultiSyncHandles,
+  type OnErrorHandler,
   type SingleChangeListener,
   type SingleSyncHandles,
   type SubscriptionMulti,
@@ -17,7 +18,7 @@ import {
 } from "./SyncedTable";
 
 export const createSyncSubscriptionManager = (
-  { id_fields, synced_field }: Omit<SyncConfig, "channelName">,
+  syncConfig: Omit<SyncConfig, "channelName">,
   store: ReturnType<typeof createSyncDataStore>,
   stateUtils: ReturnType<typeof createSyncStateUtils>,
   upsert: (items: ItemUpdate[], from_server?: boolean) => Promise<void>,
@@ -50,7 +51,7 @@ export const createSyncSubscriptionManager = (
     changes.map(({ idObj, newItem, delta }) => {
       /* Single subs do not care about the filter */
       singleSubscriptions
-        .filter((s) => store.matchesIdObj(s.idObj, idObj))
+        .filter((s) => Object.entries(s.idObj).every(([field, value]) => newItem[field] === value))
         .map(async (s) => {
           try {
             await s.notify(newItem, delta);
@@ -87,24 +88,34 @@ export const createSyncSubscriptionManager = (
     }
   };
 
-  const notifyWal = new WAL({
-    id_fields,
-    synced_field,
-    batch_size: Infinity,
-    throttle: 5,
-    onSend: async (_, fullItems) => {
-      _notifySubscribers(
-        fullItems.map((d) => ({
-          delta: store.getDelta(d.initial ?? {}, d.current),
-          idObj: store.getIdObj(d.current),
-          newItem: d.current,
-        })),
-      );
-    },
-  });
+  const createNotifyWal = () =>
+    new WAL({
+      ...syncConfig,
+      batch_size: Infinity,
+      throttle: 5,
+      onSend: async (_, fullItems) => {
+        if (state.error) return;
+        _notifySubscribers(
+          fullItems.map((d) => ({
+            delta: store.getDelta(d.initial ?? {}, d.current),
+            idObj: store.getIdObj(d.current),
+            newItem: d.current,
+          })),
+        );
+      },
+    });
+  let notifyWal = createNotifyWal();
+
+  const reset = (nextSyncConfig: typeof syncConfig) => {
+    syncConfig = nextSyncConfig;
+    clearTimeout(notifyWal.isSendingTimeout);
+    clearTimeout(notifyWal.willDeleteHistory);
+    notifyWal = createNotifyWal();
+  };
 
   const _delete = async (item: AnyObject, from_server = false) => {
-    const idObj = store.getIdObj(item);
+    if (state.error) throw state.error;
+    const idObj = store.getIdObj(store.getItem(item) ?? item);
     store.setItem(idObj, true, true);
     if (!from_server) {
       await stateUtils.tableHandler.delete?.(idObj);
@@ -116,9 +127,11 @@ export const createSyncSubscriptionManager = (
   const getMultiSyncSubscription = ({
     onChange,
     handlesOnData,
+    onError,
   }: {
     onChange: MultiChangeListener<AnyObject>;
     handlesOnData: boolean;
+    onError: OnErrorHandler | undefined;
   }) => {
     const handles: MultiSyncHandles<AnyObject> = {
       $unsync: () => {
@@ -140,15 +153,16 @@ export const createSyncSubscriptionManager = (
         };
 
         if (Array.isArray(newData)) {
-          upsert(newData.map((d) => prepareOne(d)));
+          return upsert(newData.map((d) => prepareOne(d)));
         } else {
-          upsert([prepareOne(newData)]);
+          return upsert([prepareOne(newData)]);
         }
       },
     };
 
     const sub: SubscriptionMulti<AnyObject> = {
       _onChange: onChange,
+      onError,
       handlesOnData,
       handles,
       notify: (_allItems, _allDeltas) => {
@@ -167,7 +181,8 @@ export const createSyncSubscriptionManager = (
               $delete: async (): Promise<boolean> => {
                 return _delete(idObj);
               },
-              $cloneMultiSync: (onChange: MultiChangeListener) => sync(onChange, handlesOnData),
+              $cloneMultiSync: (onChange: MultiChangeListener, onError?: OnErrorHandler) =>
+                sync(onChange, handlesOnData, onError),
             });
             const idObj = store.getIdObj(item) as Partial<AnyObject>;
             return getItem(item, idObj);
@@ -183,10 +198,13 @@ export const createSyncSubscriptionManager = (
   const sync = <T extends AnyObject = AnyObject>(
     onChange: MultiChangeListener<T>,
     handlesOnData = true,
+    onError?: OnErrorHandler,
   ): MultiSyncHandles<T> => {
+    if (state.error) throw state.error;
     const { sub, handles } = getMultiSyncSubscription.bind(this)({
       onChange: onChange as MultiChangeListener<AnyObject>,
       handlesOnData,
+      onError,
     });
 
     multiSubscriptions.push(sub as any);
@@ -217,7 +235,7 @@ export const createSyncSubscriptionManager = (
         }
         return upsert([{ idObj, delta: quickClone(newData), opts }]);
       },
-      $cloneSync: (onChange) => syncOne<T, Full>(idObj, onChange),
+      $cloneSync: (onChange, onError) => syncOne<T, Full>(idObj, onChange, undefined, onError),
       // TODO: add clone sync hook
       // $useCloneSync: () => {
       //   const handles = this.syncOne<T, Full>(idObj, item => {
@@ -225,7 +243,7 @@ export const createSyncSubscriptionManager = (
       //   });
       //   return handles.$unsync;
       // },
-      $cloneMultiSync: (onChange) => sync(onChange, true),
+      $cloneMultiSync: (onChange, onError) => sync(onChange, true, onError),
     };
 
     return handles;
@@ -241,10 +259,13 @@ export const createSyncSubscriptionManager = (
     idObj: Partial<T>,
     onChange: SingleChangeListener<T, Full>,
     handlesOnData = true,
+    onError?: OnErrorHandler,
   ): SingleSyncHandles<T, Full> => {
+    if (state.error) throw state.error;
     const handles = makeSingleSyncHandles<T, Full>(idObj, onChange);
     const sub: SubscriptionSingle<T, Full> = {
       _onChange: onChange,
+      onError,
       idObj,
       handlesOnData,
       handles,
@@ -278,7 +299,19 @@ export const createSyncSubscriptionManager = (
   return {
     sync,
     syncOne,
-    notifyWal,
+    get notifyWal() {
+      return notifyWal;
+    },
+    reset,
+    notifyError: (error: unknown) => {
+      for (const subscription of [...singleSubscriptions, ...multiSubscriptions]) {
+        try {
+          subscription.onError?.(error);
+        } catch (callbackError) {
+          console.error("Sync error callback failed:", callbackError);
+        }
+      }
+    },
     notifyCurrentData: () => _notifySubscribers(),
   };
 };
