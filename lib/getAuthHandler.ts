@@ -2,7 +2,6 @@ import type {
   AuthGuardLocation,
   AuthGuardLocationResponse,
   AuthRequest,
-  AuthResponse,
   AuthSocketSchema,
   IdentityProvider,
   LocalLoginMode,
@@ -11,6 +10,9 @@ import type {
 import { CHANNELS, isEmpty } from "prostgles-types";
 import { isClientSide, type InitOptions } from "./prostgles";
 import type { Socket } from "socket.io-client";
+import type { ClientAuthResponse } from "./auth/authRequest";
+import { getAuthCalls, type ClientAuthCalls } from "./auth/getAuthCalls";
+export { authRequest } from "./auth/authRequest";
 type OptionalToUndefined<T> = { [K in {} & keyof T]: T[K] };
 
 type Args = Pick<OptionalToUndefined<InitOptions>, "credentials" | "redirect"> & {
@@ -22,37 +24,20 @@ type Args = Pick<OptionalToUndefined<InitOptions>, "credentials" | "redirect"> &
 
 type WithProviderLogin = Partial<Record<IdentityProvider, VoidFunction>>;
 
-type ClientAuthSuccess<T> = T & {
-  /**
-   * This is a client-only property that is obtained from server redirect response
-   */
-  redirect_url?: string;
-};
-
-export type PasswordLoginResponse = ClientAuthSuccess<
-  | AuthResponse.PasswordLoginFailure
-  | AuthResponse.PasswordLoginSuccess
-  | AuthResponse.MagicLinkAuthSuccess
-  | AuthResponse.MagicLinkAuthFailure
-  | AuthResponse.OAuthRegisterSuccess
-  | AuthResponse.OAuthRegisterFailure
->;
-export type PasswordRegisterResponse = ClientAuthSuccess<
-  AuthResponse.PasswordRegisterSuccess | AuthResponse.PasswordRegisterFailure
->;
-export type PasswordRegister = (
-  params: AuthRequest.RegisterData,
-) => Promise<PasswordRegisterResponse>;
-export type PasswordLogin = (params: AuthRequest.LoginData) => Promise<PasswordLoginResponse>;
+export type PasswordLoginResponse = ClientAuthResponse<"login">;
+export type PasswordRegisterResponse = ClientAuthResponse<"register">;
+export type PasswordRegister = ClientAuthCalls["register"];
+export type PasswordLogin = ClientAuthCalls["login"];
+export type ConfirmEmail = (
+  data: AuthRequest.ConfirmEmailData,
+) => Promise<ClientAuthResponse<"magicLinkOrOTP">>;
 
 type LoginSignupOptions = Pick<AuthSocketSchema, "providers" | "preferredLogin"> & {
   loginWithProvider: undefined | WithProviderLogin;
   login: undefined | PasswordLogin;
   loginType: LocalLoginMode | undefined;
   signupWithEmailAndPassword: undefined | PasswordRegister;
-  confirmEmail:
-    | undefined
-    | ((data: AuthRequest.ConfirmEmailData) => Promise<PasswordRegisterResponse>);
+  confirmEmail: undefined | ConfirmEmail;
 };
 
 type AuthStateLoggedOut = LoginSignupOptions & {
@@ -63,7 +48,7 @@ type AuthStateLoggedOut = LoginSignupOptions & {
 type AuthStateLoggedIn<U extends UserLike = UserLike> = LoginSignupOptions & {
   isLoggedin: true;
   user: U;
-  logout: () => Promise<any>;
+  logout: () => Promise<ClientAuthResponse<"logout">>;
 };
 
 export type AuthHandler<U extends UserLike = UserLike> = AuthStateLoggedOut | AuthStateLoggedIn<U>;
@@ -81,6 +66,16 @@ export const getAuthHandler = ({
     if (endpoint) url = `${endpoint}${url}`;
     return url;
   };
+  const authCalls = getAuthCalls(
+    {
+      login: authConfig?.login?.loginRoute,
+      register: authConfig?.signupWithEmailAndPassword?.url,
+      magicLinkOrOTP: authConfig?.signupWithEmailAndPassword?.emailConfirmationRoute,
+      logout: authConfig?.login?.logoutRoute,
+    },
+    urlWithEndpointAndSearch,
+    authOpts,
+  );
   if (authConfig?.pathGuard && isClientSide) {
     const doReload = (res?: AuthGuardLocationResponse) => {
       if (res?.shouldReload) {
@@ -130,32 +125,10 @@ export const getAuthHandler = ({
         }, {})
       );
 
-    loginSignupOptions.login =
-      login &&
-      (async (params) => {
-        return authRequest(urlWithEndpointAndSearch(login.loginRoute), params, "POST", authOpts);
-      });
-
+    loginSignupOptions.login = login && authCalls.login;
     loginSignupOptions.signupWithEmailAndPassword =
-      signupWithEmailAndPassword &&
-      ((params) => {
-        return authRequest(
-          urlWithEndpointAndSearch(signupWithEmailAndPassword.url),
-          params,
-          "POST",
-          authOpts,
-        );
-      });
-    loginSignupOptions.confirmEmail =
-      signupWithEmailAndPassword &&
-      ((data) => {
-        return authRequest(
-          urlWithEndpointAndSearch(signupWithEmailAndPassword.emailConfirmationRoute),
-          data,
-          "POST",
-          authOpts,
-        );
-      });
+      signupWithEmailAndPassword && authCalls.register;
+    loginSignupOptions.confirmEmail = signupWithEmailAndPassword && authCalls.magicLinkOrOTP;
   }
 
   if (!authConfig?.user) {
@@ -169,51 +142,7 @@ export const getAuthHandler = ({
   return {
     isLoggedin: true,
     user: authConfig.user,
-    logout: async () => {
-      const { logoutRoute } = authConfig.login ?? {};
-      if (!logoutRoute) throw new Error("Unexpected");
-      return authRequest(urlWithEndpointAndSearch(logoutRoute), {}, "POST", authOpts);
-    },
+    logout: () => authCalls.logout({}),
     ...loginSignupOptions,
   } satisfies AuthStateLoggedIn;
-};
-
-export const authRequest = async <T extends PasswordRegisterResponse | PasswordLoginResponse>(
-  path: string,
-  data: object,
-  method: "GET" | "POST",
-  { credentials, redirect }: Pick<Partial<Request>, "credentials" | "redirect">,
-): Promise<T> => {
-  const rawResponse = await fetch(path, {
-    method: method,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    ...(method !== "GET" && { body: JSON.stringify(data) }),
-    credentials,
-    redirect,
-  });
-
-  if (!rawResponse.ok) {
-    const error = await rawResponse
-      .json()
-      .catch(() => rawResponse.text())
-      .catch(() => rawResponse.statusText);
-    if (typeof error === "string") {
-      return { success: false, code: "something-went-wrong", message: error } as T;
-    }
-    return error;
-  }
-
-  const responseObject = await rawResponse
-    .json()
-    .catch(async () => ({ message: await rawResponse.text() }))
-    .catch(() => ({ message: rawResponse.statusText }));
-
-  if (rawResponse.redirected) {
-    return { ...responseObject, success: true, redirect_url: rawResponse.url };
-  }
-
-  return responseObject;
 };

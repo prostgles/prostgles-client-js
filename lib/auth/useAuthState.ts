@@ -1,7 +1,7 @@
 import { getKeys, getProperty, type AuthResponse } from "prostgles-types";
 import { reactImports } from "../hooks/reactImports";
 const { useEffect, useState } = reactImports;
-import type { AuthHandler, PasswordLogin, PasswordRegister } from "../getAuthHandler";
+import type { AuthHandler, ConfirmEmail, PasswordLogin, PasswordRegister } from "../getAuthHandler";
 
 type PasswordLoginDataAndFunc = {
   onCall: PasswordLogin;
@@ -22,7 +22,9 @@ type FormData =
     } & PasswordRegisterDataAndFunc)
   | ({
       type: "registerWithPasswordConfirmationCode";
-    } & PasswordRegisterDataAndFunc);
+      onCall: ConfirmEmail;
+      result: undefined | Awaited<ReturnType<ConfirmEmail>>;
+    } & Parameters<ConfirmEmail>[0]);
 
 type FormStates = FormData["type"];
 
@@ -208,7 +210,7 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
         setState("loginTotp");
       } else if (res.code !== "password-missing") {
         const errorMessage = res.message ?? getProperty(ERR_CODE_MESSAGES, res.code);
-        setErrorWithInfo(errorMessage ?? "Error");
+        setErrorWithInfo(errorMessage);
       }
     } else {
       if ("redirect_url" in res && res.redirect_url) {
@@ -281,10 +283,15 @@ export const ERR_CODE_MESSAGES = {
   "invalid-magic-link": "Invalid magic link",
   "used-magic-link": "Magic link already used",
   "invalid-email": "Invalid or missing email",
+  "invalid-otp-code": "Invalid code",
+  "expired-otp-code": "Code expired",
+  "provider-issue": "Authentication provider error",
 } satisfies Record<
   | AuthResponse.MagicLinkAuthFailure["code"]
   | AuthResponse.PasswordLoginFailure["code"]
-  | AuthResponse.PasswordRegisterFailure["code"],
+  | AuthResponse.PasswordRegisterFailure["code"]
+  | AuthResponse.CodeVerificationFailure["code"]
+  | AuthResponse.OAuthRegisterFailure["code"],
   string
 >;
 
