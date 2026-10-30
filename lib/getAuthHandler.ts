@@ -36,6 +36,9 @@ type LoginSignupOptions = Pick<AuthSocketSchema, "providers" | "preferredLogin">
   loginWithProvider: undefined | WithProviderLogin;
   login: undefined | PasswordLogin;
   loginType: LocalLoginMode | undefined;
+  signupWithEmail: undefined | ClientAuthCalls["register"];
+  signupWithEmailOptions: AuthSocketSchema["signupWithEmail"];
+  /** @deprecated Use signupWithEmail and signupWithEmailOptions.requireInvitation. */
   signupWithEmailAndPassword: undefined | PasswordRegister;
   confirmEmail: undefined | ConfirmEmail;
 };
@@ -66,11 +69,19 @@ export const getAuthHandler = ({
     if (endpoint) url = `${endpoint}${url}`;
     return url;
   };
+  const legacySignupWithEmail = authConfig?.signupWithEmailAndPassword;
+  const signupWithEmailOptions =
+    authConfig?.signupWithEmail ??
+    (legacySignupWithEmail && {
+      ...legacySignupWithEmail,
+      requirePassword: true,
+      requireInvitation: false,
+    });
   const authCalls = getAuthCalls(
     {
       login: authConfig?.login?.loginRoute,
-      register: authConfig?.signupWithEmailAndPassword?.url,
-      magicLinkOrOTP: authConfig?.signupWithEmailAndPassword?.emailConfirmationRoute,
+      register: signupWithEmailOptions?.url,
+      magicLinkOrOTP: signupWithEmailOptions?.emailConfirmationRoute,
       logout: authConfig?.login?.logoutRoute,
     },
     urlWithEndpointAndSearch,
@@ -107,13 +118,15 @@ export const getAuthHandler = ({
     login: undefined,
     preferredLogin: authConfig?.preferredLogin,
     loginWithProvider: undefined,
+    signupWithEmail: signupWithEmailOptions && authCalls.register,
+    signupWithEmailOptions,
     signupWithEmailAndPassword: undefined,
     confirmEmail: undefined,
     providers: authConfig?.providers,
   };
 
   if (authConfig) {
-    const { providers, signupWithEmailAndPassword, login } = authConfig;
+    const { providers, login } = authConfig;
     loginSignupOptions.loginWithProvider =
       isEmpty(providers) ? undefined : (
         providers &&
@@ -127,8 +140,10 @@ export const getAuthHandler = ({
 
     loginSignupOptions.login = login && authCalls.login;
     loginSignupOptions.signupWithEmailAndPassword =
-      signupWithEmailAndPassword && authCalls.register;
-    loginSignupOptions.confirmEmail = signupWithEmailAndPassword && authCalls.magicLinkOrOTP;
+      signupWithEmailOptions && !signupWithEmailOptions.requireInvitation ?
+        authCalls.register
+      : undefined;
+    loginSignupOptions.confirmEmail = signupWithEmailOptions && authCalls.magicLinkOrOTP;
   }
 
   if (!authConfig?.user) {
