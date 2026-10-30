@@ -31,7 +31,7 @@
     "release": "npm version patch && git push --follow-tags && npm publish"
   },
   "dependencies": {
-    "prostgles-types": "^4.0.309",
+    "prostgles-types": "^4.0.310",
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
