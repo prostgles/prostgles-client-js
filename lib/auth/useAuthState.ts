@@ -30,10 +30,20 @@ type FormStates = FormData["type"];
 
 const loginStates = ["login", "loginTotp", "loginTotpRecovery"] as const satisfies FormStates[];
 
-export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
+export const useAuthState = ({
+  auth,
+  initialState = "login",
+  initialUsername = "",
+  invitationToken,
+}: {
+  auth: AuthHandler;
+  initialState?: FormStates;
+  initialUsername?: string;
+  invitationToken?: string;
+}) => {
   const [loading, setIsLoading] = useState(false);
-  const [state, setState] = useState<FormStates>("login");
-  const [username, setUsername] = useState("");
+  const [state, setState] = useState<FormStates>(initialState);
+  const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
   const [emailVerificationCode, setEmailVerificationCode] = useState("");
   const [totpToken, setTotpToken] = useState("");
@@ -60,24 +70,27 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
     _setError("");
   }, [username, password, totpToken, totpRecoveryCode, confirmPassword]);
 
+  const canRegister =
+    auth.signupWithEmail && (!auth.signupWithEmailOptions?.requireInvitation || invitationToken);
+  const requiresPassword = auth.signupWithEmailOptions?.requirePassword ?? true;
   const showPassword =
-    (state === "registerWithPassword" && auth.signupWithEmailAndPassword) ||
+    (state === "registerWithPassword" && canRegister && requiresPassword) ||
     (state === "login" && auth.loginType === "email" && usernamesWithPassword.includes(username)) ||
     (state === "login" && auth.loginType === "email+password");
 
   const showUsername =
-    (state === "registerWithPassword" && auth.signupWithEmailAndPassword) ||
+    (state === "registerWithPassword" && canRegister) ||
     (state === "login" && auth.loginType === "email") ||
     (state === "login" && auth.loginType === "email+password");
 
-  const showConfirmPassword = state === "registerWithPassword" && auth.signupWithEmailAndPassword;
+  const showConfirmPassword = state === "registerWithPassword" && showPassword;
 
   const showTotpCode = state === "loginTotp" && auth.login;
 
   const showTotpRecoveryCode = state === "loginTotpRecovery" && auth.login;
 
   const showEmailVerificationCode =
-    state === "registerWithPasswordConfirmationCode" && auth.signupWithEmailAndPassword;
+    state === "registerWithPasswordConfirmationCode" && auth.confirmEmail;
 
   const show = {
     username: Boolean(showUsername),
@@ -111,13 +124,13 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
     : state === "login" && auth.loginType === "email+password" ? commonFormHandlers
     : state === "loginTotp" && auth.login ? commonFormHandlers
     : state === "loginTotpRecovery" && auth.login ? commonFormHandlers
-    : state === "registerWithPassword" && auth.signupWithEmailAndPassword ?
+    : state === "registerWithPassword" && canRegister ?
       {
         ...commonFormHandlers,
-        onCall: auth.signupWithEmailAndPassword,
+        onCall: auth.signupWithEmail,
         result,
       }
-    : state === "registerWithPasswordConfirmationCode" && auth.signupWithEmailAndPassword ?
+    : state === "registerWithPasswordConfirmationCode" && auth.confirmEmail ?
       {
         ...commonFormHandlers,
         onCall: () => {
@@ -145,6 +158,7 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
       remember_me: false,
       totp_token: isOnlyShowingUsername ? undefined : totpToken,
       totp_recovery_code: isOnlyShowingUsername ? undefined : totpRecoveryCode,
+      ...(state === "registerWithPassword" && invitationToken && { invitationToken }),
     };
 
     const errorMap = {
@@ -181,7 +195,7 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
       if (!username) {
         return setError("Email cannot be empty");
       }
-      if (formHandlers.state === "registerWithPassword") {
+      if (formHandlers.state === "registerWithPassword" && requiresPassword) {
         if (!password) {
           return setError("Password cannot be empty");
         } else if (password !== confirmPassword) {
@@ -217,7 +231,7 @@ export const useAuthState = ({ auth }: { auth: AuthHandler }) => {
         window.location.href = res.redirect_url;
       }
       if (state === "registerWithPassword") {
-        setState("registerWithPasswordConfirmationCode");
+        setState(res.code === "email-verified" ? "login" : "registerWithPasswordConfirmationCode");
       }
 
       let message = (res.code && SIGNUP_CODE_MESSAGES[res.code]) ?? res.message ?? "Success";
