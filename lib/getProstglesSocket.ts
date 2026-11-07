@@ -1,4 +1,5 @@
 import type { ManagerOptions, SocketOptions } from "socket.io-client";
+import * as socketIOParser from "socket.io-parser";
 
 type IO = typeof import("socket.io-client").default;
 
@@ -30,6 +31,7 @@ export const getProstglesSocket = ({
     typeof socketPathOrOptions === "string" ? { path: socketPathOrOptions } : socketPathOrOptions;
   const socketOptionsWithDefaults: Partial<ManagerOptions & SocketOptions> = {
     withCredentials: credentials !== undefined && credentials !== "omit",
+    parser: prostglesSocketParser,
     ...socketOptions,
     reconnectionDelay: 1000,
     reconnection: true,
@@ -41,4 +43,14 @@ export const getProstglesSocket = ({
   }
 
   return endpoint ? io(endpoint, socketOptionsWithDefaults) : io(socketOptionsWithDefaults);
+};
+
+const prostglesSocketParser = {
+  ...socketIOParser,
+  Decoder: class extends socketIOParser.Decoder {
+    constructor() {
+      /* Query results can contain one attachment per bytea cell, including joined rows. */
+      super({ maxAttachments: 100_000 });
+    }
+  },
 };
