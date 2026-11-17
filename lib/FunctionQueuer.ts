@@ -1,7 +1,7 @@
 type Func = (...args: any[]) => any;
 type QueueItem<F extends Func> = {
   arguments: Parameters<F>;
-  onResult: (result: ReturnType<F>) => void;
+  onResult: (result: Awaited<ReturnType<F>>) => void;
   onFail: (error: any) => void;
 };
 export class FunctionQueuer<F extends Func> {
@@ -13,8 +13,8 @@ export class FunctionQueuer<F extends Func> {
     this.groupBy = groupBy;
   }
   private isRunning = false;
-  async run(args: Parameters<F>): Promise<ReturnType<F>> {
-    const result = new Promise<ReturnType<F>>((resolve, reject) => {
+  async run(args: Parameters<F>): Promise<Awaited<ReturnType<F>>> {
+    const result = new Promise<Awaited<ReturnType<F>>>((resolve, reject) => {
       const item = { arguments: args, onResult: resolve, onFail: reject };
       this.queue.push(item);
     });

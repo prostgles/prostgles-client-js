@@ -9,6 +9,7 @@ import {
 } from "prostgles-types";
 import { debug, type AnyFunction, type CoreParams, type InitOptions } from "./prostgles";
 import { FunctionQueuer } from "./FunctionQueuer";
+import { sendSocketRequest } from "./sendSocketRequest";
 
 type OnChange = (data: AnyObject[], err?: any) => void;
 export type Subscription = CoreParams & {
@@ -17,6 +18,7 @@ export type Subscription = CoreParams & {
   handlers: OnChange[];
   unsubChannel: string;
   reAttach: () => Promise<void>;
+  onHandlersChanged: () => Promise<void>;
 };
 
 const preffix = CHANNELS._preffix;
@@ -25,78 +27,34 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
   const { socket, onDebug } = initOpts;
 
   const subscriptions: Map<string, Subscription> = new Map();
+  let connectionVersion = 0;
+  socket.on("disconnect", () => {
+    connectionVersion++;
+  });
 
-  const removeServerSub = (unsubChannel: string) => {
-    return new Promise((resolve, reject) => {
-      socket.emit(unsubChannel, {}, (err: any, _res: any) => {
-        if (err) {
-          console.error(err);
-          reject(err);
-        } else {
-          resolve(_res);
-        }
-      });
-    });
-  };
-
-  function _unsubscribe(
+  const _unsubscribe = async (
     channelName: string,
     unsubChannel: string,
     handler: AnyFunction,
-  ): Promise<true> {
+  ): Promise<true> => {
     debug("_unsubscribe", { channelName, handler });
 
-    return new Promise((resolve) => {
-      const sub = subscriptions.get(channelName);
-      if (sub) {
-        sub.handlers = sub.handlers.filter((h) => h !== handler);
-        onDebug?.({
-          type: "table",
-          command: "unsubscribe",
-          tableName: sub.tableName,
-          unsubChannel,
-          handlers: sub.handlers,
-        });
-        if (!sub.handlers.length) {
-          removeServerSub(unsubChannel);
-          socket.removeListener(channelName, sub.onCall);
-          subscriptions.delete(channelName);
-
-          /* Not waiting for server confirmation to speed things up */
-          resolve(true);
-        } else {
-          resolve(true);
-        }
-      } else {
-        resolve(true);
-      }
+    const sub = subscriptions.get(channelName);
+    if (!sub?.handlers.includes(handler)) return true;
+    sub.handlers = sub.handlers.filter((h) => h !== handler);
+    onDebug?.({
+      type: "table",
+      command: "unsubscribe",
+      tableName: sub.tableName,
+      unsubChannel,
+      handlers: sub.handlers,
     });
-  }
+    if (!sub.handlers.length) await sub.onHandlersChanged();
+    return true;
+  };
 
-  /**
-   * Obtaines subscribe channel from server
-   */
-  function addServerSub({
-    tableName,
-    command,
-    param1,
-    param2,
-  }: CoreParams): Promise<SubscriptionChannels> {
-    return new Promise((resolve, reject) => {
-      socket.emit(
-        preffix,
-        { tableName, command, param1, param2 },
-        (err?: any, res?: SubscriptionChannels) => {
-          if (err) {
-            console.error(err);
-            reject(err);
-          } else if (res) {
-            resolve(res);
-          }
-        },
-      );
-    });
-  }
+  const addServerSub = (params: CoreParams) =>
+    sendSocketRequest<SubscriptionChannels>(socket, preffix, params);
 
   /**
    * Can be used concurrently
@@ -108,7 +66,8 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
     onChange: AnyFunction,
     _onError?: AnyFunction,
   ): Promise<SubscriptionHandler> => {
-    return addSubQueuer.run([dbo, params, onChange]);
+    /* Each handle owns its callback, even when callers reuse the same function. */
+    return addSubQueuer.run([dbo, params, (...args) => onChange(...args)]);
   };
 
   /**
@@ -116,9 +75,10 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
    */
   async function _addSub(
     dbo: any,
-    { tableName, command, param1, param2 }: CoreParams,
+    params: CoreParams,
     onChange: AnyFunction,
   ): Promise<SubscriptionHandler> {
+    const { tableName, command, param1, param2 } = params;
     const makeHandler = (channelName: string, unsubChannel: string) => {
       const unsubscribe = function () {
         return _unsubscribe(channelName, unsubChannel, onChange);
@@ -157,22 +117,27 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
 
     if (existing) {
       const [existingChannel, existingSub] = existing;
+      const { lastData } = existingSub;
       existingSub.handlers.push(onChange);
-      setTimeout(() => {
-        const sub = subscriptions.get(existingChannel);
-        if (sub?.lastData) {
-          onChange(sub.lastData);
-        }
-      }, 10);
+      try {
+        await existingSub.onHandlersChanged();
+      } catch (error) {
+        await _unsubscribe(existingChannel, existingSub.unsubChannel, onChange);
+        throw error;
+      }
+      if (lastData) {
+        setTimeout(() => {
+          if (existingSub.lastData === lastData && existingSub.handlers.includes(onChange)) {
+            onChange(lastData);
+          }
+        }, 10);
+      }
       return makeHandler(existingChannel, existingSub.unsubChannel);
     }
 
-    const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub({
-      tableName,
-      command,
-      param1,
-      param2,
-    });
+    if (!socket.connected) await new Promise<void>((resolve) => socket.once("connect", resolve));
+    let attachedConnection: number | undefined = connectionVersion;
+    const { channelName, channelNameReady, channelNameUnsubscribe } = await addServerSub(params);
 
     const onCall = function (subData: { data?: any; err?: any }) {
       /* TO DO: confirm receiving data or server will unsubscribe */
@@ -203,8 +168,28 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
       }
     };
 
-    socket.on(channelName, onCall);
-    subscriptions.set(channelName, {
+    const subscriptionUpdates = new FunctionQueuer(async (refresh: boolean) => {
+      if (subscriptions.get(channelName) !== subscription) return;
+      if (attachedConnection === connectionVersion && (refresh || !subscription.handlers.length)) {
+        try {
+          await sendSocketRequest(socket, channelNameUnsubscribe, {});
+        } catch (error) {
+          if (attachedConnection === connectionVersion) throw error;
+        }
+        attachedConnection = undefined;
+      }
+      /* Handlers can join or leave while the server acknowledges the unsubscribe. */
+      if (!subscription.handlers.length) {
+        subscriptions.delete(channelName);
+        socket.removeListener(channelName, onCall);
+      } else if (socket.connected && attachedConnection !== connectionVersion) {
+        const registeringConnection = connectionVersion;
+        await addServerSub(params);
+        attachedConnection = registeringConnection;
+        socket.emit(channelNameReady, { now: Date.now() });
+      }
+    });
+    const subscription: Subscription = {
       lastData: undefined,
       tableName,
       command,
@@ -213,12 +198,11 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
       onCall,
       unsubChannel: channelNameUnsubscribe,
       handlers: [onChange],
-      reAttach: async () => {
-        await removeServerSub(channelNameUnsubscribe).catch(console.error);
-        await addServerSub({ tableName, command, param1, param2 });
-        socket.emit(channelNameReady, { now: Date.now() });
-      },
-    });
+      reAttach: () => subscriptionUpdates.run([true]),
+      onHandlersChanged: () => subscriptionUpdates.run([false]),
+    };
+    socket.on(channelName, onCall);
+    subscriptions.set(channelName, subscription);
     socket.emit(channelNameReady, { now: Date.now() });
     return makeHandler(channelName, channelNameUnsubscribe);
   }
