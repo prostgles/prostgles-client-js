@@ -21,7 +21,7 @@ export type Subscription = CoreParams & {
   onHandlersChanged: () => Promise<void>;
 };
 
-const preffix = CHANNELS._preffix;
+const channelPrefix = CHANNELS._preffix;
 
 export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "onDebug">) => {
   const { socket, onDebug } = initOpts;
@@ -54,7 +54,7 @@ export const getSubscriptionHandler = (initOpts: Pick<InitOptions, "socket" | "o
   };
 
   const addServerSub = (params: CoreParams) =>
-    sendSocketRequest<SubscriptionChannels>(socket, preffix, params);
+    sendSocketRequest<SubscriptionChannels>(socket, channelPrefix, params);
 
   /**
    * Can be used concurrently
