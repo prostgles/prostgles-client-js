@@ -54,7 +54,7 @@ test("types work", async () => {
       { "name.@@.to_tsquery": ["abc81"] },
       {
         select: {
-          h: { $ts_headline_simple: ["name", { plainto_tsquery: "abc81" }] },
+          h: { $ts_headline: ["name", "abc81", { lang: "simple" }] },
           hh: { $ts_headline: ["name", "abc81"] },
           added: "$date_trunc",
           addedY: { $date_trunc: ["added"] },
