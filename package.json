@@ -28,10 +28,10 @@
     "start": "webpack --config webpack.dev.js",
     "build": "rm -rf ./dist/* && tsc && NODE_OPTIONS=--openssl-legacy-provider && webpack  --mode production --config webpack.prod.js",
     "test": "npm run build && cd tests && npm test",
-    "release": "npm version patch && git push --follow-tags && npm publish"
+    "release": "npm version patch && git push --follow-tags && npm publish --browser=false"
   },
   "dependencies": {
-    "prostgles-types": "^4.0.329",
+    "prostgles-types": "^4.0.331",
     "socket.io-client": "^4.8.4",
     "socket.io-parser": "^4.2.7"
   },
